@@ -18,7 +18,7 @@ instead.
 
 The program currently contains only the basic functionality and
 should be seen as a prototype. Security features to protect the
-user from
+user from malicious software is planned for the 1.0 release.
 
 Under no circumstances run the daemon as root
 
