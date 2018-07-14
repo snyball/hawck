@@ -1,0 +1,114 @@
+-- Start up a new chromium tab
+"F2" => app("chromium"):new_window("reddit.com")
+
+-- Type "HAHAHAHAHAHAHAHAHAHA"
+"F3" => (press "H" .. press "A") * 10
+
+-- Using some more low-level functions
+function lowerLevel()
+  local key_code = 50
+  -- Write keydown to event buffer
+  kbd:write(kbd.Event.KEY, key_code, kbd.Event.DOWN)
+  -- Synchronize
+  kbd:write(kbd.Event.SYN, 0, 0)
+  -- Flush event buffer
+  kbd:flush()
+  for i = 1, 10 do
+    kbd:write(kbd.Event.KEY, key_code, kbd.Event.REPEAT)
+    kbd:write(kbd.Event.SYN, 0, 0)
+    kbd:flush()
+  end
+  kbd:write(kbd.Event.KEY, key_code, kbd.Event.REPEAT)
+  kbd:write(kbd.Event.SYN, 0, 0)
+  kbd:flush()
+end
+
+-- This is a sub-match, `alt` applies to all of the below.
+for alt => do
+  "a" => run "echo a"
+  "b" => run "echo more"
+  for shift + ctrl => do
+    "x" => say "Hello"
+    -- You can include function definitions
+    "y" => function ()
+             for i = 1, 10 do
+               kbd:down("s")
+               kbd:up("s")
+             end
+           end
+    -- Or pre-declare a function and use it in a match
+    "z" => lowerLevel
+  end
+end
+
+
+-- This is a mode, a separate match scope
+--
+-- Modes can be enabled/disabled with `use "<mode>"`, and `drop "<mode>"`
+-- or alternatively `enable "<mode>"` or `disable "<mode>"`, these actions
+-- automatically generate d-bus notifications.
+--
+-- A string after a mode declaration declares a switch key which automatically
+-- swaps the mode in and out.
+while programming_mode => "F4" do
+  "caps" => "escape"
+
+  "ø"    => "{"
+  "æ"    => "}"
+
+  "Ø"    => "["
+  "Æ"    => "]"
+end
+
+~modifier => show
+
+-- All of the above translate to the following Lua code:
+
+require "Hawck"
+
+return MatchScope.new(function (match)
+    match[ key "F2" ] = app("chromium"):new_window("reddit.com")
+
+    match[ key "F3" ] = (press "H" .. press "A") * 10
+
+    function someFunction()
+      print("doing something ...")
+    end
+
+    match[ key "F7" ] = toggle("programming_mode")
+    match[ match_modes_enabled["programming_mode"] ] = MatchScope.new(function (match)
+        -- As you can see here, to keep the translator simple we abuse
+        -- for-loops.
+        for i = 1, 1 do
+          match[ key "caps" ] = insert "escape"
+
+          -- This might be more difficult to achieve, the problem is
+          -- that it might not be obvious that "Ø" needs to appear before
+          -- "ø"
+          match[ ~shift + key "ø"] = insert "{"
+          match[ ~shift + key "æ"] = insert "}"
+
+          match[ shift + key "ø" ] = insert "["
+          match[ shift + key "æ" ] = insert "["
+        end
+    end)
+
+    match[ alt ] = MatchScope.new(function (match)
+        for i = 1, 1 do
+          match[ key "a" ] = run "echo a"
+          match[ key "b" ] = run "echo more"
+          match[ shift ] = MatchScope.new(function (match)
+              match[ key "x" ] = say "Hello"
+              match[ key "y" ] = function ()
+                for i = 1, 10 do
+                  kbd:down("s")
+                  kbd:up("s")
+                end
+              end
+              match[ key "z" ] = someFunction
+          end)
+        end
+    end)
+end)
+
+-- Which is then compiled into a .luac file (Lua bytecode)

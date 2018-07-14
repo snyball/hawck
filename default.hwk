@@ -1,0 +1,60 @@
+require "Hawck"
+
+match[ key "insert" ] = function()end
+--match[ -up + key "f3" ] = function() io.popen("/usr/bin/whois-ui &") end
+
+haha_mode = true
+match[ down + key "f6" ] = function ()
+    haha_mode = not haha_mode
+end
+
+match[ down + key "f2" ] = app("firefox"):new_window("reddit.com")
+
+match[ down + key "f3" ] = (insert "h" .. insert "a") * 10
+
+match[ down + key "f5" ] = function ()
+  kbd:pressN(getKeysym("a"))
+end
+
+local function check(var)
+  return function ()
+    return _G[var]
+  end
+end
+
+disabled = false
+
+-- Enable/disable programming mode
+match[ down + key "f7" ] = function ()
+  disabled = not disabled
+  if disabled then
+    say("Hawck: Disabled programming mode")()
+  else
+    say("Hawck: Enabled programming mode")()
+  end
+end
+
+-- Check if programming mode is enabled
+match[ check("disabled") ] = echo
+
+-- Programming mode
+match[ -up + key "caps"           ] = insert "escape"
+match[ -up + shift + key "oslash" ] = insert "bracketleft"
+match[ -up + key "oslash"         ] = insert "braceleft"
+match[ -up + shift + key "ae"     ] = insert "bracketright"
+match[ -up + key "ae"             ] = insert "braceright"
+
+--[[
+match[ alt ] = MatchScope.new(function (match)
+    match[ "x" ] = app:prompt() | run
+end)
+]]
+
+-- Haha
+haha = {[true] = "h", [false] = "a"}
+haha_state = true
+match[ check "haha_mode" ] = echo
+match[ -up ] = function ()
+    kbd:press(haha[haha_state])
+    haha_state = not haha_state
+end
