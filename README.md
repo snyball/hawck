@@ -1,24 +1,25 @@
 # Hawck
-### A key-rebinding daemon
+## A key-rebinding daemon
 
-Hawck runs in user space and uses kernel-apis to intercept
-key presses. It can run key-presses through Lua scripts in
-order to modify the behaviour of keys.
+Hawck runs in user space and uses kernel-apis to intercept key presses. It can
+run key-presses through Lua scripts in order to modify the behaviour of keys.
 
-This can mean simple rebindings, launching of programs, or
-really anything else.
+This can mean simple rebindings, launching of programs, or really anything else.
+
+The name is a portmanteau of "Hack" and "AWK", as the program started out as a
+bit of a hack, and the scripts take inspiration from the pattern-matching style
+of the AWK programming language (plus, hawks are pretty cool I guess.)
 
 ### GUI
 
-A simple gui is planned so that simple cases can be covered
-for normal users, while more advanced users may write scripts
-instead.
+A simple gui is planned so that simple cases can be covered for normal users,
+while more advanced users may write scripts instead.
 
 ### WARNING: Security
 
-The program currently contains only the basic functionality and
-should be seen as a prototype. Security features to protect the
-user from malicious software is planned for the 1.0 release.
+The program currently contains only the basic functionality and should be seen
+as a prototype. Security features to protect the user from malicious software is
+planned for the 1.0 release.
 
 Under no circumstances run the daemon as root
 
@@ -32,9 +33,8 @@ software is targetting.)
 
 ### NOTICE: This software is in alpha stage
 
-I personally use the software daily without any issues, but
-I do not recommend anyone to actually auto-start this software
-on boot, there may be a few bugs, and in the case of auto-starting
-the daemon with SystemD on boot these problems may render the computer
-unusable until a system recovery is performed or another keyboard
-is plugged in (hawck only listens to a single keyboard at a time.)
+I personally use the software daily without any issues, but I do not recommend
+anyone to actually auto-start this software on boot, there may be a few bugs,
+and in the case of auto-starting the daemon with SystemD on boot these problems
+may render the computer unusable until a system recovery is performed or another
+keyboard is plugged in (hawck only listens to a single keyboard at a time.)
