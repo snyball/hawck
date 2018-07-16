@@ -14,6 +14,38 @@ The name is a portmanteau of "Hack" and "AWK", as the program started out as a
 bit of a hack, and the scripts take inspiration from the pattern-matching style
 of the AWK programming language (plus, hawks are pretty cool I guess.)
 
+### Motivation
+
+There currently is no simple way to rebind keys in Linux without resorting
+to solutions that are either specific to a display server (X11 or Wayland)
+or to a desktop environment / window manager. These solutions also tend
+not to be very user friendly.
+
+So the motivation for Hawck is to have a simple method for creating
+rebindings or more advanced keyboard macros, and have these macros work
+everywhere.
+
+### NOTICE: This software is in alpha³ stage
+
+I personally use the software daily without any issues, but I do not recommend
+anyone to actually auto-start this software on boot, there may be a few bugs,
+and in the case of auto-starting the daemon with SystemD on boot these problems
+may render the computer unusable until a system recovery is performed or another
+keyboard is plugged in (hawck only listens to a single keyboard at a time.)
+
+Furthermore the software really isn't user friendly yet, and is not easy to set
+up, I recommend users needing a key-rebinding daemon who are not experienced in
+C++ and Lua to look somewhere else for now.
+
+### Scope
+
+Currently the single aim for this project is keyboard automation, involving
+other methods of input like mice and joysticks is not planned.
+
+### License
+
+MIT licensed.
+
 ### Supported platforms
 
 - Linux
@@ -72,11 +104,3 @@ is primarily aimed towards Wayland users.
   - Workaround: Wait for a few milliseconds between emulated keypresses,
     this seems to only be noticeable with macros that produce
     a **lot of output**.
-
-### NOTICE: This software is in alpha stage
-
-I personally use the software daily without any issues, but I do not recommend
-anyone to actually auto-start this software on boot, there may be a few bugs,
-and in the case of auto-starting the daemon with SystemD on boot these problems
-may render the computer unusable until a system recovery is performed or another
-keyboard is plugged in (hawck only listens to a single keyboard at a time.)
