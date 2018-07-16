@@ -10,6 +10,15 @@ The name is a portmanteau of "Hack" and "AWK", as the program started out as a
 bit of a hack, and the scripts take inspiration from the pattern-matching style
 of the AWK programming language (plus, hawks are pretty cool I guess.)
 
+### Supported platforms
+
+- Linux
+  - Currently the only supported platform, as input-grabbing in this
+    way is very platform specific.
+    
+If `UDevice.cpp` and `Keyboard.cpp` were to be ported everything
+else should run just fine under Mac OS X or BSD.
+
 ### GUI
 
 A simple gui is planned so that simple cases can be covered for normal users,
