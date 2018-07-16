@@ -6,6 +6,10 @@ run key-presses through Lua scripts in order to modify the behaviour of keys.
 
 This can mean simple rebindings, launching of programs, or really anything else.
 
+Your rebindings will work in X11, Wayland, and even in the text-only TTYs.
+This is possible because Hawck processes inputs before any of these systems
+see them.
+
 The name is a portmanteau of "Hack" and "AWK", as the program started out as a
 bit of a hack, and the scripts take inspiration from the pattern-matching style
 of the AWK programming language (plus, hawks are pretty cool I guess.)
