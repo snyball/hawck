@@ -15,21 +15,50 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
 A simple gui is planned so that simple cases can be covered for normal users,
 while more advanced users may write scripts instead.
 
-### WARNING: Security
+### Security
 
-The program currently contains only the basic functionality and should be seen
-as a prototype. Security features to protect the user from malicious software is
-planned for the 1.0 release.
+When Hawck starts up it splits up into two daemons that communicate with
+each other:
 
-Under no circumstances run the daemon as root
-
-To try it out you currently have to add your user to the input group, which also
-happens to be a bad idea.
+- Keyboard daemon
+  - Runs under the 'hawck-grab' user and is part of the input group,
+    letting it read from /dev/input/ devices.
+  - Grabs keyboard input exclusively.
+  - Knows which keys to pass over to the macro daemon
+  - Controls a virtual keyboard that is used to emulate
+    keypresses, this includes re-pressing keys that did
+    not need to be handled by the macro daemon.
+- Macro daemon
+  - Runs under the desktop user.
+  - Listens for keypresses sent from the keyboard daemon.
+  - Passes received keypresses into Lua scripts in order to
+    perform actions or conditionally modify the keys.
+  - Potential output keys produced by the script are sent
+    back to the keyboard daemon.
+    - Inconsequential implementation details: Having two virtual
+      keyboards operated by both daemon opens up an entirely new
+      can of worms especially for modifier keys.
+  
+The keyboard daemon contains a whitelist of keys that the macro daemon
+is allowed to see, this whitelist is derived from the Lua scripts used.
+This means that the process run under the desktop user never sees all
+keyboard input, this is important as the `/proc/` filesystem would
+allow any process launched by the user to see all keyboard input if
+it were not filtered.
 
 If you are using X11 your key-presses can already be intercepted without any
-special permission, so adding yourself to the input group should not pose any
-additional risk; this is mostly a warning for Wayland-users (the group this
-software is targetting.)
+special permission, so all this extra security is unnecessary, but this program
+is primarily aimed towards Wayland users.
+
+### Known Bugs:
+
+- Outputting keys too quickly:
+  - In macros that result in a lot of keys being outputted in
+    a short amount of time some keys may be skipped, leading
+    to inconsistencies in output.
+  - Workaround: Wait for a few milliseconds between emulated keypresses,
+    this seems to only be noticeable with macros that produce
+    a **lot of output**.
 
 ### NOTICE: This software is in alpha stage
 
