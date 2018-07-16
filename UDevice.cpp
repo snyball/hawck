@@ -8,9 +8,9 @@
 #include <type_traits>
 
 extern "C" {
-#include <unistd.h>
-#include <fcntl.h>
-#include <time.h>
+    #include <unistd.h>
+    #include <fcntl.h>
+    #include <time.h>
 }
 
 UDevice::UDevice() : LuaIface(this, UDevice_lua_methods) {
@@ -21,10 +21,6 @@ UDevice::UDevice() : LuaIface(this, UDevice_lua_methods) {
         throw std::exception();
     }
 
-    /*
-     * The ioctls below will enable the device that is about to be
-     * created, to pass key events, in this case the space key.
-     */
     ioctl(fd, UI_SET_EVBIT, EV_KEY);
     for (int key = KEY_ESC; key <= KEY_MICMUTE; key++)
         ioctl(fd, UI_SET_KEYBIT, key);
@@ -91,11 +87,17 @@ void UDevice::flush() {
     input_event *bufp = evbuf;
     for (size_t i = 0; i < evbuf_top; i++) {
         write(fd, bufp++, sizeof(*bufp));
+        // FIXME FIXME FIXME: This shit is ridiculous but I can't find any documentation
+        //                    on how to handle this.
         // Quick-fix until I manage to receive events when keys are pressed
         // too fast
         usleep(3500);
     }
     evbuf_top = 0;
+}
+
+void UDevice::done() {
+    flush();
 }
 
 LUA_CREATE_BINDINGS(UDevice_lua_methods)

@@ -29,15 +29,15 @@ require "utils"
 
 DEFAULT_KEYMAP = require "keymaps/default_linux"
 
-local KEYMAP_MODS = {"Shift",
-                     "AltGr",
-                     "Control",
-                     "Alt",
-                     "ShiftL",
-                     "ShiftR",
-                     "CtrlL",
-                     "CtrlR",
-                     "CapsShift"}
+KEYMAP_MODS = {"Shift",
+               "AltGr",
+               "Control",
+               "Alt",
+               "ShiftL",
+               "ShiftR",
+               "CtrlL",
+               "CtrlR",
+               "CapsShift"}
 
 local KEYMAP_MOD_CODES = nil
 local KEYMAP = nil
@@ -99,7 +99,6 @@ function readKeymap(path)
       end
     end
   end
-
 
   local mod_codes = {}
   for i, mod in ipairs(KEYMAP_MODS) do

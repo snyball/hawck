@@ -157,6 +157,17 @@ extern "C" {
         }
 
 namespace Lua {
+    class LuaError : public std::exception {
+    private:
+        std::string expl;
+    public:
+        LuaError(std::string expl) : expl(expl) {}
+
+        virtual const char *what() const noexcept {
+            return expl.c_str();
+        }
+    };
+
     static const std::string lua_type_names[LUA_NUMTAGS] = {
         "nil",           // Lua type: nil
         "boolean",       // Lua type: boolean
@@ -168,6 +179,38 @@ namespace Lua {
         "userdata",      // Lua type: userdata
         "thread",        // Lua type: thread
     };
+
+    inline int luaPush(lua_State *L, bool v) noexcept {
+        lua_pushboolean(L, v);
+        return 1;
+    }
+
+    inline int luaPush(lua_State *L, int v) noexcept {
+        lua_pushnumber(L, v);
+        return 1;
+    }
+
+    inline int luaPush(lua_State *L, std::string& v) noexcept {
+        lua_pushlstring(L, v.c_str(), v.length());
+        return 1;
+    }
+
+    template <class Any>
+    inline int luaPush(lua_State *, Any) noexcept {
+        return 0;
+    }
+
+    inline bool luaGet(lua_State *L, bool, int idx) noexcept {
+        return lua_toboolean(L, idx);
+    }
+
+    inline int luaGet(lua_State *L, int, int idx) noexcept {
+        return lua_tonumber(L, idx);
+    }
+
+    inline std::string luaGet(lua_State *L, std::string, int idx) noexcept {
+        return std::string(lua_tostring(L, idx));
+    }
 
     template <class T>
     class LuaMethod {
@@ -223,26 +266,6 @@ namespace Lua {
             return lua_tostring(L, idx);
         }
 
-        inline int luaPush(bool v) noexcept {
-            lua_pushboolean(L, v);
-            return 1;
-        }
-
-        inline int luaPush(int v) noexcept {
-            lua_pushnumber(L, v);
-            return 1;
-        }
-
-        inline int luaPush(std::string& v) noexcept {
-            lua_pushlstring(L, v.c_str(), v.length());
-            return 1;
-        }
-
-        template <class Any>
-        inline int luaPush(Any) noexcept {
-            return 0;
-        }
-
         static inline constexpr int varargLength() noexcept {
             return 0;
         }
@@ -276,7 +299,7 @@ namespace Lua {
                     f();
                     return 0;
                 } else
-                    return luaPush(f());
+                    return luaPush(L, f());
             };
         }
 
@@ -413,7 +436,7 @@ namespace Lua {
             this->inst = inst;
         }
 
-        void luaOpen(lua_State *L, const char *name) {
+        virtual void luaOpen(lua_State *L, const char *name) {
             // Provide pointer to Lua
             lua_ptr.provide(L);
 
@@ -438,4 +461,63 @@ namespace Lua {
     };
 
     bool isCallable(lua_State *L, int idx);
+
+    class Script {
+    private:
+        lua_State *L;
+        std::string src;
+        bool enabled = true;
+
+    public:
+        Script(std::string path);
+        ~Script() noexcept;
+
+        lua_State *getL() noexcept;
+
+        template <class T>
+        void open(LuaIface<T> *iface, std::string name) {
+            iface->luaOpen(L, name.c_str());
+        }
+
+        int call_r(int n) noexcept {
+            return n;
+        }
+
+        template <class A>
+        int call_r(int n, A arg) noexcept {
+            luaPush(L, arg);
+            return n+1;
+        }
+
+        template <class A, class... Arg>
+        int call_r(int n, A arg, Arg... args) noexcept {
+            luaPush(L, arg);
+            return call_r(n+1, args...);
+        }
+
+        template <class T, class... Arg>
+        T call(std::string name, Arg... args) {
+            int nargs = call_r(0, args...);
+            lua_getglobal(L, name.c_str());
+            int nres = 1;
+            if constexpr (std::is_void<T>::value) {
+                nres = 0;
+            }
+            if (lua_pcall(L, nargs, nres, 0) != LUA_OK) {
+                std::string err(lua_tostring(L, -1));
+                lua_pop(L, 1);
+                throw LuaError("Lua Error: " + err);
+            }
+            if constexpr (!std::is_void<T>::value) {
+                T ret = luaGet(L, T(), -1);
+                lua_pop(L, 1);
+                return ret;
+            }
+        }
+
+        template <class T>
+        T get(std::string name);
+
+        void toggle(bool enabled) noexcept;
+    };
 }

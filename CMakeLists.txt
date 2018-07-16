@@ -14,7 +14,10 @@ add_definitions(
 
 add_executable(hawck.x86_64
     UDevice.cpp
-    hawck.cpp
+    RemoteUDevice.cpp
+    hawck-s.cpp
+    MacroDaemon.cpp
+    KBDDaemon.cpp
     LuaUtils.cpp
     Keyboard.cpp
 )

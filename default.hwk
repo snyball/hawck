@@ -58,3 +58,5 @@ match[ -up ] = function ()
     kbd:press(haha[haha_state])
     haha_state = not haha_state
 end
+
+__setup()

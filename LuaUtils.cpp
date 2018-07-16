@@ -28,6 +28,8 @@
 
 #include "LuaUtils.hpp"
 
+using namespace std;
+
 namespace Lua {
     /** Figure out if a Lua value is callable.
      *
@@ -75,5 +77,36 @@ namespace Lua {
      */
     bool isCallable(lua_State *L, int idx) {
         return isCallableHelper(L, idx, 0);
+    }
+
+    Script::Script(string path) : src(path) {
+        L = luaL_newstate();
+        luaL_openlibs(L);
+
+        try {
+            if (luaL_loadfile(L, path.c_str()) != LUA_OK) {
+                string err(lua_tostring(L, -1));
+                throw Lua::LuaError("Lua error: " + err);
+            }
+            if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
+                string err(lua_tostring(L, -1));
+                throw Lua::LuaError("Lua error: " + err);
+            }
+        } catch (Lua::LuaError &e) {
+            lua_close(L);
+            throw e;
+        }
+    }
+
+    Script::~Script() noexcept {
+        lua_close(L);
+    }
+
+    void Script::toggle(bool enabled) noexcept {
+        this->enabled = enabled;
+    }
+
+    lua_State *Script::getL() noexcept {
+        return L;
     }
 }

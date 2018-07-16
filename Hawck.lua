@@ -33,6 +33,10 @@ kbd = require "kbd"
 
 FALLTHROUGH = 0x3141592654
 
+-- Keeps track of keys that are requested by the script.
+__keys = {}
+
+-- Root match scope
 __match = MatchScope.new()
 match = __match
 _G["__match"] = __match
@@ -52,9 +56,12 @@ none = Cond.new(function ()
 end)
 never = none
 
-key = LazyCondF.new(function (key_name)
-    return kbd:hadKey(key_name)
-end)
+key = function (key_name)
+  __keys[key_name] = true
+  return LazyCondF.new(function (key_name)
+      return kbd:hadKey(key_name)
+  end)(key_name)
+end
 
 press = LazyF.new(function (key)
     kbd:press(key)
@@ -162,5 +169,38 @@ ProtectedMeta = {
 }
 
 setKeymap("./keymaps/qwerty/no.map")
+
+local OMNIPRESENT = {"control_r",
+                     "control_l",
+                     "control",
+                     "shift_l",
+                     "shift_r",
+                     "altgr",
+                     "shift"}
+
+for idx, name in ipairs(OMNIPRESENT) do
+  __keys[name] = true
+end
+
+-- Called after loading a hwk script, requests keys from the daemon
+-- depending on which keys are checked for using the key() function.
+function __setup()
+  -- Request keys from the keyboard-listening daemon, if we are currently
+  -- in the daemon. If not then we are inside the Lua executor and have
+  -- already requested keys in the other process.
+  if KBDDaemon then
+    for name, _ in pairs(__keys) do
+      local succ, key = pcall(function ()
+          return getKeysym(name)
+      end)
+      if succ then
+        KBDDaemon:requestKey(key)
+        print(("Requested key: %s"):format(name))
+      else
+        print(("Unable to request key: %s"):format(name))
+      end
+    end
+  end
+end
 
 -- setmetatable(_G, ProtectedMeta)
