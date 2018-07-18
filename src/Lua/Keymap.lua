@@ -40,8 +40,8 @@ KEYMAP_MODS = {"Shift",
                "CapsShift"}
 
 local KEYMAP_MOD_CODES = nil
-local KEYMAP = nil
-local COMBO_KEYMAP = nil
+KEYMAP = nil
+COMBO_KEYMAP = nil
 
 local SYNONYMS = {
   zero = "0",
@@ -138,9 +138,9 @@ end
 
 function setKeymap(path)
   KEYMAP, COMBO_KEYMAP, KEYMAP_MOD_CODES = readKeymap(path)
-  -- io.write("KEYMAP = ")
+  io.write("KEYMAP = ")
   puts(KEYMAP)
-  -- io.write("COMBO_KEYMAP = ")
+  io.write("COMBO_KEYMAP = ")
   puts(COMBO_KEYMAP)
 end
 

@@ -1,0 +1,34 @@
+digraph {
+    //MacroDaemon [label="Macro daemon",style=filled,color=white,shape=box];
+    //KBDDaemon [label="Keyboard daemon",style=filled,color=white,shape=box];
+    //RealKeyboard [label="Physical keyboard",style=filled,color=white,shape=box];
+    //VirtualKeyboard [label="Virtual keyboard",style=filled,color=white,shape=box];
+    //LuaScript [label="Lua script",style=filled,color=white,shape=box];
+    //graph [pad=".75", ranksep="0.55", nodesep="0.25"];
+    fontname="Hack";
+    MacroDaemon [label="Macro daemon",shape=box,fontname="Hack"];
+    KBDDaemon [label="Keyboard daemon",shape=box,fontname="Hack"];
+    RealKeyboard [label="Physical keyboard",shape=box,fontname="Hack"];
+    VirtualKeyboard [label="Virtual keyboard",shape=box,fontname="Hack"];
+    LuaScript [label="Lua script",shape=box,fontname="Hack"];
+
+    subgraph cluster0 {
+        node [style=filled,color=white];
+        label="hawck-input user";
+        //style=filled;
+        color=red;
+        shape=circle;
+        KBDDaemon -> VirtualKeyboard;
+        RealKeyboard -> KBDDaemon;
+    }
+    subgraph cluster1 {
+        node [style=filled];
+        label="     desktop user";
+        //style=filled;
+        color=green;
+        MacroDaemon -> LuaScript;
+        LuaScript -> MacroDaemon;
+    }
+    MacroDaemon -> KBDDaemon;
+    KBDDaemon -> MacroDaemon;
+}
