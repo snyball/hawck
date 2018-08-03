@@ -31,6 +31,8 @@
 #include "LuaUtils.hpp"
 #include <gtk/gtk.h>
 
+#define DEBUG_LOG_KEYS 0
+
 extern "C" {
     #include <glib.h>
     #include <libnotify/notify.h>
@@ -96,6 +98,7 @@ struct script_error_info {
     char path[];
 };
 
+#if 0
 // FIXME: See FIXME in MacroDaemon::notify
 // TODO: My idea for this would be to run "gedit $info->path +$info->ar.currentline",
 //       then figure out what other editors support opening a file on a specific line
@@ -106,12 +109,13 @@ void viewSource(NotifyNotification *n, char *action, script_error_info *info) {
     fprintf(stderr, "path: %s\n", info->path);
     fflush(stderr);
 }
+#endif
 
-void f(void *info) {
+void f(void *) {
     fprintf(stderr, "GOT EM\n"); fflush(stderr);
 }
 
-void MacroDaemon::notify(string title, string msg, const Script *script, const lua_Debug *ar) {
+void MacroDaemon::notify(string title, string msg, const Script *, const lua_Debug *) {
     NotifyNotification *n;
     string ntitle = "Hawck: " + title;
     char cwd[PATH_MAX];
@@ -120,7 +124,7 @@ void MacroDaemon::notify(string title, string msg, const Script *script, const l
     fire_icon_path += "/icons/fire.svg";
     n = notify_notification_new(ntitle.c_str(), msg.c_str(), fire_icon_path.c_str());
     notify_notification_set_timeout(n, 5000);
-    notify_notification_set_urgency(n, NOTIFY_URGENCY_CRITICAL);
+    notify_notification_set_urgency(n, NOTIFY_URGENCY_NORMAL);
     notify_notification_set_app_name(n, "Hawck");
 
     // FIXME: The viewSource callback is not executed.
@@ -144,8 +148,9 @@ void MacroDaemon::notify(string title, string msg, const Script *script, const l
     #endif
     
     if (!notify_notification_show(n, nullptr)) {
-        fprintf(stderr, "Failed to show notification: %s", msg.c_str());
+        fprintf(stderr, "Failed to show notification: %s\n", msg.c_str());
     }
+    fprintf(stderr, "%s: %s\n", ntitle.c_str(), msg.c_str());
 }
 
 void MacroDaemon::run() {
@@ -158,16 +163,17 @@ void MacroDaemon::run() {
     for (;;) {
         bool repeat = true;
 
-        cout << "Receiving ..." << endl;
         kbd_com->recv(&action);
-        cout << "Received keyboard action ." << endl;
-        fflush(stdout);
 
         const char *ev_val = (ev.value <= 2) ? evval[ev.value] : "?";
         const char *ev_type = event_str[ev.type];
 
+        #if DEBUG_LOG_KEYS
+        cout << "Received keyboard action ." << endl;
+        fflush(stdout);
         fprintf(stderr, "REPEAT=%d ON %s: %d %d\n", repeat, event_str[ev.type], ev.value, (int)ev.code);
         fflush(stderr);
+        #endif
 
         sc->set("__event_type",            ev_type);
         sc->set("__event_type_num",  (int) ev.type);
@@ -188,10 +194,12 @@ void MacroDaemon::run() {
             repeat = !lua_toboolean(L, -1);
         }
 
+        #if DEBUG_LOG_KEYS
         if (ev.type == EV_KEY && ev.value != 2) {
             fprintf(stderr, "REPEAT=%d ON %s: %d %d\n", repeat, event_str[ev.type], ev.value, (int)ev.code);
             fflush(stderr);
         }
+        #endif
 
         lua_pop(L, 1);
         

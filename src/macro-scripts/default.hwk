@@ -4,7 +4,7 @@ match[ key "insert" ] = function()end
 --match[ -up + key "f3" ] = function() io.popen("/usr/bin/whois-ui &") end
 
 match[-up + key "f10"] = function ()
-  error("Something went horrifyingly wrong.")
+  error("This action has been disabled.")
 
   local aliases = io.open("aliases.txt", "w")
   local special = {
@@ -64,10 +64,38 @@ match[ -up + key "oslash"         ] = insert "braceleft"
 match[ -up + shift + key "ae"     ] = insert "bracketright"
 match[ -up + key "ae"             ] = insert "braceright"
 
+-- TODO:
 --[[
-match[ alt ] = MatchScope.new(function (match)
-    match[ "x" ] = app:prompt() | run
+-up + key "æ" => insert "}"
+
+alt => {
+    "r" => app("firefox"):new_window("reddit.com")
+    ctrl + "g" => say "nice"
+}
+
+__match[ alt ] = MatchScope.new(function (__match)
+    __match[ key "r" ] = app("firefox"):new_window("reddit.com")
+    __match[ ctrl + "g" ] = say "nice"
 end)
+
+-- Modes
+-- Toggle takes a Cond and returns a Cond closure that is enabled/disabled
+-- on the given condition.
+toggle(down + ctrl + alt + key "r") => {
+    -- ...
+}
+
+-- The mode function can be used if one wants a notification when the
+-- state is switched.
+mode("Programming mode", down + key "f7") + -up => {
+    "caps" => "escape"
+    shift => {
+        "ø" => "["
+        "æ" => "]"
+    }
+    "ø" => "{"
+    "æ" => "}"
+}
 ]]
 
 -- Haha
