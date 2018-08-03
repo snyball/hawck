@@ -195,6 +195,11 @@ namespace Lua {
         return 1;
     }
 
+    inline int luaPush(lua_State *L, const char *c) noexcept {
+        lua_pushstring(L, c);
+        return 1;
+    }
+
     template <class Any>
     inline int luaPush(lua_State *, Any) noexcept {
         return 0;
@@ -465,10 +470,12 @@ namespace Lua {
     class Script {
     private:
         lua_State *L;
-        std::string src;
         bool enabled = true;
 
     public:
+        std::string src;
+        std::string abs_src;
+
         Script(std::string path);
         ~Script() noexcept;
 
@@ -517,6 +524,13 @@ namespace Lua {
 
         template <class T>
         T get(std::string name);
+
+        template <class T>
+        void set(std::string name, T value) {
+            if (luaPush(L, value) == 1) {
+                lua_setglobal(L, name.c_str());
+            }
+        }
 
         void toggle(bool enabled) noexcept;
     };

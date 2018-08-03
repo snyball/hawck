@@ -27,6 +27,9 @@
  */
 
 #include "LuaUtils.hpp"
+extern "C" {
+    #include <unistd.h>
+}
 
 using namespace std;
 
@@ -80,6 +83,10 @@ namespace Lua {
     }
 
     Script::Script(string path) : src(path) {
+        if (src.size() == 0) {
+            throw Lua::LuaError("No path given");
+        }
+
         L = luaL_newstate();
         luaL_openlibs(L);
 
@@ -95,6 +102,15 @@ namespace Lua {
         } catch (Lua::LuaError &e) {
             lua_close(L);
             throw e;
+        }
+
+        if (src.at(0) != '/') {
+            char cwd_s[PATH_MAX];
+            getcwd(cwd_s, sizeof(cwd_s));
+            string cwd(cwd_s);
+            abs_src = cwd + "/" + src;
+        } else {
+            abs_src = src;
         }
     }
 

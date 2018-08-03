@@ -29,6 +29,7 @@
 #include <iostream>
 #include "MacroDaemon.hpp"
 #include "LuaUtils.hpp"
+#include <gtk/gtk.h>
 
 extern "C" {
     #include <glib.h>
@@ -90,16 +91,61 @@ MacroDaemon::~MacroDaemon() {
     delete remote_udev;
 }
 
-void MacroDaemon::notify(string title, string msg) {
+struct script_error_info {
+    lua_Debug ar;
+    char path[];
+};
+
+// FIXME: See FIXME in MacroDaemon::notify
+// TODO: My idea for this would be to run "gedit $info->path +$info->ar.currentline",
+//       then figure out what other editors support opening a file on a specific line
+//       and let the user choose which editor to use.
+void viewSource(NotifyNotification *n, char *action, script_error_info *info) {
+    pid_t pid;
+    fprintf(stderr, "Line nr: %d\n", info->ar.currentline);
+    fprintf(stderr, "path: %s\n", info->path);
+    fflush(stderr);
+}
+
+void f(void *info) {
+    fprintf(stderr, "GOT EM\n"); fflush(stderr);
+}
+
+void MacroDaemon::notify(string title, string msg, const Script *script, const lua_Debug *ar) {
     NotifyNotification *n;
     string ntitle = "Hawck: " + title;
-    n = notify_notification_new(ntitle.c_str(), msg.c_str(), nullptr);
-    notify_notification_set_timeout(n, 8000);
+    char cwd[PATH_MAX];
+    getcwd(cwd, sizeof(cwd));
+    string fire_icon_path(cwd);
+    fire_icon_path += "/icons/fire.svg";
+    n = notify_notification_new(ntitle.c_str(), msg.c_str(), fire_icon_path.c_str());
+    notify_notification_set_timeout(n, 5000);
     notify_notification_set_urgency(n, NOTIFY_URGENCY_CRITICAL);
+    notify_notification_set_app_name(n, "Hawck");
+
+    // FIXME: The viewSource callback is not executed.
+    // Apparently I need to call g_main_loop_run, I tried it and nothing
+    // happened, I have no idea how to get this working.
+    // Furthermore g_main_loop_run is a blocking call so I'd have to
+    // restructure this so that the notification stuff happens in another
+    // thread.
+    #if 0
+    script_error_info *info =
+        (script_error_info *) malloc(sizeof(script_error_info) + script->abs_src.size() + 1);
+    memcpy(&info->ar, ar, sizeof(info->ar));
+    strcpy(info->path, script->abs_src.c_str());
+    notify_notification_add_action(n,
+                                   "view_source",
+                                   "View source",
+                                   NOTIFY_ACTION_CALLBACK(viewSource),
+                                   info,
+                                   free);
+    g_signal_connect(n, "closed", free, info);
+    #endif
+    
     if (!notify_notification_show(n, nullptr)) {
         fprintf(stderr, "Failed to show notification: %s", msg.c_str());
     }
-    g_object_unref(n);
 }
 
 void MacroDaemon::run() {
@@ -107,6 +153,7 @@ void MacroDaemon::run() {
     struct input_event &ev = action.ev;
     // auto *sys_com = new JSONChannel(kbd_srv.accept());
     lua_State *L = scripts[0]->getL();
+    Script *sc = scripts[0];
 
     for (;;) {
         bool repeat = true;
@@ -122,23 +169,21 @@ void MacroDaemon::run() {
         fprintf(stderr, "REPEAT=%d ON %s: %d %d\n", repeat, event_str[ev.type], ev.value, (int)ev.code);
         fflush(stderr);
 
-        lua_pushlstring(L, ev_type, strlen(ev_type));
-        lua_setglobal(L, "__event_type");
-        lua_pushinteger(L, ev.type);
-        lua_setglobal(L, "__event_type_num");
-        lua_pushinteger(L, ev.code);
-        lua_setglobal(L, "__event_code");
-        lua_pushlstring(L, ev_val, strlen(ev_val));
-        lua_setglobal(L, "__event_value");
-        lua_pushinteger(L, ev.value);
-        lua_setglobal(L, "__event_value_num");
+        sc->set("__event_type",            ev_type);
+        sc->set("__event_type_num",  (int) ev.type);
+        sc->set("__event_code",      (int) ev.code);
+        sc->set("__event_value",           ev_val);
+        sc->set("__event_value_num", (int) ev.value);
 
         lua_getglobal(L, "__match");
         if (!Lua::isCallable(L, -1)) {
-            notify("Lua error", "Unable to retrieve __match function from Lua state\n");
+            fprintf(stderr, "Lua error: Unable to retrieve __match function from Lua state\n");
         } else if (lua_pcall(L, 0, 1, 0) != LUA_OK) {
             string err(lua_tostring(L, -1));
-            notify("Lua error", err);
+            lua_Debug ar;
+            lua_getstack(L, 1, &ar);
+            // lua_getinfo(L, "l", &ar);
+            notify("Lua error", err, sc, &ar);
         } else {
             repeat = !lua_toboolean(L, -1);
         }
