@@ -1,9 +1,11 @@
-require "Hawck"
+require "init"
 
 match[ key "insert" ] = function()end
 --match[ -up + key "f3" ] = function() io.popen("/usr/bin/whois-ui &") end
 
 match[-up + key "f10"] = function ()
+  error("Something went horrifyingly wrong.")
+
   local aliases = io.open("aliases.txt", "w")
   local special = {
     ["return"] = true,

@@ -70,12 +70,12 @@ end)
 function getEntryFunction(sym)
   local succ, code
 
-  succ, code = pcall(curry(getKeysym, sym))
+  succ, code = pcall(u.curry(getKeysym, sym))
   if succ then
     return press(code)
   end
 
-  succ, code = pcall(curry(getCombo, sym))
+  succ, code = pcall(u.curry(getCombo, sym))
   if succ then
     return function ()
       kbd:pressMod(unpack(code))

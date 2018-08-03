@@ -24,5 +24,7 @@ add_executable(hawck.x86_64
 
 target_link_libraries(hawck.x86_64
     -llua5.3
+    -lnotify
+    -ldbus-glib-1 -ldbus-1 -lgobject-2.0 -lglib-2.0
     -fsanitize=address
 )

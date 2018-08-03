@@ -25,6 +25,8 @@
    OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --]====================================================================================]
 
+require "utils"
+
 PatternScopeMeta = {
   __call = function (t)
     for u, patt in ipairs(t.patterns) do
@@ -39,7 +41,7 @@ PatternScopeMeta = {
   end,
 
   __newindex = function (t, pattern, action)
-    append(t.patterns, Pattern.new(pattern, action))
+    u.append(t.patterns, Pattern.new(pattern, action))
   end,
 
   __index = function(t, idx)
@@ -59,7 +61,7 @@ MatchScope = {
 
 LazyFMeta = {
   __call = function (t, ...)
-    return ConcatF.new(curry(t.fn, ...))
+    return ConcatF.new(u.curry(t.fn, ...))
   end
 }
 

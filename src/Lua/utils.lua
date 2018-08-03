@@ -25,18 +25,19 @@
    OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --]====================================================================================]
 
+u = {}
 local indent_str = "  "
 local builtins = require "builtins"
-
 local string_byte, string_char, concat = string.byte, string.char, table.concat
+local serialize_recursive
 
-function append(t, val)
+function u.append(t, val)
   t[#t + 1] = val
 end
 
 -- Example:
 --   join({1,2,3},{4,5,6},{"a","b","c"}) -> {1,2,3,4,5,6,"a","b","c"}
-function join(...)
+function u.join(...)
   local t = {}
   for _, table in pairs({...}) do
     for _, x in pairs(table) do
@@ -49,20 +50,26 @@ end
 -- Example:
 --   curry((function (a, b) return a + b end), 2) ->
 --     function (b) return 2 + b end -- (Essentially)
-function curry(f, ...)
+function u.curry(f, ...)
   local pre = {...}
   return function (...)
-    return f(unpack(join(pre, {...})))
+    return f(unpack(u.join(pre, {...})))
   end
 end
 
+---
+--- Print the string `c` to standard output `n` times
+---
 local function printN(c, n)
   for i = 1, n do
     io.write(c)
   end
 end
 
-local function isArray(t)
+---
+--- Check if the given table `t` is an array.
+---
+function u.isArray(t)
   local i = 0
   for u, v in pairs(t) do
     i = i + 1
@@ -80,7 +87,7 @@ local function hexDigit(d)
   return (d <= 9 and tostring(d)) or letters[d - 9]
 end
 
-local function hex(i, pad)
+function u.hex(i, pad)
   local pad = pad or 0
   local digits = {}
   while i ~= 0 do
@@ -132,7 +139,7 @@ local function reprString(v)
   for i = 1, #bytes do
     local c = bytes[i]
     if c < 0x20 or c >= 0x7f then
-      bytes[i] = "\\" .. (string_escapes[c] or hex(c, 2))
+      bytes[i] = "\\" .. (string_escapes[c] or u.hex(c, 2))
     elseif c == quote then
       bytes[i] = "\\\""
     else
@@ -256,7 +263,7 @@ function serialize_recursive(t, indent, path, visited, links)
 
     visited[t] = concat(path, "")
 
-    if isArray(t) then
+    if u.isArray(t) then
       serialize_array(t, indent, path, visited, links)
     else
       print "{"
@@ -280,7 +287,10 @@ function serialize_recursive(t, indent, path, visited, links)
   end
 end
 
-function puts(t, indent)
+---
+--- Print `t` in a human readable format.
+---
+function u.puts(t, indent)
   serialize_recursive(t, indent)
 end
 
@@ -288,7 +298,10 @@ local function formatLink(link, name)
   return link[2] .. " = " .. link[1]
 end
 
-function serialize(name, t)
+---
+--- Serialize a value `t` with the name `name`
+---
+function u.serialize(name, t)
   io.write("local " .. name .. " = ")
 
   local visited = {}
@@ -302,7 +315,7 @@ function serialize(name, t)
   print("return " .. name)
 end
 
-function serializeAs(t, name)
+function u.serializeAs(t, name)
   print(name .. " = {}")
   for u, v in pairs(t) do
     io.write(name .. "[")
@@ -312,13 +325,19 @@ function serializeAs(t, name)
   end
 end
 
-function map(f, xs)
+---
+--- Map `f` over `xs` and return the mapping as an array.
+---
+function u.map(f, xs)
   for k, v in xs do
     f(k, v)
   end
 end
 
-function mapi(f, xs)
+---
+--- Map `f` over `xs` and return the mapping as an iterator.
+---
+function u.mapi(f, xs)
   function iter (xs, i)
     local i = i + 1
     local v = xs[i]
@@ -330,7 +349,18 @@ function mapi(f, xs)
   return iter, xs, 0
 end
 
-local test = true
+---
+--- Expand environment variables in the given string.
+--- Environment variables should appear in the form: $variable
+---
+function u.expandEnv(path)
+  for m in path:gmatch("%$([a-zA-Z_]+)") do
+    path = path:gsub("%$" .. m, os.getenv(m) or "")
+  end
+  return path
+end
+
+local test = false
 if test then
   __puts_test = {
     a = "b",
@@ -339,7 +369,7 @@ if test then
     },
     [true] = "this",
     [1337] = 7331,
-    ["This is a \"key\""] = "this\n is\n \ta \"value\"",
+    ["This is a \"key\""] = "this\n is\n'\t a \"value\"",
     d = {
       e = {
         f = {

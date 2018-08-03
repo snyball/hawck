@@ -56,6 +56,8 @@ private:
     std::vector<Lua::Script *> scripts;
     RemoteUDevice *remote_udev;
 
+    void notify(std::string title, std::string msg);
+
 public:
     MacroDaemon();
     ~MacroDaemon();

@@ -18,7 +18,7 @@
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS     OR
  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
@@ -29,6 +29,12 @@
 #include <iostream>
 #include "MacroDaemon.hpp"
 #include "LuaUtils.hpp"
+
+extern "C" {
+    #include <glib.h>
+    #include <libnotify/notify.h>
+    #include <unistd.h>
+}
 
 using namespace Lua;
 using namespace std;
@@ -59,6 +65,7 @@ static inline void initEventStrs()
 
 MacroDaemon::MacroDaemon() : kbd_srv("kbd.sock") {
     initEventStrs();
+    notify_init("Hawck");
     // Keep looping around until we get a connection.
     for (;;) {
         try {
@@ -81,6 +88,18 @@ MacroDaemon::~MacroDaemon() {
         delete s;
     }
     delete remote_udev;
+}
+
+void MacroDaemon::notify(string title, string msg) {
+    NotifyNotification *n;
+    string ntitle = "Hawck: " + title;
+    n = notify_notification_new(ntitle.c_str(), msg.c_str(), nullptr);
+    notify_notification_set_timeout(n, 8000);
+    notify_notification_set_urgency(n, NOTIFY_URGENCY_CRITICAL);
+    if (!notify_notification_show(n, nullptr)) {
+        fprintf(stderr, "Failed to show notification: %s", msg.c_str());
+    }
+    g_object_unref(n);
 }
 
 void MacroDaemon::run() {
@@ -116,9 +135,10 @@ void MacroDaemon::run() {
 
         lua_getglobal(L, "__match");
         if (!Lua::isCallable(L, -1)) {
-            fprintf(stderr, "ERROR: Unable to retrieve __match function from Lua state\n");
+            notify("Lua error", "Unable to retrieve __match function from Lua state\n");
         } else if (lua_pcall(L, 0, 1, 0) != LUA_OK) {
-            fprintf(stderr, "Lua error: %s\n", lua_tostring(L, -1));
+            string err(lua_tostring(L, -1));
+            notify("Lua error", err);
         } else {
             repeat = !lua_toboolean(L, -1);
         }
