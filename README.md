@@ -55,6 +55,12 @@ MIT licensed.
 If `UDevice.cpp` and `Keyboard.cpp` were to be ported everything
 else should run just fine under Mac OS X or BSD.
 
+### Dependencies:
+
+- Lua 5.3
+- Python 3.6
+- nlohmann::json
+
 ### GUI
 
 A simple gui is planned so that simple cases can be covered for normal users,
@@ -104,3 +110,4 @@ is primarily aimed towards Wayland users.
   - Workaround: Wait for a few milliseconds between emulated keypresses,
     this seems to only be noticeable with macros that produce
     a **lot of output**.
+

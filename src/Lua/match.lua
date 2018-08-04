@@ -50,11 +50,14 @@ PatternScopeMeta = {
 }
 
 MatchScope = {
-  new = function ()
-    scope = {
+  new = function (fn)
+    local scope = {
       patterns = {}
     }
     setmetatable(scope, PatternScopeMeta)
+    if fn then
+      fn(scope)
+    end
     return scope
   end
 }
@@ -172,6 +175,10 @@ LazyCondF = {
 PatternMeta = {
   __call = function (t)
     if t.pattern() then
+      -- If we've got a sub-scope
+      if getmetatable(t.action) == PatternScopeMeta then
+        return t.action()
+      end
       t.action()
       return true
     end

@@ -31,7 +31,7 @@
 #include "LuaUtils.hpp"
 #include <gtk/gtk.h>
 
-#define DEBUG_LOG_KEYS 1
+#define DEBUG_LOG_KEYS 0
 
 extern "C" {
     #include <glib.h>
@@ -171,7 +171,8 @@ void MacroDaemon::run() {
         #if DEBUG_LOG_KEYS
         cout << "Received keyboard action ." << endl;
         fflush(stdout);
-        fprintf(stderr, "REPEAT=%d ON %s: %d %d\n", repeat, event_str[ev.type], ev.value, (int)ev.code);
+        fprintf(stderr, "REPEAT=%d ON %s: %d %d\n",
+                        repeat, event_str[ev.type], ev.value, (int)ev.code);
         fflush(stderr);
         #endif
 
@@ -196,7 +197,8 @@ void MacroDaemon::run() {
 
         #if DEBUG_LOG_KEYS
         if (ev.type == EV_KEY && ev.value != 2) {
-            fprintf(stderr, "REPEAT=%d ON %s: %d %d\n", repeat, event_str[ev.type], ev.value, (int)ev.code);
+            fprintf(stderr, "REPEAT=%d ON %s: %d %d\n",
+                            repeat, event_str[ev.type], ev.value, (int)ev.code);
             fflush(stderr);
         }
         #endif

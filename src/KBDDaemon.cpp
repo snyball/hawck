@@ -29,6 +29,10 @@
 #include "KBDDaemon.hpp"
 #include <iostream>
 
+// XXX: DO NOT ENABLED THIS FOR NON-DEBUGGING BUILDS
+//      This will log keypresses to stdout
+#define DANGER_DANGER_LOG_KEYS 0
+
 using namespace std;
 
 KBDDaemon::KBDDaemon(const char *device) :
@@ -63,6 +67,13 @@ void KBDDaemon::run() {
             abort();
         }
 
+#if DANGER_DANGER_LOG_KEYS
+        cout << "Received keyboard action ." << endl;
+        fflush(stdout);
+        fprintf(stderr, "GOT EVENT %d WITH KEY %d\n", action.ev.value, (int)action.ev.code);
+        fflush(stderr);
+#endif
+
         // Check if the key is listed in the passthrough set.
         if (passthrough_keys.count(action.ev.code)) {
             // Pass key to Lua executor
@@ -80,9 +91,15 @@ void KBDDaemon::run() {
                 // Flush received keys and continue on.
                 udev.flush();
                 errors = 0;
+#if DANGER_DANGER_LOG_KEYS
+                fprintf(stderr, "PASSTHROUGH KEY\n");
+#endif
                 // Skip emmision of the key if everything went OK
                 continue;
             } catch (SocketError &e) {
+#if DANGER_DANGER_LOG_KEYS
+                fprintf(stderr, "ERROR ON PASSTHROUGH KEY\n");
+#endif
                 cout << e.what() << endl;
                 // If we're getting constant errors then the daemon needs
                 // to be stopped, as the macro daemon might have crashed
@@ -94,6 +111,10 @@ void KBDDaemon::run() {
                 // On error control flow continues on to udev.emit()
             }
         }
+
+#if DANGER_DANGER_LOG_KEYS
+        fprintf(stderr, "RE-EMIT KEY\n");
+#endif
 
         udev.emit(&action.ev);
         udev.flush();
