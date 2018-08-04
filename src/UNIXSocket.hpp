@@ -87,9 +87,9 @@ public:
         saun.sun_family = AF_UNIX;
         strcpy(saun.sun_path, addr.c_str());
         const size_t len = sizeof(saun.sun_family) + strlen(saun.sun_path);
-        while (::connect(fd, (sockaddr*)&saun, len) < 0) {
+        while (::connect(fd, (sockaddr*)&saun, len) != 0) {
             fprintf(stderr, "Connection failed, trying again ...\n");
-            usleep(100);
+            usleep(500000);
             // throw SocketError("Unable to connect");
         }
         fprintf(stderr, "Connection established!\n");

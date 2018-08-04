@@ -357,6 +357,7 @@ int main(int argc, char *argv[])
         {
             // dup_streams("lua_stdout.log", "lua_stderr.log");
             try {
+                usleep(500000 * 2);
                 MacroDaemon daemon;
                 daemon.run();
             } catch (exception &e) {
@@ -369,7 +370,7 @@ int main(int argc, char *argv[])
         // Parent switches uid to keyboard-grabbing user. Has access to all input.
         default:
         {
-            dup_streams("kbd_stdout.log", "kbd_stderr.log");
+            // dup_streams("kbd_stdout.log", "kbd_stderr.log");
             try {
                 KBDDaemon daemon(dev);
                 daemon.run();

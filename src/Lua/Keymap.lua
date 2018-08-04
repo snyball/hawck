@@ -138,10 +138,10 @@ end
 
 function setKeymap(path)
   KEYMAP, COMBO_KEYMAP, KEYMAP_MOD_CODES = readKeymap(path)
-  io.write("KEYMAP = ")
-  u.puts(KEYMAP)
-  io.write("COMBO_KEYMAP = ")
-  u.puts(COMBO_KEYMAP)
+  -- io.write("KEYMAP = ")
+  -- u.puts(KEYMAP)
+  -- io.write("COMBO_KEYMAP = ")
+  -- u.puts(COMBO_KEYMAP)
 end
 
 function getKeysym(a)
