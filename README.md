@@ -46,6 +46,53 @@ other methods of input like mice and joysticks is not planned.
 
 MIT licensed.
 
+### Scripting
+
+Hawck is scripted with, you guessed it, hawk scripts. These scripts are
+essentially just Lua with some extra operators. The hwk2lua program is
+used to transpile `.hwk` files into `.lua` files.
+
+As an example, here is a hawk script:
+
+```lua
+-- Programming mode is activated by pressing down the f7 key.
+-- It is only run when a key is not being released (-up)
+mode("Programming mode", down + key "f7") + -up => {
+    -- When caps-lock is pressed, substitute with escape
+    key "caps" => insert "escape"
+    shift => {
+        -- When shift is held, turn ø/æ into [/]
+        key "ø" => insert "["
+        key "æ" => insert "]"
+    }
+    -- Turn ø/æ into {/}
+    key "ø" => insert "{"
+    key "æ" => insert "}"
+}
+```
+
+This transpiles to the following (without comments):
+
+```lua
+match[mode("Programming mode", down + key "f7") + -up ] = MatchScope.new(function (match)
+    match[key "caps" ] = insert "escape"
+    match[shift ] = MatchScope.new(function (match)
+        match[key "oslash" ] = insert "bracketleft"
+        match[key "ae"     ] = insert "bracketright"
+    end)
+    match[key "oslash" ] = insert "braceleft"
+    match[key "ae"     ] = insert "braceright"
+end)
+```
+
+Which is what hawck actually runs, if you are experience with Lua
+you might want to have a look into `match.lua` to see how
+everything works.
+
+Note: Comments are usually not removed, this is to preserve
+line numbers to make debugging easier.
+
+
 ### Supported platforms
 
 - Linux

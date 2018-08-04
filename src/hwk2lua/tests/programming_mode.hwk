@@ -1,11 +1,15 @@
--- The mode function can be used if one wants a notification when the
--- state is switched.
+-- Programming mode is activated by pressing down the f7 key.
+-- It is only run when a key is not being released (-up)
 mode("Programming mode", down + key "f7") + -up => {
-    "caps" => "escape"
+    -- When caps-lock is pressed, substitute with escape
+    key "caps" => insert "escape"
     shift => {
-        "ø" => "["
-        "æ" => "]"
+        -- When shift is held, turn ø/æ into [/]
+        key "ø" => insert "["
+        key "æ" => insert "]"
     }
-    "ø" => "{"
-    "æ" => "}"
+    -- Turn ø/æ into {/}
+    key "ø" => insert "{"
+    key "æ" => insert "}"
 }
+
