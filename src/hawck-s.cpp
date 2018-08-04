@@ -294,10 +294,6 @@ using namespace std;
  * there and run them easily with run("script.sh")
  */
 
-#define PRINT_EVENTS 0
-
-#define ENABLE_LUA 1
-
 /**
  * Change stdout and stderr to point to different files, specified
  * by the given paths.
@@ -357,7 +353,6 @@ int main(int argc, char *argv[])
         {
             // dup_streams("lua_stdout.log", "lua_stderr.log");
             try {
-                usleep(500000 * 2);
                 MacroDaemon daemon;
                 daemon.run();
             } catch (exception &e) {

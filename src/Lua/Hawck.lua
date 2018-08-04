@@ -151,6 +151,21 @@ say = LazyF.new(function (message)
     notify("Hawck:", message)()
 end)
 
+function mode(name, cond)
+  local state = false
+  local messages = {
+    [true] = "%s was enabled.",
+    [false] = "%s was disabled."
+  }
+  return Cond.new(function ()
+      if cond() then
+        state = not state
+        notify("Hawck:", messages[state]:format(name))()
+      end
+      return state
+  end)
+end
+
 __match[prepare] = echo
 ProtectedMeta = {
   -- __newindex = function(t, name, val)

@@ -1,0 +1,11 @@
+-- The mode function can be used if one wants a notification when the
+-- state is switched.
+mode("Programming mode", down + key "f7") + -up => {
+    "caps" => "escape"
+    shift => {
+        "ø" => "["
+        "æ" => "]"
+    }
+    "ø" => "{"
+    "æ" => "}"
+}

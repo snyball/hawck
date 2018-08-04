@@ -31,7 +31,7 @@
 #include "LuaUtils.hpp"
 #include <gtk/gtk.h>
 
-#define DEBUG_LOG_KEYS 0
+#define DEBUG_LOG_KEYS 1
 
 extern "C" {
     #include <glib.h>
@@ -81,7 +81,7 @@ MacroDaemon::MacroDaemon() : kbd_srv("kbd.sock") {
         usleep(100);
     }
     remote_udev = new RemoteUDevice(kbd_com);
-    auto s = new Script("default.hwk");
+    auto s = new Script("default.lua");
     s->open(remote_udev, "udev");
     scripts.push_back(s);
 }

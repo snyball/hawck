@@ -77,6 +77,8 @@ public:
     /**
      * Establish a socket connection.
      *
+     * Will attempt a connection ad infinitum until it succeeds.
+     *
      * @param addr The address to connect to.
      */
     UNIXSocket(std::string addr) {
@@ -90,7 +92,6 @@ public:
         while (::connect(fd, (sockaddr*)&saun, len) != 0) {
             fprintf(stderr, "Connection failed, trying again ...\n");
             usleep(500000);
-            // throw SocketError("Unable to connect");
         }
         fprintf(stderr, "Connection established!\n");
     }
@@ -195,7 +196,7 @@ public:
         socklen_t fromlen;
         int ns;
         sockaddr_un saun;
-        if ((ns = ::accept(fd, (sockaddr *)&saun, &fromlen)) < 0) {
+        if ((ns = ::accept(fd, (sockaddr *)&saun, &fromlen)) <= 0) {
             throw SocketError("Unable to accept connections.");
         }
         return ns;
@@ -218,17 +219,13 @@ public:
 
     json recv() {
         ssize_t len;
-        if (::recv(fd, &len, sizeof(len), 0) != sizeof(len) || len < 0) {
-            throw SocketError("Unable to read size of json message");
-        }
+        recvAll(fd, &len);
         if (len > JSONChannel::MAX_JSON_MSG_LEN) {
             throw SocketError("Message was too large");
         }
 
         char msg[len];
-        if (::recv(fd, msg, len, 0) != len) {
-            throw SocketError("Unable to receive json message");
-        }
+        recvAll(fd, msg, len);
 
         return json::parse(msg);
     }

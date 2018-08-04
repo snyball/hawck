@@ -36,7 +36,7 @@ KBDDaemon::KBDDaemon(const char *device) :
     kbd_com("kbd.sock"),
     kbd(device)
 {
-    initLua("default.hwk");
+    initLua("default.lua");
 }
 
 KBDDaemon::~KBDDaemon() {}

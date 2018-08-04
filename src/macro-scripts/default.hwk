@@ -1,9 +1,8 @@
 require "init"
 
-match[ key "insert" ] = function()end
---match[ -up + key "f3" ] = function() io.popen("/usr/bin/whois-ui &") end
+key "insert" => function()end
 
-match[-up + key "f10"] = function ()
+-up + key "f10" => function ()
   error("This action has been disabled.")
 
   local aliases = io.open("aliases.txt", "w")
@@ -24,15 +23,15 @@ match[-up + key "f10"] = function ()
 end
 
 haha_mode = true
-match[ down + key "f6" ] = function ()
+down + key "f6" => function ()
     haha_mode = not haha_mode
 end
 
-match[ down + key "f2" ] = app("firefox"):new_window("reddit.com")
+down + key "f2" => app("firefox"):new_window("reddit.com")
 
-match[ down + key "f3" ] = (insert "h" .. insert "a") * 10
+down + key "f3" => (insert "h" .. insert "a") * 10
 
-match[ down + key "f5" ] = function ()
+down + key "f5" => function ()
   kbd:pressN(getKeysym("a"))
 end
 
@@ -45,7 +44,7 @@ end
 disabled = false
 
 -- Enable/disable programming mode
-match[ down + key "f7" ] = function ()
+down + key "f7" => function ()
   disabled = not disabled
   if disabled then
     say("Hawck: Disabled programming mode")()
@@ -55,14 +54,14 @@ match[ down + key "f7" ] = function ()
 end
 
 -- Check if programming mode is enabled
-match[ check("disabled") ] = echo
+check("disabled") => echo
 
 -- Programming mode
-match[ -up + key "caps"           ] = insert "escape"
-match[ -up + shift + key "oslash" ] = insert "bracketleft"
-match[ -up + key "oslash"         ] = insert "braceleft"
-match[ -up + shift + key "ae"     ] = insert "bracketright"
-match[ -up + key "ae"             ] = insert "braceright"
+-up + key "caps"           => insert "escape"
+-up + shift + key "oslash" => insert "bracketleft"
+-up + key "oslash"         => insert "braceleft"
+-up + shift + key "ae"     => insert "bracketright"
+-up + key "ae"             => insert "braceright"
 
 -- TODO:
 --[[
@@ -70,7 +69,10 @@ match[ -up + key "ae"             ] = insert "braceright"
 
 alt => {
     "r" => app("firefox"):new_window("reddit.com")
-    ctrl + "g" => say "nice"
+    ctrl + "g" => {
+      say "Doing stuff"
+      app("firefox"):new_private_window("vim.org")
+    }
 }
 
 __match[ alt ] = MatchScope.new(function (__match)
@@ -97,14 +99,5 @@ mode("Programming mode", down + key "f7") + -up => {
     "æ" => "}"
 }
 ]]
-
--- Haha
-haha = {[true] = "h", [false] = "a"}
-haha_state = true
-match[ check "haha_mode" ] = echo
-match[ -up ] = function ()
-    kbd:press(haha[haha_state])
-    haha_state = not haha_state
-end
 
 __setup()
