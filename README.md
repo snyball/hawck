@@ -137,7 +137,6 @@ each other:
       keyboards operated by both daemon opens up an entirely new
       can of worms especially for modifier keys.
       
-<img src="https://raw.githubusercontent.com/snyball/Hawck/master/images/arch.svg"/>
 <img src="./images/arch.svg"/>
   
 The keyboard daemon contains a whitelist of keys that the macro daemon
