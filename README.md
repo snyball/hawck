@@ -136,6 +136,8 @@ each other:
     - Inconsequential implementation details: Having two virtual
       keyboards operated by both daemon opens up an entirely new
       can of worms especially for modifier keys.
+      
+![illustration](https://raw.githubusercontent.com/snyball/Hawck/master/images/arch.svg)
   
 The keyboard daemon contains a whitelist of keys that the macro daemon
 is allowed to see, this whitelist is derived from the Lua scripts used.
