@@ -1,4 +1,5 @@
-# Hawck
+<img src="./images/hawck_text_logo.png"/>
+
 ## A key-rebinding daemon
 
 Hawck runs in user space and uses kernel-apis to intercept key presses. It can
