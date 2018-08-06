@@ -61,13 +61,13 @@ mode("Programming mode", down + key "f7") + -up => {
     -- When caps-lock is pressed, substitute with escape
     key "caps" => insert "escape"
     shift => {
-        -- When shift is held, turn ø/æ into [/]
-        key "ø" => insert "["
-        key "æ" => insert "]"
+        -- When shift is held, turn æ/ø into ]/[
+        key "oslash" => insert "bracketleft"
+        key "ae"     => insert "bracketright"
     }
-    -- Turn ø/æ into {/}
-    key "ø" => insert "{"
-    key "æ" => insert "}"
+    -- Turn æ/ø into }/{
+    key "oslash" => insert "braceleft"
+    key "ae"     => insert "braceright"
 }
 ```
 
