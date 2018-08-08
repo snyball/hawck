@@ -103,7 +103,7 @@ function readKeymap(path)
   local mod_codes = {}
   for i, mod in ipairs(KEYMAP_MODS) do
     local mod_code = map[mod:lower()] or 0
-    print(mod:lower(), mod_code)
+    --print(mod:lower(), mod_code)
     table.insert(mod_codes, mod_code)
   end
 

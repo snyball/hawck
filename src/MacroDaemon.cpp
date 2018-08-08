@@ -130,7 +130,7 @@ void MacroDaemon::notify(string title, string msg, const Script *, const lua_Deb
     // FIXME: The viewSource callback is not executed.
     // Apparently I need to call g_main_loop_run, I tried it and nothing
     // happened, I have no idea how to get this working.
-WW   // Furthermore g_main_loop_run is a blocking call so I'd have to
+    // Furthermore g_main_loop_run is a blocking call so I'd have to
     // restructure this so that the notification stuff happens in another
     // thread.
     #if 0

@@ -1,5 +1,9 @@
 <img src="./images/hawck_text_logo.png"/>
 
+![License: BSD-2](https://img.shields.io/badge/license-BSD--2-brightgreen.svg)
+![Version: 0.3-alpha](https://img.shields.io/badge/version-0.3--alpha-red.svg)
+![Release: none](https://img.shields.io/badge/release-none-red.svg)
+
 ## A key-rebinding daemon
 
 Hawck runs in user space and uses kernel-apis to intercept key presses. It can
