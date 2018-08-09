@@ -203,19 +203,19 @@ function __setup()
   -- Request keys from the keyboard-listening daemon, if we are currently
   -- in the daemon. If not then we are inside the Lua executor and have
   -- already requested keys in the other process.
-  if KBDDaemon then
-    for name, _ in pairs(__keys) do
-      local succ, key = pcall(function ()
-          return getKeysym(name)
-      end)
-      if succ then
-        KBDDaemon:requestKey(key)
-        print(("Requested key: %s"):format(name))
-      else
-        print(("Unable to request key: %s"):format(name))
-      end
-    end
-  end
+  -- if KBDDaemon then
+  --   for name, _ in pairs(__keys) do
+  --     local succ, key = pcall(function ()
+  --         return getKeysym(name)
+  --     end)
+  --     if succ then
+  --       KBDDaemon:requestKey(key)
+  --       print(("Requested key: %s"):format(name))
+  --     else
+  --       print(("Unable to request key: %s"):format(name))
+  --     end
+  --   end
+  -- end
 end
 
 -- setmetatable(_G, ProtectedMeta)

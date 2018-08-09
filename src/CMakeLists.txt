@@ -7,12 +7,13 @@ add_definitions(
     -Wall
     -Wextra
     -std=c++17
-    # -fsanitize=address
-    -O1 
+    -fsanitize=address
+    -Os 
     -g
+    -pthread
 )
 
-add_executable(hawck.x86_64
+add_executable(hawck.x64
     UDevice.cpp
     RemoteUDevice.cpp
     hawck-s.cpp
@@ -20,6 +21,7 @@ add_executable(hawck.x86_64
     KBDDaemon.cpp
     LuaUtils.cpp
     Keyboard.cpp
+    FSWatcher.cpp
     CSV.cpp
 )
 
@@ -27,6 +29,7 @@ target_link_libraries(hawck.x64
     -llua5.3
     -lnotify
     -ldbus-glib-1 -ldbus-1 -lgobject-2.0 -lglib-2.0
+    -lpthread
     -fsanitize=address
 )
 
@@ -36,10 +39,13 @@ target_link_libraries(hawck.x64
 
 add_executable(tests.x64
     tests/CSV-tests/CSV-tests.cpp
+    tests/FSWatcher-tests/FSWatcher-tests.cpp
     tests/tests-main.cpp
+    FSWatcher.cpp
     CSV.cpp
 )
 
-# target_link_libraries(test-CSV.x64
-#     -fsanitize=address
-# )
+target_link_libraries(tests.x64
+    -fsanitize=address
+    -lpthread
+)

@@ -26,24 +26,46 @@
  * =====================================================================================
  */
 
-#include "KBDDaemon.hpp"
+#include <fstream>
 #include <iostream>
+#include <string>
 
-// XXX: DO NOT ENABLED THIS FOR NON-DEBUGGING BUILDS
-//      This will log keypresses to stdout
-#define DANGER_DANGER_LOG_KEYS 0
+#include "KBDDaemon.hpp"
+#include "CSV.hpp"
+
+#if DANGER_DANGER_LOG_KEYS
+    #warning "Currently logging keypresses"
+    #warning "DANGER_DANGER_LOG_KEYS should **only** be enabled while debugging."
+#endif
 
 using namespace std;
 
+template <class T>
+unique_ptr<T> mkuniq(T *p) {return unique_ptr<T>(p);}
+
 KBDDaemon::KBDDaemon(const char *device) :
-    LuaIface(this, KBDDaemon_lua_methods),
     kbd_com("kbd.sock"),
     kbd(device)
 {
-    initLua("default.lua");
 }
 
 KBDDaemon::~KBDDaemon() {}
+
+// FIXME: Actually handle these errors.
+void KBDDaemon::initPassthrough(string path) {
+    try {
+        CSV csv(path);
+        auto cells = mkuniq(csv.getColCells("key_code"));
+        for (auto *code_s : *cells)
+            passthrough_keys.insert(stoi(*code_s));
+    } catch (CSV::CSVError &e) {
+        ;
+    } catch (invalid_argument &e) {
+        ;
+    } catch (out_of_range &e) {
+        ;
+    }
+}
 
 void KBDDaemon::run() {
     KBDAction action;
@@ -121,10 +143,13 @@ void KBDDaemon::run() {
     }
 }
 
+#if 0
+[[deprecated]]
 void KBDDaemon::requestKey(int code) {
     passthrough_keys.insert(code);
 }
 
+[[deprecated]]
 void KBDDaemon::initLua(string path) {
     uid_t cur_uid = getuid();
     uid_t cur_gid = getgid();
@@ -152,6 +177,7 @@ void KBDDaemon::initLua(string path) {
     sc.open(this, "KBDDaemon");
     sc.call<void>("__setup");
 }
+#endif
 
 // Insert extern "C" function implementations for the Lua bindings.
-LUA_CREATE_BINDINGS(KBDDaemon_lua_methods)
+// LUA_CREATE_BINDINGS(KBDDaemon_lua_methods)

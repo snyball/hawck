@@ -212,6 +212,11 @@ void dup_streams(string stdout_path, string stderr_path) {
     
 int main(int argc, char *argv[])
 {
+    #if DANGER_DANGER_LOG_KEYS
+        fprintf(stderr, "WARNING: This build has been compiled with DANGER_DANGER_LOG_KEYS, keys will be logged.");
+        fprintf(stderr, "WARNING: If you did not compile this yourself to perform debugging, please refrain from using this build of hawck");
+    #endif
+
     if (argc < 2) {
         fprintf(stderr, "Usage: hawck <input device>\n");
         return EXIT_FAILURE;

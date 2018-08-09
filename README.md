@@ -21,7 +21,7 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
 
 ### Motivation
 
-There currently is no simple way to rebind keys in Linux without resorting
+There is currently no simple way to rebind keys in Linux without resorting
 to solutions that are either specific to a display server (X11 or Wayland)
 or to a desktop environment / window manager. These solutions also tend
 not to be very user friendly.
@@ -46,10 +46,6 @@ C++ and Lua to look somewhere else for now.
 
 Currently the single aim for this project is keyboard automation, involving
 other methods of input like mice and joysticks is not planned.
-
-### License
-
-MIT licensed.
 
 ### Scripting
 
@@ -112,6 +108,9 @@ else should run just fine under Mac OS X or BSD.
 - Lua 5.3
 - Python 3.6
 - nlohmann::json
+- Catch2
+- C++17 compiler
+  - Compiles under both `gcc 8.1.0` and `clang 6.0.1`
 
 ### GUI
 

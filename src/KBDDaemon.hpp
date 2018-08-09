@@ -43,34 +43,32 @@ extern "C" {
     #include <sys/stat.h>
 }
 
-#define KBDDaemon_lua_methods(M, _)             \
-    M(KBDDaemon, requestKey, int())
+// XXX: DO NOT ENABLE THIS FOR NON-DEBUGGING BUILDS
+//      This will log keypresses to stdout
+#define DANGER_DANGER_LOG_KEYS 0
 
-LUA_DECLARE(KBDDaemon_lua_methods)
-
-class KBDDaemon : public Lua::LuaIface<KBDDaemon> {
+class KBDDaemon {
 private:
     std::set<int> passthrough_keys;
+    std::string home_path;
+    std::unordered_map<std::string, std::string> data_dirs;
     UNIXSocket<KBDAction> kbd_com;
     UDevice udev;
     Keyboard kbd;
-    LUA_METHOD_COLLECT(KBDDaemon_lua_methods);
 
 public:
     KBDDaemon(const char *device);
     ~KBDDaemon();
 
     /**
-     * Request a key from the daemon.
+     * Init passthrough keys from a file at `path`.
+     *
+     * @param path Path to csv file containing a `key_codes` column.
      */
-    void requestKey(int code);
-
-    void initLua(std::string path);
+    void initPassthrough(std::string path);
 
     /**
      * Start running the daemon.
      */
     void run();
-
-    LUA_EXTRACT(KBDDaemon_lua_methods)
 };
