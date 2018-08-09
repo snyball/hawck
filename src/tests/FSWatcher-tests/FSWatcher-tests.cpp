@@ -59,31 +59,62 @@ static inline void requireEvent(FSWatcher *w, vector<string>& test_path) {
     REQUIRE(i == test_path.size());
 }
 
+// Test whether or not we receive file change notifications
+// for a single file.
 TEST_CASE("Single file modification", "[FSWatcher]") {
-    system("touch './test01.txt'");
+    system("touch './01.txt.test'");
 
-    auto [t0, watcher, test_path] = watchOn("./test01.txt");
+    auto [t0, watcher, test_path] = watchOn("./01.txt.test");
 
-    system("echo 'test line' >> ./test01.txt");
+    system("echo 'test line' >> ./01.txt.test");
 
     vector<string> paths = {test_path};
     requireEvent(watcher, paths);
 
     finishWatch(t0, watcher);
 
-    remove("test01.txt");
+    remove("01.txt.test");
 }
 
+// Test whether or not new files are being watched.
 TEST_CASE("Directory file addition", "[FSWatcher]") {
-    BEGIN;
+    system("rm '02.txt.test'");
     auto [t0, watcher, test_path] = watchOn(".");
-    system("touch 'test02.txt'");
-    system("echo 'test line' >> test02.txt");
-    remove("test02.txt");
-    string test02_path = test_path + "/test02.txt";
-    vector<string> paths = {test02_path, test02_path};
+    system("touch '02.txt.test'");
+    system("echo 'test line' >> 02.txt.test");
+    remove("02.txt.test");
+    string test02_path = test_path + "/02.txt.test";
+    vector<string> paths = {test02_path, test02_path, test02_path};
     requireEvent(watcher, paths);
     // requireEvent(watcher, test_path);
     usleep(1000);
     finishWatch(t0, watcher);
+}
+
+// Test FSWatcher::addFrom
+TEST_CASE("Watch whole directory", "[FSWatcher]") {
+    system("rm -r /tmp/hwk-tests");
+    system("mkdir -p /tmp/hwk-tests");
+    system("touch /tmp/hwk-tests/01.txt.test");
+    system("touch /tmp/hwk-tests/02.txt.test");
+    system("touch /tmp/hwk-tests/03.txt.test");
+    system("touch /tmp/hwk-tests/04.txt.test");
+    FSWatcher watcher;
+    watcher.addFrom("/tmp/hwk-tests");
+    std::thread t0([&]() -> void {
+                       watcher.watch();
+                   });
+    system("echo 'test line' >> /tmp/hwk-tests/01.txt.test");
+    system("echo 'test line' >> /tmp/hwk-tests/02.txt.test");
+    system("echo 'test line' >> /tmp/hwk-tests/03.txt.test");
+    system("echo 'test line' >> /tmp/hwk-tests/04.txt.test");
+    vector<string> paths = {
+        "/tmp/hwk-tests/01.txt.test",
+        "/tmp/hwk-tests/02.txt.test",
+        "/tmp/hwk-tests/03.txt.test",
+        "/tmp/hwk-tests/04.txt.test",
+    };
+    requireEvent(&watcher, paths);
+    watcher.stop();
+    t0.join();
 }

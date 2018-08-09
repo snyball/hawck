@@ -119,6 +119,7 @@ void FSWatcher::addFrom(string dir_path) {
             add(path);
         }
     }
+    closedir(dir);
 }
 
 void FSWatcher::watch() {
@@ -152,6 +153,7 @@ void FSWatcher::watch() {
                      p += sizeof(struct inotify_event) + ev->len)
                 {
                     ev = (struct inotify_event *) p;
+                    FSEvent *fs_ev = nullptr;
 
                     // File creation, needs to be added.
                     if (ev->mask & IN_CREATE) {
@@ -160,17 +162,20 @@ void FSWatcher::watch() {
                         stringstream path;
                         path << dir_path << "/" << ev->name;
                         add(path.str());
+                        fs_ev = new FSEvent(ev, path.str());
                     } else if (ev->mask & (IN_MODIFY | IN_DELETE | IN_DELETE_SELF)) {
                         // File modified, save event.
-                        auto fsev = new FSEvent(ev, wd_to_path[ev->wd]);
+                        fs_ev = new FSEvent(ev, wd_to_path[ev->wd]);
+                    } else {
+                        continue;
+                    }
 
-                        // Do not send events about directories.
-                        if (!S_ISDIR(fsev->stbuf.st_mode)) {
-                            lock_guard<mutex> lock(events_mtx);
-                            events.push_back(fsev);
-                        } else {
-                            delete fsev;
-                        }
+                    // Do not send events about directories.
+                    if (!S_ISDIR(fs_ev->stbuf.st_mode)) {
+                        lock_guard<mutex> lock(events_mtx);
+                        events.push_back(fs_ev);
+                    } else {
+                        delete fs_ev;
                     }
                 }
             }
