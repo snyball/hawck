@@ -26,6 +26,11 @@
  * =====================================================================================
  */
 
+/** @file LuaUtils.hpp
+ *
+ * @brief Lua binding utilities.
+ */
+
 #pragma once
 
 extern "C" {

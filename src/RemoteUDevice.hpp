@@ -26,18 +26,23 @@
  * =====================================================================================
  */
 
+/** @file RemoteUDevice.hpp
+ *
+ * @brief Remote user input device.
+ */
+
 #pragma once
 
 extern "C" {
-#include <unistd.h>
-#include <fcntl.h>
-#include <linux/uinput.h>
-#include <linux/input.h>
-#include <errno.h>
-#include <stdlib.h>
-#include <lua.h>
-#include <lauxlib.h>
-#include <lualib.h>
+    #include <unistd.h>
+    #include <fcntl.h>
+    #include <linux/uinput.h>
+    #include <linux/input.h>
+    #include <errno.h>
+    #include <stdlib.h>
+    #include <lua.h>
+    #include <lauxlib.h>
+    #include <lualib.h>
 }
 #include <string.h>
 #include <stdio.h>
@@ -56,6 +61,10 @@ extern "C" {
 // Declare extern "C" Lua bindings
 LUA_DECLARE(RemoteUDevice_lua_methods)
 
+/** Remote UDevice
+ *
+ * See UDevice
+ */
 class RemoteUDevice : public IUDevice,
                       public Lua::LuaIface<RemoteUDevice> {
 private:

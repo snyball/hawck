@@ -26,6 +26,11 @@
  * =====================================================================================
  */
 
+/** @file Keyboard.hpp
+ *
+ * @brief Read directly from the keyboard.
+ */
+
 #pragma once
 
 #include <string>
@@ -45,6 +50,9 @@ public:
     inline KeyboardError(std::string&& msg) : std::runtime_error(msg) {}
 };
 
+/**
+ * Read directly from a keyboard input device.
+ */
 class Keyboard {
 private:
     int fd;
@@ -54,9 +62,15 @@ public:
     Keyboard(const char *path);
     ~Keyboard();
 
+    /** Acquire an exclusive lock to the keyboard. */
     void lock();
 
+    /** Release the exclusive lock to the keyboard. */
     void unlock();
 
+    /** Get an event from the keyboard.
+     *
+     * This call will block until a key is pressed.
+     */
     void get(struct input_event *ev);
 };

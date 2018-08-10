@@ -26,6 +26,11 @@
  * =====================================================================================
  */
 
+/** @file UNIXSocket.hpp
+ *
+ * @brief UNIX socket helper library.
+ */
+
 #pragma once
 
 extern "C" {
@@ -48,7 +53,7 @@ class SocketError : public std::exception {
 private:
     std::string expl;
 public:
-    SocketError(std::string expl) : expl(expl) {}
+    explicit SocketError(const std::string& expl) noexcept : expl(expl) {}
 
     virtual const char *what() const noexcept {
         return expl.c_str();
@@ -62,7 +67,7 @@ public:
  * @param dst The buffer to insert received data into.
  * @param sz The amount of bytes to be read.
  */
-inline void recvAll(int fd, char *dst, ssize_t sz) {
+static inline void recvAll(int fd, char *dst, ssize_t sz) {
     ssize_t n;
     while ((sz -= (n = ::recv(fd, dst, sz, 0))) > 0) {
         if (n < 0) {
@@ -100,7 +105,7 @@ public:
      *
      * @param fd File descriptor.
      */
-    UNIXSocket(int fd) : fd(fd) {}
+    explicit UNIXSocket(int fd) noexcept : fd(fd) {}
 
     /**
      * Establish a socket connection.
@@ -109,7 +114,7 @@ public:
      *
      * @param addr The address to connect to.
      */
-    UNIXSocket(std::string addr) {
+    explicit UNIXSocket(std::string addr) {
         struct sockaddr_un saun;
         if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
             throw SocketError("Unable to create socket");
@@ -119,7 +124,7 @@ public:
         const size_t len = sizeof(saun.sun_family) + strlen(saun.sun_path);
         while (::connect(fd, (sockaddr*)&saun, len) != 0) {
             fprintf(stderr, "Connection failed, trying again ...\n");
-            usleep(500000);
+            sleep(2);
         }
         fprintf(stderr, "Connection established!\n");
     }
@@ -127,14 +132,14 @@ public:
     /**
      * Closes the connection.
      */
-    ~UNIXSocket() {
+    ~UNIXSocket() noexcept {
         close();
     }
 
     /**
      * Closes the connection.
      */
-    void close() {
+    void close() noexcept {
         ::close(fd);
     }
 
@@ -187,7 +192,7 @@ public:
      *
      * @param addr The address to listen on.
      */
-    UNIXServer(std::string addr) {
+    explicit UNIXServer(std::string addr) {
         struct sockaddr_un saun;
 
         if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
@@ -243,7 +248,7 @@ private:
 public:
     static const ssize_t MAX_JSON_MSG_LEN = 8192;
 
-    JSONChannel(int fd) : fd(fd) {}
+    explicit JSONChannel(int fd) : fd(fd) {}
 
     json recv() {
         ssize_t len;

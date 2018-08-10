@@ -26,6 +26,11 @@
  * =====================================================================================
  */
 
+/** @file CSV.hpp
+ *
+ * @brief CSV reading library.
+ */
+
 #include <string>
 #include <sstream>
 #include <iostream>

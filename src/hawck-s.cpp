@@ -240,6 +240,7 @@ int main(int argc, char *argv[])
             // In child process.
         {
             // dup_streams("lua_stdout.log", "lua_stderr.log");
+            sleep(1);
             try {
                 MacroDaemon daemon;
                 daemon.run();
@@ -254,7 +255,6 @@ int main(int argc, char *argv[])
         default:
         {
             // dup_streams("kbd_stdout.log", "kbd_stderr.log");
-            sleep(1);
             try {
                 KBDDaemon daemon(dev);
                 daemon.run();

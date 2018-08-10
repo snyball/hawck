@@ -48,9 +48,8 @@ KBDDaemon::KBDDaemon(const char *device) :
     kbd_com("kbd.sock"),
     kbd(device)
 {
-    home_path = "./";
-    data_dirs["keys"] = home_path + "/passthrough_keys";
-
+    home_path = "/var/lib/hawckd-input";
+    data_dirs["keys"] = home_path + "/keys";
     initPassthrough();
 }
 

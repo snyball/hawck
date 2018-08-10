@@ -62,7 +62,7 @@ private:
     FSWatcher fsw;
 
 public:
-    KBDDaemon(const char *device);
+    explicit KBDDaemon(const char *device);
     ~KBDDaemon();
 
     void initPassthrough();

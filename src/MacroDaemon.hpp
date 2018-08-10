@@ -26,6 +26,11 @@
  * =====================================================================================
  */
 
+/** @file MacroDaemon.hpp
+ *
+ * @brief Macro daemon.
+ */
+
 #pragma once
 
 #include <vector>
@@ -49,6 +54,11 @@ extern "C" {
 #include "LuaUtils.hpp"
 #include "RemoteUDevice.hpp"
 
+/** Macro daemon.
+ *
+ * Receive keyboard events from the KBDDaemon and run Lua
+ * macros on them.
+ */
 class MacroDaemon {
 private:
     UNIXServer kbd_srv;
@@ -56,6 +66,7 @@ private:
     std::vector<Lua::Script *> scripts;
     RemoteUDevice *remote_udev;
 
+    /** Display freedesktop DBus notification. */
     void notify(std::string title,
                 std::string msg,
                 const Lua::Script *script,
@@ -65,5 +76,6 @@ public:
     MacroDaemon();
     ~MacroDaemon();
 
+    /** Run the mainloop. */
     void run();
 };
