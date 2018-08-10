@@ -10,6 +10,7 @@ add_definitions(
     -fsanitize=address
     -O2 
     -g
+    -rdynamic
     -pthread
 )
 

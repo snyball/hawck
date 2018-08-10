@@ -32,6 +32,10 @@
 
 #include "KBDDaemon.hpp"
 #include "CSV.hpp"
+#include "utils.hpp"
+
+// #undef DANGER_DANGER_LOG_KEYS
+// #define DANGER_DANGER_LOG_KEYS 1
 
 #if DANGER_DANGER_LOG_KEYS
     #warning "Currently logging keypresses"
@@ -40,24 +44,63 @@
 
 using namespace std;
 
-template <class T>
-unique_ptr<T> mkuniq(T *p) {return unique_ptr<T>(p);}
-
 KBDDaemon::KBDDaemon(const char *device) :
     kbd_com("kbd.sock"),
     kbd(device)
 {
+    home_path = "./";
+    data_dirs["keys"] = home_path + "/passthrough_keys";
+
+    initPassthrough();
 }
 
-KBDDaemon::~KBDDaemon() {}
+KBDDaemon::~KBDDaemon() {
+}
 
-// FIXME: Actually handle these errors.
-void KBDDaemon::initPassthrough(string path) {
+void KBDDaemon::unloadPassthrough(std::string path) {
+    if (key_sources.find(path) != key_sources.end()) {
+        auto vec = key_sources[path];
+        for (int code : *vec)
+            passthrough_keys.erase(code);
+        delete vec;
+        key_sources.erase(path);
+
+        printf("RM: %s\n", path.c_str());
+
+        // Re-add keys
+        for (const auto &[_, vec] : key_sources)
+            for (int code : *vec)
+                passthrough_keys.insert(code);
+    }
+}
+
+void KBDDaemon::loadPassthrough(std::string rel_path) {
+    // FIXME: Actually handle these errors.
     try {
+        // The CSV file is being reloaded after a change,
+        // remove the old keys.
+        char *rpath = realpath(rel_path.c_str(), nullptr);
+        if (rpath == nullptr) {
+            throw SystemError("Error in realpath() unable to get path for: " + rel_path);
+        }
+        string path(rpath);
+        free(rpath);
+
+        unloadPassthrough(path);
+
         CSV csv(path);
         auto cells = mkuniq(csv.getColCells("key_code"));
-        for (auto *code_s : *cells)
-            passthrough_keys.insert(stoi(*code_s));
+        auto cells_i = mkuniq(new vector<int>());
+        for (auto *code_s : *cells) {
+            int i = stoi(*code_s);
+            if (i >= 0) {
+                passthrough_keys.insert(i);
+                cells_i->push_back(i);
+            }
+        }
+        key_sources[path] = cells_i.release();
+        fsw.add(path);
+        printf("LOADED: %s\n", path.c_str());
     } catch (CSV::CSVError &e) {
         ;
     } catch (invalid_argument &e) {
@@ -65,6 +108,24 @@ void KBDDaemon::initPassthrough(string path) {
     } catch (out_of_range &e) {
         ;
     }
+}
+
+void KBDDaemon::loadPassthrough(FSEvent *ev) {
+    unsigned perm = ev->stbuf.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO);
+
+    // Require that the file permission mode is 644 and that the file is
+    // owned by the daemon user.
+    if (perm == 0644 && ev->stbuf.st_uid == getuid()) {
+        printf("OK: %s\n", ev->path.c_str());
+        loadPassthrough(ev->path);
+    }
+}
+
+void KBDDaemon::initPassthrough() {
+    auto files = mkuniq(fsw.addFrom(data_dirs["keys"]));
+    cout << "Added data_dir" << endl;
+    for (auto &file : *files)
+        loadPassthrough(&file);
 }
 
 void KBDDaemon::run() {
@@ -76,6 +137,7 @@ void KBDDaemon::run() {
     // aborting.
     static const int MAX_ERRORS = 10;
     int errors = 0;
+    thread fsw_thread([&]() -> void {fsw.watch();});
 
     for (;;) {
         action.done = 0;
@@ -87,6 +149,15 @@ void KBDDaemon::run() {
             // terminate.
             kbd_com.close();
             abort();
+        }
+
+        vector<FSEvent*> fs_events = fsw.getEvents();
+        for (auto ev : fs_events) {
+            if (ev->mask & IN_DELETE_SELF)
+                unloadPassthrough(ev->path);
+            else if (ev->mask & (IN_CREATE | IN_MODIFY))
+                loadPassthrough(ev);
+            delete ev;
         }
 
 #if DANGER_DANGER_LOG_KEYS
@@ -142,42 +213,3 @@ void KBDDaemon::run() {
         udev.flush();
     }
 }
-
-#if 0
-[[deprecated]]
-void KBDDaemon::requestKey(int code) {
-    passthrough_keys.insert(code);
-}
-
-[[deprecated]]
-void KBDDaemon::initLua(string path) {
-    uid_t cur_uid = getuid();
-    uid_t cur_gid = getgid();
-    struct stat st;
-    if (stat(path.c_str(), &st) < 0) {
-        string err(strerror(errno));
-        throw SystemError("Unable to stat(): " + err);
-    }
-
-    if (st.st_uid != cur_uid || st.st_gid != cur_gid) {
-        throw SystemError("Will not load scripts with unsafe ownership.");
-    }
-
-    // FIXME: Can't seem to get this working properly
-    // if (st.st_mode != 0744) {
-    //     throw SystemError("Will not load scripts with unsafe permissions, require 0744.");
-    // }
-
-    // Running __setup will cause the Lua script to request keys using
-    // KBDDaemon::requestKey(), letting the daemon know which keys it should
-    // pass on to the macro daemon.
-    Lua::Script sc(path);
-    // Put the KBDDaemon functions into the global scope of the script.
-    /// @see Lua::LuaIface
-    sc.open(this, "KBDDaemon");
-    sc.call<void>("__setup");
-}
-#endif
-
-// Insert extern "C" function implementations for the Lua bindings.
-// LUA_CREATE_BINDINGS(KBDDaemon_lua_methods)

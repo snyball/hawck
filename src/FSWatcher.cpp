@@ -54,6 +54,7 @@ FSWatcher::~FSWatcher() {
     for (auto ev : events)
         delete ev;
     events.clear();
+    close(fd);
 }
 
 void FSWatcher::add(string path) {
@@ -100,14 +101,14 @@ void FSWatcher::remove(string path) {
     wd_to_path.erase(wd);
     inotify_rm_watch(fd, wd);
 }
-
-void FSWatcher::addFrom(string dir_path) {
+vector<FSEvent> *FSWatcher::addFrom(string dir_path) {
     DIR *dir = opendir(dir_path.c_str());
     if (dir == nullptr) {
         throw SystemError("Error in opendir() for dir_path: " + dir_path);
     }
     add(dir_path);
     struct dirent *entry;
+    auto added = new vector<FSEvent>();
     while ((entry = readdir(dir)) != nullptr) {
         stringstream ss;
         ss << dir_path << "/" << entry->d_name;
@@ -117,9 +118,44 @@ void FSWatcher::addFrom(string dir_path) {
         // Only add regular files.
         if (S_ISREG(stbuf.st_mode)) {
             add(path);
+            added->push_back(FSEvent(path));
         }
     }
     closedir(dir);
+    return added;
+}
+
+void FSWatcher::handleEvent(struct inotify_event *ev) {
+    FSEvent *fs_ev = nullptr;
+
+    // File creation, needs to be added.
+    if (ev->mask & IN_CREATE) {
+        // Assemble directory and name into a full path
+        string dir_path = wd_to_path[ev->wd];
+        stringstream path;
+        path << dir_path << "/" << ev->name;
+        cout << "IN_CREATE: " << path.str() << endl;
+        try {
+            add(path.str());
+        } catch (SystemError &e) {
+            return;
+        }
+        fs_ev = new FSEvent(ev, path.str());
+    } else if (ev->mask & (IN_MODIFY | IN_DELETE | IN_DELETE_SELF)) {
+        // File modified, save event.
+        cout << "IN_MODIFY: " << wd_to_path[ev->wd] << endl;
+        fs_ev = new FSEvent(ev, wd_to_path[ev->wd]);
+    } else {
+        return;
+    }
+
+    // Do not send events about directories.
+    if (!S_ISDIR(fs_ev->stbuf.st_mode)) {
+        lock_guard<mutex> lock(events_mtx);
+        events.push_back(fs_ev);
+    } else {
+        delete fs_ev;
+    }
 }
 
 void FSWatcher::watch() {
@@ -153,30 +189,7 @@ void FSWatcher::watch() {
                      p += sizeof(struct inotify_event) + ev->len)
                 {
                     ev = (struct inotify_event *) p;
-                    FSEvent *fs_ev = nullptr;
-
-                    // File creation, needs to be added.
-                    if (ev->mask & IN_CREATE) {
-                        // Assemble directory and name into a full path
-                        string dir_path = wd_to_path[ev->wd];
-                        stringstream path;
-                        path << dir_path << "/" << ev->name;
-                        add(path.str());
-                        fs_ev = new FSEvent(ev, path.str());
-                    } else if (ev->mask & (IN_MODIFY | IN_DELETE | IN_DELETE_SELF)) {
-                        // File modified, save event.
-                        fs_ev = new FSEvent(ev, wd_to_path[ev->wd]);
-                    } else {
-                        continue;
-                    }
-
-                    // Do not send events about directories.
-                    if (!S_ISDIR(fs_ev->stbuf.st_mode)) {
-                        lock_guard<mutex> lock(events_mtx);
-                        events.push_back(fs_ev);
-                    } else {
-                        delete fs_ev;
-                    }
+                    handleEvent(ev);
                 }
             }
         }
@@ -197,4 +210,10 @@ FSEvent::FSEvent(struct inotify_event *ev, string path)
       mask(ev->mask)
 {
     stat(path.c_str(), &stbuf);
+}
+
+FSEvent::FSEvent(string path) : path(path) {
+    mask = 0;
+    stat(path.c_str(), &stbuf);
+    added = true;
 }

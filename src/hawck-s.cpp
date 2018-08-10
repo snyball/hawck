@@ -254,6 +254,7 @@ int main(int argc, char *argv[])
         default:
         {
             // dup_streams("kbd_stdout.log", "kbd_stderr.log");
+            sleep(1);
             try {
                 KBDDaemon daemon(dev);
                 daemon.run();

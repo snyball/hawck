@@ -26,17 +26,20 @@
  * =====================================================================================
  */
 
+#pragma once
+
 #include <unordered_map>
 #include <set>
+#include <thread>
 
 #include "KBDConnection.hpp"
 #include "UNIXSocket.hpp" 
-#pragma once
 
 #include "UDevice.hpp"
 #include "LuaUtils.hpp"
 #include "Keyboard.hpp"
 #include "SystemError.hpp"
+#include "FSWatcher.hpp"
 
 extern "C" {
     #include <fcntl.h>
@@ -52,20 +55,37 @@ private:
     std::set<int> passthrough_keys;
     std::string home_path;
     std::unordered_map<std::string, std::string> data_dirs;
+    std::unordered_map<std::string, std::vector<int>*> key_sources;
     UNIXSocket<KBDAction> kbd_com;
     UDevice udev;
     Keyboard kbd;
+    FSWatcher fsw;
 
 public:
     KBDDaemon(const char *device);
     ~KBDDaemon();
 
+    void initPassthrough();
+
     /**
-     * Init passthrough keys from a file at `path`.
+     * Load passthrough keys from a file at `path`.
      *
      * @param path Path to csv file containing a `key_codes` column.
      */
-    void initPassthrough(std::string path);
+    void loadPassthrough(std::string path);
+
+    /**
+     * Load passthrough keys from a file system event.
+     *
+     * @param ev File system event to load from.
+     */
+    void loadPassthrough(FSEvent *ev);
+
+    /** Unload passthrough keys from file at `path`.
+     *
+     * @param path Path to csv file to remove key codes from.
+     */
+    void unloadPassthrough(std::string path);
 
     /**
      * Start running the daemon.

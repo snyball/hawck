@@ -7,16 +7,6 @@ extern "C" {
     #include <unistd.h>
 }
 
-#define BEGIN \
-    do {chdir("FSWatcher-tests"); } while (false)
-
-#define RUN(test) \
-    do {system("./" #test ".sh");} while (false)
-
-#define END \
-    do {system("./" #test "-cleanup.sh");        \
-        chdir("..");} while (false)
-
 using namespace std;
 
 static inline tuple<thread*, FSWatcher*, string> watchOn(string path) {
