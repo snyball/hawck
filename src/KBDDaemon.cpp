@@ -26,6 +26,10 @@
  * =====================================================================================
  */
 
+extern "C" {
+    #include <signal.h>
+}
+
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -127,7 +131,15 @@ void KBDDaemon::initPassthrough() {
         loadPassthrough(&file);
 }
 
+static void handleSigPipe(int) {
+    fprintf(stderr, "KBDDaemon received SIGPIPE\n");
+    // fprintf(stderr, "KBDDaemon aborting due to SIGPIPE\n");
+    // abort();
+}
+
 void KBDDaemon::run() {
+    signal(SIGPIPE, handleSigPipe);
+
     KBDAction action;
 
     kbd.lock();
@@ -143,7 +155,6 @@ void KBDDaemon::run() {
         try {
             kbd.get(&action.ev);
         } catch (KeyboardError &e) {
-            fprintf(stderr, "Error: %s", e.what());
             // Close connection to let the macro daemon know it should
             // terminate.
             kbd_com.close();
@@ -175,23 +186,16 @@ void KBDDaemon::run() {
                 // Receive keys to emit from the macro daemon.
                 for (;;) {
                     kbd_com.recv(&action);
-                    if (action.done) {
+                    if (action.done)
                         break;
-                    }
                     udev.emit(&action.ev);
                 }
                 // Flush received keys and continue on.
                 udev.flush();
                 errors = 0;
-#if DANGER_DANGER_LOG_KEYS
-                fprintf(stderr, "PASSTHROUGH KEY\n");
-#endif
                 // Skip emmision of the key if everything went OK
                 continue;
             } catch (SocketError &e) {
-#if DANGER_DANGER_LOG_KEYS
-                fprintf(stderr, "ERROR ON PASSTHROUGH KEY\n");
-#endif
                 cout << e.what() << endl;
                 // If we're getting constant errors then the daemon needs
                 // to be stopped, as the macro daemon might have crashed
@@ -211,4 +215,6 @@ void KBDDaemon::run() {
         udev.emit(&action.ev);
         udev.flush();
     }
+
+    fprintf(stderr, "QUIT LOOP\n"); fflush(stderr);
 }

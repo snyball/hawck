@@ -76,7 +76,7 @@ MacroDaemon::MacroDaemon() : kbd_srv("kbd.sock") {
             kbd_com = new UNIXSocket<KBDAction>(fd);
             break;
         } catch (SocketError &e) {
-            ;
+            cout << "MacroDaemon accept() error: " << e.what() << endl;
         }
         usleep(100);
     }
@@ -153,7 +153,14 @@ void MacroDaemon::notify(string title, string msg, const Script *, const lua_Deb
     fprintf(stderr, "%s: %s\n", ntitle.c_str(), msg.c_str());
 }
 
+static void handleSigPipe(int) {
+    fprintf(stderr, "KBDDaemon aborting due to SIGPIPE\n");
+    abort();
+}
+
 void MacroDaemon::run() {
+    signal(SIGPIPE, handleSigPipe);
+
     KBDAction action;
     struct input_event &ev = action.ev;
     // auto *sys_com = new JSONChannel(kbd_srv.accept());
@@ -163,7 +170,9 @@ void MacroDaemon::run() {
     for (;;) {
         bool repeat = true;
 
+        fprintf(stderr, "MacroDaemon receiving ...\n");
         kbd_com->recv(&action);
+        fprintf(stderr, "MacroDaemon got key.\n");
 
         const char *ev_val = (ev.value <= 2) ? evval[ev.value] : "?";
         const char *ev_type = event_str[ev.type];

@@ -55,13 +55,24 @@ void Keyboard::lock() {
     locked = true;
     int grab = 1;
     struct input_event ev;
+    // bool held_keys[KEY_ONSCREEN_KEYBOARD];
+    int down = 0, up = 0;
 
     // Wait for keyup
     do {
         get(&ev);
-    } while (ev.type != EV_KEY || ev.value != 0);
+        if (ev.code == 0)
+            continue;
+        if (ev.value == 0)
+            up++;
+        if (ev.value == 1)
+            down++;
+        fprintf(stderr, "\rdown = %d, up = %d; GOT EVENT %d WITH KEY %d\n", down, up, ev.value, (int)ev.code);
+    } while (ev.type != EV_KEY || ev.value != 0 || down > up);
 
     ioctl(fd, EVIOCGRAB, &grab);
+
+    printf("KBD LOCKED\n");
 }
 
 void Keyboard::unlock() {

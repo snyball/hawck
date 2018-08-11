@@ -44,6 +44,7 @@ extern "C" {
 #include <sstream>
 #include <exception>
 #include <system_error>
+#include <cstring>
 
 #include "json.hpp"
 
@@ -119,8 +120,9 @@ public:
         if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
             throw SocketError("Unable to create socket");
         }
+        memset(&saun, 0, sizeof(saun));
         saun.sun_family = AF_UNIX;
-        strcpy(saun.sun_path, addr.c_str());
+        strncpy(saun.sun_path, addr.c_str(), sizeof(saun.sun_path) - 1);
         const size_t len = sizeof(saun.sun_family) + strlen(saun.sun_path);
         while (::connect(fd, (sockaddr*)&saun, len) != 0) {
             fprintf(stderr, "Connection failed, trying again ...\n");
@@ -199,19 +201,18 @@ public:
             throw SocketError("Unable to create UNIX socket");
         }
 
+        memset(&saun, 0, sizeof(saun));
         saun.sun_family = AF_UNIX;
-        strcpy(saun.sun_path, addr.c_str());
+        strncpy(saun.sun_path, addr.c_str(), sizeof(saun.sun_path) - 1);
 
         unlink(addr.c_str());
         size_t len = sizeof(saun.sun_family) + strlen(saun.sun_path);
 
-        if (bind(fd, (sockaddr*)&saun, len) < 0) {
-            std::stringstream err("Unable to bind to address: ");
-            err << addr;
-            throw SocketError(err.str());
+        if (bind(fd, (sockaddr*)&saun, len) == -1) {
+            throw SocketError("Unable to bind to address: " + addr);
         }
 
-        if (listen(fd, 5) < 0) {
+        if (listen(fd, 5) == -1) {
             throw SocketError("Unable to listen on socket.");
         }
     }
@@ -226,10 +227,10 @@ public:
      * @return File descriptor for socket.
      */
     int accept() {
-        socklen_t fromlen;
         int ns;
         sockaddr_un saun;
-        if ((ns = ::accept(fd, (sockaddr *)&saun, &fromlen)) <= 0) {
+        socklen_t fromlen = sizeof(saun);
+        if ((ns = ::accept(fd, (sockaddr *)&saun, &fromlen)) == -1) {
             throw SocketError("Unable to accept connections.");
         }
         return ns;
