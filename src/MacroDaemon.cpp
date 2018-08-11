@@ -69,6 +69,7 @@ static inline void initEventStrs()
 MacroDaemon::MacroDaemon() : kbd_srv("kbd.sock") {
     initEventStrs();
     notify_init("Hawck");
+
     // Keep looping around until we get a connection.
     for (;;) {
         try {
@@ -170,9 +171,7 @@ void MacroDaemon::run() {
     for (;;) {
         bool repeat = true;
 
-        fprintf(stderr, "MacroDaemon receiving ...\n");
         kbd_com->recv(&action);
-        fprintf(stderr, "MacroDaemon got key.\n");
 
         const char *ev_val = (ev.value <= 2) ? evval[ev.value] : "?";
         const char *ev_type = event_str[ev.type];

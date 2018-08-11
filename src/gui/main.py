@@ -46,7 +46,8 @@ class Application(Gtk.Application):
 
 def main(version):
     app = Application()
-    return app.run(sys.argv)
+    app.run(sys.argv)
+    # Gtk.main()
 
 if __name__ == "__main__":
     main(3)

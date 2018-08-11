@@ -76,7 +76,7 @@ void FSWatcher::add(string path) {
                                | IN_DELETE
                                | IN_DELETE_SELF
                                | IN_CREATE);
-    if (wd < 0) {
+    if (wd == -1) {
         throw SystemError("Error in inotify_add_watch() for path: " + path);
     }
     path_to_wd[rpath] = wd;
@@ -117,7 +117,12 @@ vector<FSEvent> *FSWatcher::addFrom(string dir_path) {
         stat(path.c_str(), &stbuf);
         // Only add regular files.
         if (S_ISREG(stbuf.st_mode)) {
-            add(path);
+            try {
+                add(path);
+            } catch (SystemError &e) {
+                cout << "FSWatcher error: " << e.what() << endl;
+                continue;
+            }
             added->push_back(FSEvent(path));
         }
     }

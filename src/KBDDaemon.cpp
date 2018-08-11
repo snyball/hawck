@@ -95,7 +95,12 @@ void KBDDaemon::loadPassthrough(std::string rel_path) {
         auto cells = mkuniq(csv.getColCells("key_code"));
         auto cells_i = mkuniq(new vector<int>());
         for (auto *code_s : *cells) {
-            int i = stoi(*code_s);
+            int i;
+            try {
+                i = stoi(*code_s);
+            } catch (const std::exception &e) {
+                continue;
+            }
             if (i >= 0) {
                 passthrough_keys.insert(i);
                 cells_i->push_back(i);
@@ -104,12 +109,10 @@ void KBDDaemon::loadPassthrough(std::string rel_path) {
         key_sources[path] = cells_i.release();
         fsw.add(path);
         printf("LOADED: %s\n", path.c_str());
-    } catch (CSV::CSVError &e) {
-        ;
-    } catch (invalid_argument &e) {
-        ;
-    } catch (out_of_range &e) {
-        ;
+    } catch (const CSV::CSVError &e) {
+        cout << "loadPassthrough error: " << e.what() << endl;
+    } catch (const SystemError &e) {
+        cout << "loadPassthrough error: " << e.what() << endl;
     }
 }
 
@@ -132,9 +135,8 @@ void KBDDaemon::initPassthrough() {
 }
 
 static void handleSigPipe(int) {
-    fprintf(stderr, "KBDDaemon received SIGPIPE\n");
-    // fprintf(stderr, "KBDDaemon aborting due to SIGPIPE\n");
-    // abort();
+    fprintf(stderr, "KBDDaemon aborting due to SIGPIPE\n");
+    abort();
 }
 
 void KBDDaemon::run() {
@@ -149,6 +151,7 @@ void KBDDaemon::run() {
     static const int MAX_ERRORS = 10;
     int errors = 0;
     thread fsw_thread([&]() -> void {fsw.watch();});
+    fsw_thread.detach();
 
     for (;;) {
         action.done = 0;

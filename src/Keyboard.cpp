@@ -55,7 +55,6 @@ void Keyboard::lock() {
     locked = true;
     int grab = 1;
     struct input_event ev;
-    // bool held_keys[KEY_ONSCREEN_KEYBOARD];
     int down = 0, up = 0;
 
     // Wait for keyup
@@ -67,7 +66,10 @@ void Keyboard::lock() {
             up++;
         if (ev.value == 1)
             down++;
-        fprintf(stderr, "\rdown = %d, up = %d; GOT EVENT %d WITH KEY %d\n", down, up, ev.value, (int)ev.code);
+        if (ev.value != 2)
+            fprintf(stderr, "\rdown = %d, up = %d; GOT EVENT %d\n", down, up, ev.value);
+        else
+            fprintf(stderr, "\r");
     } while (ev.type != EV_KEY || ev.value != 0 || down > up);
 
     ioctl(fd, EVIOCGRAB, &grab);

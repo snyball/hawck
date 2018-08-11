@@ -7,7 +7,7 @@ add_definitions(
     -Wall
     -Wextra
     -std=c++17
-    -fsanitize=address
+    #-fsanitize=address
     -O2 
     -g
     -rdynamic
@@ -31,22 +31,22 @@ target_link_libraries(hawck.x64
     -lnotify
     -ldbus-glib-1 -ldbus-1 -lgobject-2.0 -lglib-2.0
     -lpthread
-    -fsanitize=address
+    #-fsanitize=address
 )
 
 ## ======
 ## Tests
 ## ======
 
-add_executable(tests.x64
-    tests/CSV-tests/CSV-tests.cpp
-    tests/FSWatcher-tests/FSWatcher-tests.cpp
-    tests/tests-main.cpp
-    FSWatcher.cpp
-    CSV.cpp
-)
-
-target_link_libraries(tests.x64
-    -fsanitize=address
-    -lpthread
-)
+#add_executable(tests.x64
+#    tests/CSV-tests/CSV-tests.cpp
+#    tests/FSWatcher-tests/FSWatcher-tests.cpp
+#    tests/tests-main.cpp
+#    FSWatcher.cpp
+#    CSV.cpp
+#)
+#
+#target_link_libraries(tests.x64
+#    #-fsanitize=address
+#    -lpthread
+#)
