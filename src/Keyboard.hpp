@@ -37,12 +37,12 @@
 #include <stdexcept>
 
 extern "C" {
-#include <unistd.h>
-#include <fcntl.h>
-#include <linux/uinput.h>
-#include <linux/input.h>
-#include <errno.h>
-#include <stdlib.h>
+    #include <unistd.h>
+    #include <fcntl.h>
+    #include <linux/uinput.h>
+    #include <linux/input.h>
+    #include <errno.h>
+    #include <stdlib.h>
 }
 
 class KeyboardError : public std::runtime_error {

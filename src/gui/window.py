@@ -26,19 +26,39 @@
 ## SOFTWARE.
 ## ================================================================================
 
+import os
+import sys
+import shutil
+from pprint import PrettyPrinter
+
 import gi
 from gi.repository import Gtk
 from gi.repository import GObject
 gi.require_version('GtkSource', '4')
 from gi.repository import GtkSource
 # from gi_composites import GtkTemplate
-import os
+
+pprint = PrettyPrinter(indent = 4).pprint
 
 HAWCK_HOME = os.path.join(os.getenv("HOME"), ".local", "share", "hawck")
 
 LOCATIONS = {
-    "scripts": os.path.join(HAWCK_HOME, "scripts")
+    "scripts": os.path.join(HAWCK_HOME, "scripts"),
+    "first_use": os.path.join(HAWCK_HOME, ".user_has_been_warned"),
 }
+
+SCRIPT_DEFAULT = """
+require "init"
+
+-- Sample mappings:
+ctrl  + alt + key "h" => say "Hello world"
+shift + alt + key "w" => app("firefox"):new_window("https://github.com/snyball/Hawck")
+ctrl  + alt + key "k" => function ()
+  p = io.popen("fortune")
+  say(p:read())()
+  p:close()
+end
+"""[1:]
 
 class HawckMainWindow(Gtk.ApplicationWindow):
     __gtype_name__ = 'HawckMainWindow'
@@ -54,9 +74,17 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         script_dir = LOCATIONS["scripts"]
         for fname in os.listdir(script_dir):
             self.addEditPage(os.path.join(script_dir, fname))
-        self.window.connect("destroy", Gtk.main_quit)
+        self.window.connect("destroy", lambda *_: sys.exit(0))
         self.window.present()
         self.builder.connect_signals(self)
+
+        ## Check for first use, issue warning if the program has not been launched before.
+        if not os.path.exists(LOCATIONS["first_use"]):
+            warning = self.builder.get_object("hawck_first_use_warning")
+            warning.run()
+            warning.hide()
+            with open(LOCATIONS["first_use"], "w") as f:
+                f.write("The user has been warned about potential risks of using the software.\n")
 
     def addEditPage(self, path: str):
         src_view = GtkSource.View()
@@ -80,25 +108,42 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         notebook.show_all()
         self.edit_pages.append(path)
 
+    def onImportScriptOK(self, *args):
+        file_chooser = self.builder.get_object("import_script_file_button")
+        name_entry = self.builder.get_object("import_script_name_entry")
+        name = name_entry.get_text()
+        dst_path = os.path.join(LOCATIONS["scripts"], name + ".hwk")
+        src_path = file_chooser.get_filename()
+        shutil.copy(src_path, dst_path)
+        self.addEditPage(dst_path)
+
+    def prepareEditForPage(self, pagenr):
+        print(f"Now editing: {self.edit_pages[pagenr]}")
+
+    def onEditChangePage(self, notebook, obj, pagenr):
+        self.prepareEditForPage(pagenr)
+    onEditSelectPage = onEditChangePage
+    onEditSwitchPage = onEditChangePage
+
     def getCurrentEditFile(self):
         notebook = self.builder.get_object("edit_notebook")
         return self.edit_pages[notebook.get_current_page()]
 
-    def onNewScriptOK(self, *args):
+    def onNewScriptOK(self, *_):
         popover = self.builder.get_object("new_script_popover")
         popover.popdown()
         name_entry = self.builder.get_object("new_script_name")
         path = os.path.join(LOCATIONS["scripts"], name_entry.get_text() + ".hwk")
         with open(path, "w") as f:
-            f.write("require \"init\"\n\n")
+            f.write(SCRIPT_DEFAULT)
         self.addEditPage(path)
 
-    def useScript(self, *args):
+    def useScript(self, *_):
         print("USE")
         print(self.getCurrentEditFile())
         # Gtk.main_quit()
 
-    def deleteScript(self, *args):
+    def deleteScript(self, *_):
         popover = self.builder.get_object("delete_script_popover")
         popover.popdown()
         path = self.getCurrentEditFile()
@@ -108,3 +153,9 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         pg = self.edit_pages
         self.edit_pages = pg[:page_num] + pg[page_num+1:]
         os.remove(path)
+
+    def onClickAboutBtn(self, *_):
+        # self.window.show_about_dialog()
+        about_dialog = self.builder.get_object("hawck_about_dialog")
+        about_dialog.run()
+        about_dialog.hide()
