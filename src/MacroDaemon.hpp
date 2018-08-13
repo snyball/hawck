@@ -35,6 +35,7 @@
 
 #include <vector>
 #include <memory>
+#include <string>
 
 extern "C" {
     #include <unistd.h>
@@ -53,6 +54,7 @@ extern "C" {
 #include "KBDAction.hpp"
 #include "LuaUtils.hpp"
 #include "RemoteUDevice.hpp"
+#include "FSWatcher.hpp"
 
 /** Macro daemon.
  *
@@ -63,14 +65,35 @@ class MacroDaemon {
 private:
     UNIXServer kbd_srv;
     UNIXSocket<KBDAction> *kbd_com;
-    std::vector<Lua::Script *> scripts;
+    // std::vector<Lua::Script *> scripts;
+    std::mutex scripts_mtx;
+    std::unordered_map<std::string, Lua::Script *> scripts;
     RemoteUDevice *remote_udev;
+    FSWatcher fsw;
+    std::string home_dir;
 
     /** Display freedesktop DBus notification. */
     void notify(std::string title,
                 std::string msg,
                 const Lua::Script *script,
                 const lua_Debug *ar);
+
+    /** Run a script match on an input event.
+     *
+     * @param sc Script to be executed.
+     * @param ev Event to pass on to the script.
+     * @return True if the key event should be repeated.
+     */
+    bool runScript(Lua::Script *sc, struct input_event &ev);
+
+    /** Load a Lua script. */
+    void loadScript(const std::string &path);
+
+    /** Unload a Lua script */
+    void unloadScript(const std::string &path);
+
+    /** Initialize a script directory. */
+    void initScriptDir(const std::string &dir_path);
 
 public:
     MacroDaemon();

@@ -25,6 +25,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.              *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#pragma once
+
 /** @file FSWatcher.hpp
  *
  * @brief File system watcher (inotify)
@@ -45,6 +47,7 @@ extern "C" {
 #include <thread>
 #include <mutex>
 #include <atomic>
+#include <functional>
 
 /** Number of items inside the event buffer of \link FSWatcher \endlink */
 static constexpr size_t EVBUF_ITEMS = 10;
@@ -55,6 +58,8 @@ struct FSEvent {
     std::string path;
     /** Mask received from inotify. */
     uint32_t mask = 0;
+    /** Name of file (relevent for directory events.) */
+    std::string name;
     /** stat() of the file. */
     struct stat stbuf;
     /** True if this event was sent as a result of FSWatcher::add() */
@@ -67,6 +72,8 @@ struct FSEvent {
      *  be an `added` event. */
     explicit FSEvent(std::string path);
 };
+
+using FSWatchFn = std::function<bool(FSEvent &ev)>;
 
 /** File system watcher.
  *
@@ -92,9 +99,15 @@ private:
     /** Set to true when \link FSWatcher::watch() \endlink is called,
      *  is set to false by calling \link FSWatcher::stop() \endlink */
     std::atomic<bool> running = true;
+    /** Whether or not to automatically add files that are created in
+     *  watched directories. */
+    bool auto_add = true;
+    /** Whether or not to receive events about directories. */
+    bool watch_dirs = false;
 
     /** Handle an event. */
-    void handleEvent(struct inotify_event *ev);
+    FSEvent *handleEvent(struct inotify_event *ev);
+
 public:
     /**
      * Initialize inotify file descriptor.
@@ -148,7 +161,32 @@ public:
     void removeFrom(std::string path);
 
     /** Watch the added files. */
+    [[deprecated]]
     void watch();
+
+    /** Watch the added files using a given callback.
+     *
+     * @param callback Callback for handling file system events, returning
+     *                 false from the handler stops watch().
+     */
+    void watch(const std::function<bool(FSEvent &ev)> &callback);
+
+    /**
+     * Spawn a thread watching over the added files, this
+     * new thread calls watch() with the provided callback.
+     *
+     * The thread will be detached, stop the thread by calling
+     * stop() on the FSWatcher instance, or by returning false
+     * from the callback.
+     *
+     * @param callback Passed to watch()
+     */
+    inline void begin(const FSWatchFn &callback) {
+        std::thread t0([&]() {
+                            watch(callback);
+                       });
+        t0.detach();
+    }
 
     /** Stop watching.
      * 
@@ -163,10 +201,26 @@ public:
         running = false;
     }
 
+    /** Set whether or not to receive events about directories */
+    inline void setWatchDirs(bool w) {
+        this->watch_dirs = w;
+    }
+
+    /** Set whether or not to automatically add new files to the
+     *  watch list */
+    inline void setAutoAdd(bool auto_add) {
+        this->auto_add = auto_add;
+    }
+
     /** Get events.
      *
      * This function is thread safe for a single reader, race-conditions
      * occur with multiple readers.
+     *
+     * It is an error to use getEvents() while using watch(callback),
+     * it is only intended to be used when calling watch() without any
+     * arguments.
      */
+    [[deprecated]]
     std::vector<FSEvent *> getEvents();
 };

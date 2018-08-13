@@ -778,7 +778,7 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
-                      <object class="GtkSwitch">
+                      <object class="GtkSwitch" id="script_enabled_switch">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <signal name="state-set" handler="setScriptEnabled" swapped="no"/>
@@ -2010,7 +2010,6 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
   </object>
   <object class="GtkMessageDialog" id="hawck_first_use_warning">
     <property name="can_focus">False</property>
-    <property name="title" translatable="yes">Hawck user warning</property>
     <property name="modal">True</property>
     <property name="destroy_with_parent">True</property>
     <property name="icon_name">dialog-warning</property>
@@ -2049,6 +2048,44 @@ Have fun.</property>
             <property name="fill">False</property>
             <property name="position">0</property>
           </packing>
+        </child>
+      </object>
+    </child>
+  </object>
+  <object class="GtkFileChooserDialog" id="save_file_dialog">
+    <property name="can_focus">False</property>
+    <property name="modal">True</property>
+    <property name="destroy_with_parent">True</property>
+    <property name="icon_name">document-save</property>
+    <property name="type_hint">dialog</property>
+    <property name="transient_for">HawckMainWindow</property>
+    <property name="attached_to">HawckMainWindow</property>
+    <property name="action">save</property>
+    <property name="do_overwrite_confirmation">True</property>
+    <child internal-child="vbox">
+      <object class="GtkBox">
+        <property name="can_focus">False</property>
+        <property name="orientation">vertical</property>
+        <property name="spacing">2</property>
+        <child internal-child="action_area">
+          <object class="GtkButtonBox">
+            <property name="can_focus">False</property>
+            <property name="layout_style">end</property>
+            <child>
+              <placeholder/>
+            </child>
+            <child>
+              <placeholder/>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">False</property>
+            <property name="position">0</property>
+          </packing>
+        </child>
+        <child>
+          <placeholder/>
         </child>
       </object>
     </child>

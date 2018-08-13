@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 ##
 ## Simple prototype for hwk2lua
 ##
@@ -8,7 +10,7 @@ from re import MULTILINE, compile as rec
 import sys
 
 ws_rx = rec(" +")
-op_rx = rec('(^|".*?"|\'.*?\'|=>|{|})', MULTILINE)
+op_rx = rec('(^|\-\-|".*?"|\'.*?\'|=>|{|})', MULTILINE)
 
 def hwk2lua(text):
     out = []
@@ -28,21 +30,22 @@ def hwk2lua(text):
     last = ""
     scope = 0
     scopes = []
+    in_comment = False
     for s in segments:
-        if s.strip() == "{":
+        if s.strip() == "{" and not in_comment:
             if last == "=>":
                 out.append("MatchScope.new(function (__match)")
                 scopes.append(scope)
             else:
                 out.append("{")
             scope += 1
-        elif s.strip() == "}":
+        elif s.strip() == "}" and not in_comment:
             scope -= 1
             if scope < 0:
                 raise Exception("Unabalenced curly braces (closed too many.)")
             if scopes and scopes.pop() == scope:
                 out.append("end)")
-        elif s.strip() == "=>":
+        elif s.strip() == "=>" and not in_comment:
             items, item = [], True
             while item:
                 item = out.pop()
@@ -53,6 +56,11 @@ def hwk2lua(text):
             _, ws_end = ws.span() if ws else (0, 0)
             out.append(f"{match[:ws_end]}__match[{match[ws_end:]}] =")
         else:
+            if s == "":
+                in_comment = False
+                # out.append("##")
+            elif s.strip().startswith("--"):
+                in_comment = True
             out.append(s)
         if not s.isspace():
             last = s

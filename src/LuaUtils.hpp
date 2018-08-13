@@ -538,5 +538,9 @@ namespace Lua {
         }
 
         void toggle(bool enabled) noexcept;
+
+        inline bool isEnabled() noexcept {
+            return enabled;
+        }
     };
 }

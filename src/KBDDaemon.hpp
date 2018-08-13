@@ -53,6 +53,7 @@ extern "C" {
 class KBDDaemon {
 private:
     std::set<int> passthrough_keys;
+    std::mutex passthrough_keys_mtx;
     std::string home_path;
     std::unordered_map<std::string, std::string> data_dirs;
     std::unordered_map<std::string, std::vector<int>*> key_sources;

@@ -8,7 +8,7 @@ add_definitions(
     -Wextra
     -std=c++17
     #-fsanitize=address
-    -O2 
+    -Os 
     -g
     -rdynamic
     -pthread

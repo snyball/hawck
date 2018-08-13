@@ -29,6 +29,7 @@
 import os
 import sys
 import shutil
+from subprocess import Popen, PIPE, STDOUT as STDOUT_REDIR
 from pprint import PrettyPrinter
 
 import gi
@@ -44,21 +45,28 @@ HAWCK_HOME = os.path.join(os.getenv("HOME"), ".local", "share", "hawck")
 
 LOCATIONS = {
     "scripts": os.path.join(HAWCK_HOME, "scripts"),
+    "scripts-enabled": os.path.join(HAWCK_HOME, "scripts-enabled"),
     "first_use": os.path.join(HAWCK_HOME, ".user_has_been_warned"),
+    "hawck_bin": "/home/jonas/Documents/EvD/src/build/"
 }
 
 SCRIPT_DEFAULT = """
 require "init"
 
 -- Sample mappings:
-ctrl  + alt + key "h" => say "Hello world"
-shift + alt + key "w" => app("firefox"):new_window("https://github.com/snyball/Hawck")
-ctrl  + alt + key "k" => function ()
-  p = io.popen("fortune")
-  say(p:read())()
-  p:close()
-end
+down => {
+  ctrl  + alt + key "h" => say "Hello world"
+  shift + alt + key "w" => app("firefox"):new_window("https://github.com/snyball/Hawck")
+  ctrl  + alt + key "k" => function ()
+    p = io.popen("fortune")
+    say(p:read())()
+    p:close()
+  end
+}
 """[1:]
+
+class HawckInstallException(Exception):
+    pass
 
 class HawckMainWindow(Gtk.ApplicationWindow):
     __gtype_name__ = 'HawckMainWindow'
@@ -73,10 +81,14 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         self.window = self.builder.get_object('HawckMainWindow')
         script_dir = LOCATIONS["scripts"]
         for fname in os.listdir(script_dir):
-            self.addEditPage(os.path.join(script_dir, fname))
+            _, ext = os.path.splitext(fname)
+            if ext == ".hwk":
+                self.addEditPage(os.path.join(script_dir, fname))
         self.window.connect("destroy", lambda *_: sys.exit(0))
         self.window.present()
         self.builder.connect_signals(self)
+        self.prepareEditForPage(0)
+        self.internal_call = False
 
         ## Check for first use, issue warning if the program has not been launched before.
         if not os.path.exists(LOCATIONS["first_use"]):
@@ -108,7 +120,7 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         notebook.show_all()
         self.edit_pages.append(path)
 
-    def onImportScriptOK(self, *args):
+    def onImportScriptOK(self, *_):
         file_chooser = self.builder.get_object("import_script_file_button")
         name_entry = self.builder.get_object("import_script_name_entry")
         name = name_entry.get_text()
@@ -117,10 +129,21 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         shutil.copy(src_path, dst_path)
         self.addEditPage(dst_path)
 
-    def prepareEditForPage(self, pagenr):
+    def prepareEditForPage(self, pagenr: int):
         print(f"Now editing: {self.edit_pages[pagenr]}")
+        switch_obj = self.builder.get_object("script_enabled_switch")
+        name = HawckMainWindow.getScriptName(self.edit_pages[pagenr])
+        enabled_path = os.path.join(LOCATIONS["scripts-enabled"], name + ".lua")
+        print(f"Enabled path: {enabled_path}")
+        is_enabled = os.path.exists(enabled_path)
+        print(f"Enabled: {is_enabled}")
+        def fn():
+            switch_obj.set_state(is_enabled)
+            switch_obj.set_active(is_enabled)
+        self.internal(fn)
+        print()
 
-    def onEditChangePage(self, notebook, obj, pagenr):
+    def onEditChangePage(self, _notebook: Gtk.Notebook, _obj, pagenr: int):
         self.prepareEditForPage(pagenr)
     onEditSelectPage = onEditChangePage
     onEditSwitchPage = onEditChangePage
@@ -138,10 +161,103 @@ class HawckMainWindow(Gtk.ApplicationWindow):
             f.write(SCRIPT_DEFAULT)
         self.addEditPage(path)
 
+    def getCurrentBuffer(self):
+        notebook = self.builder.get_object("edit_notebook")
+        view = notebook.get_nth_page(notebook.get_current_page())
+        return view.get_buffer()
+
+    def onTest(self, *_):
+        print("Test")
+
+    def saveCurrentScript(self):
+        path = self.getCurrentEditFile()
+        buf = self.getCurrentBuffer()
+        start_iter = buf.get_start_iter()
+        end_iter = buf.get_end_iter()
+        text = buf.get_text(start_iter, end_iter, True)
+        with open(path, "w") as wf:
+            wf.write(text)
+
+    def installScript(self, path: str):
+        self.saveCurrentScript()
+        p = Popen([os.path.join(LOCATIONS["hawck_bin"], "install_hwk_script.sh"), path], stdout=PIPE, stderr=STDOUT_REDIR)
+        out = p.stdout.read()
+        ret = p.wait()
+        ## Handle error
+        if ret != 0:
+            lines = out.splitlines()
+            _ = lines.pop()
+            raise HawckInstallException("\n".join(l.decode("utf-8") for l in lines))
+        ## TODO: elif "the script is enabled":
+        ##          reinstall the script, so that it is reloaded by the daemon.
+
+    @staticmethod
+    def getScriptName(hwk_path):
+        name, _ = os.path.splitext(os.path.basename(hwk_path))
+        return name
+
+    def getCurrentScriptName(self):
+        hwk_path = self.getCurrentEditFile()
+        name, _ = os.path.splitext(os.path.basename(hwk_path))
+        return name
+
     def useScript(self, *_):
-        print("USE")
-        print(self.getCurrentEditFile())
-        # Gtk.main_quit()
+        current_file = self.getCurrentEditFile()
+        try:
+            self.installScript(current_file)
+        except HawckInstallException:
+            ## TODO: Display the error properly
+            ## TODO: Parse Lua errors to get the line number of the error, then highlight this
+            ##       in the text editor margin.
+            pass
+        HawckMainWindow.enableScript(self.getCurrentScriptName())
+
+    @staticmethod
+    def enableScript(name: str):
+        HawckMainWindow.disableScript(name)
+        name += ".lua"
+        os.link(os.path.join(LOCATIONS["scripts"], name),
+                os.path.join(LOCATIONS["scripts-enabled"], name))
+
+    @staticmethod
+    def disableScript(name: str) -> None:
+        try:
+            os.unlink(os.path.join(LOCATIONS["scripts-enabled"], name + ".lua"))
+        except Exception:
+            pass
+
+    def internal(self, *args):
+        """
+        This function is mainly to avoid handlers like setScriptEnabled
+        being executed when the state of switches are set by the script.
+        """
+        if args:
+            self.internal_call = True
+            args[0]()
+            self.internal_call = False
+        cur = self.internal_call
+        self.internal_call = False
+        return cur
+
+    def setScriptEnabled(self, switch_obj: Gtk.Switch, enabled: bool):
+        if self.internal(): return
+
+        print("Script enabled state changed")
+        print(f"Switch state: {enabled}")
+        hwk_path = self.getCurrentEditFile()
+        name = self.getCurrentScriptName()
+
+        if not enabled:
+            return HawckMainWindow.disableScript(name)
+
+        try:
+            self.installScript(hwk_path)
+        except HawckInstallException:
+            switch_obj.set_state(False)
+            switch_obj.set_active(False)
+        HawckMainWindow.enableScript(name)
+
+        return None
 
     def deleteScript(self, *_):
         popover = self.builder.get_object("delete_script_popover")
@@ -159,3 +275,18 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         about_dialog = self.builder.get_object("hawck_about_dialog")
         about_dialog.run()
         about_dialog.hide()
+
+    def saveScript(self, *_):
+        return
+        sav_dialog = Gtk.FileChooserDialog("Save as", self,
+                                           Gtk.FileChooserAction.SAVE,
+                                           (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+                                            Gtk.STOCK_SAVE, Gtk.ResponseType.OK))
+        sav_dialog.set_transient_for(self.window)
+        sav_dialog.set_do_overwrite_confirmation(True)
+        sav_dialog.set_modal(True)
+        sav_dialog.run()
+        sav_dialog.hide()
+        path = sav_dialog.get_filename()
+        self.saveScript()
+        shutil.copy(self.getCurrentEditFile(), path)

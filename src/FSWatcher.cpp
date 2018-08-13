@@ -26,6 +26,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <sstream>
+#include <functional>
 
 extern "C" {
     #include <sys/stat.h>
@@ -116,7 +117,7 @@ vector<FSEvent> *FSWatcher::addFrom(string dir_path) {
         struct stat stbuf;
         stat(path.c_str(), &stbuf);
         // Only add regular files.
-        if (S_ISREG(stbuf.st_mode)) {
+        if (S_ISREG(stbuf.st_mode) || S_ISLNK(stbuf.st_mode)) {
             try {
                 add(path);
             } catch (SystemError &e) {
@@ -130,7 +131,7 @@ vector<FSEvent> *FSWatcher::addFrom(string dir_path) {
     return added;
 }
 
-void FSWatcher::handleEvent(struct inotify_event *ev) {
+FSEvent *FSWatcher::handleEvent(struct inotify_event *ev) {
     FSEvent *fs_ev = nullptr;
 
     // File creation, needs to be added.
@@ -140,33 +141,37 @@ void FSWatcher::handleEvent(struct inotify_event *ev) {
         stringstream path;
         path << dir_path << "/" << ev->name;
         cout << "IN_CREATE: " << path.str() << endl;
-        try {
-            add(path.str());
-        } catch (SystemError &e) {
-            return;
-        }
+        if (auto_add)
+            try {
+                add(path.str());
+            } catch (SystemError &e) {
+                return nullptr;
+            }
         fs_ev = new FSEvent(ev, path.str());
     } else if (ev->mask & (IN_MODIFY | IN_DELETE | IN_DELETE_SELF)) {
         // File modified, save event.
-        cout << "IN_MODIFY: " << wd_to_path[ev->wd] << endl;
+        cout << "IN_MODIFY: " << wd_to_path[ev->wd] << "(" << (ev->len ? ev->name : "") << ")" << endl;
         fs_ev = new FSEvent(ev, wd_to_path[ev->wd]);
     } else {
-        return;
+        return nullptr;
     }
 
     // Do not send events about directories.
-    if (!S_ISDIR(fs_ev->stbuf.st_mode)) {
-        lock_guard<mutex> lock(events_mtx);
-        events.push_back(fs_ev);
-    } else {
-        delete fs_ev;
+    if (!S_ISDIR(fs_ev->stbuf.st_mode) || watch_dirs) {
+        return fs_ev;
     }
+
+    delete fs_ev;
+    return nullptr;
 }
 
-void FSWatcher::watch() {
-    running = true;
+void FSWatcher::watch(const function<bool(FSEvent &ev)> &callback) {
+    // Local `running`, is set by the callback
+    bool running = true;
+    // Instance-wide `running` set by FSWatcher::stop()
+    this->running = true;
     struct pollfd pfd;
-    while (running) {
+    while (running && this->running) {
         pfd.fd = fd;
         pfd.events = POLLIN;
 
@@ -194,7 +199,11 @@ void FSWatcher::watch() {
                      p += sizeof(struct inotify_event) + ev->len)
                 {
                     ev = (struct inotify_event *) p;
-                    handleEvent(ev);
+                    FSEvent *fs_ev = handleEvent(ev);
+                    if (fs_ev != nullptr) {
+                        running = callback(*fs_ev);
+                        delete fs_ev;
+                    }
                 }
             }
         }
@@ -215,6 +224,9 @@ FSEvent::FSEvent(struct inotify_event *ev, string path)
       mask(ev->mask)
 {
     stat(path.c_str(), &stbuf);
+    if (ev->len) {
+        name = string(ev->name);
+    }
 }
 
 FSEvent::FSEvent(string path) : path(path) {

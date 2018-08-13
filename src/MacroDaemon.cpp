@@ -37,6 +37,7 @@ extern "C" {
     #include <glib.h>
     #include <libnotify/notify.h>
     #include <unistd.h>
+    #include <sys/stat.h>
 }
 
 using namespace Lua;
@@ -69,7 +70,9 @@ static inline void initEventStrs()
 MacroDaemon::MacroDaemon() : kbd_srv("kbd.sock") {
     initEventStrs();
     notify_init("Hawck");
-
+    string HOME(getenv("HOME"));
+    home_dir = HOME + "/.local/share/hawck";
+    
     // Keep looping around until we get a connection.
     for (;;) {
         try {
@@ -82,16 +85,78 @@ MacroDaemon::MacroDaemon() : kbd_srv("kbd.sock") {
         usleep(100);
     }
     remote_udev = new RemoteUDevice(kbd_com);
-    auto s = new Script("default.lua");
-    s->open(remote_udev, "udev");
-    scripts.push_back(s);
+    initScriptDir(home_dir + "/scripts-enabled");
 }
 
 MacroDaemon::~MacroDaemon() {
-    for (Script *s : scripts) {
+    for (auto &[_, s] : scripts)
         delete s;
-    }
     delete remote_udev;
+}
+
+void MacroDaemon::initScriptDir(const std::string &dir_path) {
+    DIR *dir = opendir(dir_path.c_str());
+    struct dirent *entry;
+    while ((entry = readdir(dir))) {
+        stringstream path_ss;
+        path_ss << dir_path << "/" << entry->d_name;
+        string path = path_ss.str();
+
+        // Attempt to load the script:
+        try {
+            loadScript(path);
+        } catch (exception &e) {
+            cout << "Error: " << e.what() << endl;
+        }
+    }
+
+    fsw.addFrom(dir_path);
+}
+
+void MacroDaemon::loadScript(const std::string &rel_path) {
+
+    char *rpath_chars = realpath(rel_path.c_str(), nullptr);
+    string path(rpath_chars);
+    free(rpath_chars);
+
+    cout << "Preparing to load script: " << rel_path << endl;
+
+    struct stat stbuf;
+    if (stat(path.c_str(), &stbuf) == -1) {
+        cout << "Warning: unable to stat(), not loading." << endl;
+        return;
+    }
+
+    unsigned perm = stbuf.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO);
+    // Strictly require chmod 744 on the script files.
+    if (perm != 0744 && stbuf.st_uid == getuid()) {
+        cout << "Warning: require chmod 744 and uid=" << getuid() <<
+                " on script files, not loading." << endl;
+        return;
+    }
+
+    Script *sc = new Script(path);
+    sc->open(remote_udev, "udev");
+
+    string name(basename(rel_path.c_str()));
+
+    if (scripts.find(name) != scripts.end()) {
+        // Script already loaded, reload it
+        delete scripts[name];
+        scripts.erase(name);
+    }
+
+    cout << "Loaded script: " << name << endl;
+    scripts[name] = sc;
+}
+
+void MacroDaemon::unloadScript(const std::string &rel_path) {
+    string name(basename(rel_path.c_str()));
+    if (scripts.find(name) != scripts.end()) {
+        cout << "delete scripts[" << name << "]" << endl;
+        delete scripts[name];
+        scripts.erase(name);
+    }
 }
 
 struct script_error_info {
@@ -159,59 +224,72 @@ static void handleSigPipe(int) {
     abort();
 }
 
+bool MacroDaemon::runScript(Lua::Script *sc, struct input_event &ev) {
+    bool repeat = true;
+
+    lua_State *L = sc->getL();
+
+    const char *ev_val = (ev.value <= 2) ? evval[ev.value] : "?";
+    const char *ev_type = event_str[ev.type];
+
+    sc->set("__event_type",            ev_type);
+    sc->set("__event_type_num",  (int) ev.type);
+    sc->set("__event_code",      (int) ev.code);
+    sc->set("__event_value",           ev_val);
+    sc->set("__event_value_num", (int) ev.value);
+
+    lua_getglobal(L, "__match");
+    if (!Lua::isCallable(L, -1)) {
+        fprintf(stderr, "Lua error: Unable to retrieve __match function from Lua state\n");
+    } else if (lua_pcall(L, 0, 1, 0) != LUA_OK) {
+        string err(lua_tostring(L, -1));
+        lua_Debug ar;
+        lua_getstack(L, 1, &ar);
+        // lua_getinfo(L, "l", &ar);
+        notify("Lua error", err, sc, &ar);
+    } else {
+        repeat = !lua_toboolean(L, -1);
+    }
+
+    lua_pop(L, 1);
+
+    return repeat;
+}
+
 void MacroDaemon::run() {
     signal(SIGPIPE, handleSigPipe);
 
     KBDAction action;
     struct input_event &ev = action.ev;
-    // auto *sys_com = new JSONChannel(kbd_srv.accept());
-    lua_State *L = scripts[0]->getL();
-    Script *sc = scripts[0];
+
+    fsw.setWatchDirs(true);
+    fsw.setAutoAdd(false);
+    fsw.begin([&](FSEvent &ev) {
+                  lock_guard<mutex> lock(scripts_mtx);
+                  if (ev.mask & IN_DELETE) {
+                      cout << "Deleting script: " << ev.name << endl;
+                      unloadScript(ev.name);
+                  } else if (ev.mask & IN_CREATE) {
+                      cout << "Loading script: " << basename(ev.path.c_str()) << endl;
+                      loadScript(ev.path);
+                  } else {
+                      cout << "Received unhandled event" << endl;
+                  }
+                  return true;
+              });
 
     for (;;) {
         bool repeat = true;
 
         kbd_com->recv(&action);
 
-        const char *ev_val = (ev.value <= 2) ? evval[ev.value] : "?";
-        const char *ev_type = event_str[ev.type];
-
-        #if DEBUG_LOG_KEYS
-        cout << "Received keyboard action ." << endl;
-        fflush(stdout);
-        fprintf(stderr, "REPEAT=%d ON %s: %d %d\n",
-                        repeat, event_str[ev.type], ev.value, (int)ev.code);
-        fflush(stderr);
-        #endif
-
-        sc->set("__event_type",            ev_type);
-        sc->set("__event_type_num",  (int) ev.type);
-        sc->set("__event_code",      (int) ev.code);
-        sc->set("__event_value",           ev_val);
-        sc->set("__event_value_num", (int) ev.value);
-
-        lua_getglobal(L, "__match");
-        if (!Lua::isCallable(L, -1)) {
-            fprintf(stderr, "Lua error: Unable to retrieve __match function from Lua state\n");
-        } else if (lua_pcall(L, 0, 1, 0) != LUA_OK) {
-            string err(lua_tostring(L, -1));
-            lua_Debug ar;
-            lua_getstack(L, 1, &ar);
-            // lua_getinfo(L, "l", &ar);
-            notify("Lua error", err, sc, &ar);
-        } else {
-            repeat = !lua_toboolean(L, -1);
+        {
+            lock_guard<mutex> lock(scripts_mtx);
+            // Look for a script match.
+            for (auto &[_, sc] : scripts)
+                if (sc->isEnabled() && !(repeat = runScript(sc, ev)))
+                    break;
         }
-
-        #if DEBUG_LOG_KEYS
-        if (ev.type == EV_KEY && ev.value != 2) {
-            fprintf(stderr, "REPEAT=%d ON %s: %d %d\n",
-                            repeat, event_str[ev.type], ev.value, (int)ev.code);
-            fflush(stderr);
-        }
-        #endif
-
-        lua_pop(L, 1);
         
         if (repeat)
             remote_udev->emit(&ev);

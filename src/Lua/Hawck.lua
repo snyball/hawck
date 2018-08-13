@@ -152,7 +152,7 @@ say = LazyF.new(function (message)
 end)
 
 function mode(name, cond)
-  local state = false
+  local state = true
   local messages = {
     [true] = "%s was enabled.",
     [false] = "%s was disabled."

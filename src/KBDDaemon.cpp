@@ -123,7 +123,11 @@ void KBDDaemon::loadPassthrough(FSEvent *ev) {
     // owned by the daemon user.
     if (perm == 0644 && ev->stbuf.st_uid == getuid()) {
         printf("OK: %s\n", ev->path.c_str());
+        printf("LOG: perm=%X; uid=%d\n", perm, getuid());
         loadPassthrough(ev->path);
+    } else {
+        printf("ERROR: Invalid permissions for: %s\n", ev->path.c_str());
+        printf("LOG: perm=%X; uid=%d\n", perm, getuid());
     }
 }
 
@@ -150,8 +154,15 @@ void KBDDaemon::run() {
     // aborting.
     static const int MAX_ERRORS = 10;
     int errors = 0;
-    thread fsw_thread([&]() -> void {fsw.watch();});
-    fsw_thread.detach();
+
+    fsw.begin([&](FSEvent &ev) {
+                  lock_guard<mutex> lock(passthrough_keys_mtx);
+                  if (ev.mask & IN_DELETE_SELF)
+                      unloadPassthrough(ev.path);
+                  else if (ev.mask & (IN_CREATE | IN_MODIFY))
+                      loadPassthrough(&ev);
+                  return true;
+              });
 
     for (;;) {
         action.done = 0;
@@ -164,26 +175,24 @@ void KBDDaemon::run() {
             abort();
         }
 
-        vector<FSEvent*> fs_events = fsw.getEvents();
-        for (auto ev : fs_events) {
-            if (ev->mask & IN_DELETE_SELF)
-                unloadPassthrough(ev->path);
-            else if (ev->mask & (IN_CREATE | IN_MODIFY))
-                loadPassthrough(ev);
-            delete ev;
-        }
-
 #if DANGER_DANGER_LOG_KEYS
         cout << "Received keyboard action ." << endl;
         fflush(stdout);
         fprintf(stderr, "GOT EVENT %d WITH KEY %d\n", action.ev.value, (int)action.ev.code);
         fflush(stderr);
 #endif
+        bool is_passthrough; {
+            lock_guard<mutex> lock(passthrough_keys_mtx);
+            is_passthrough = passthrough_keys.count(action.ev.code);
+        }
 
         // Check if the key is listed in the passthrough set.
-        if (passthrough_keys.count(action.ev.code)) {
+        if (is_passthrough) {
             // Pass key to Lua executor
             try {
+                // TODO: Use select() and a time-out of about 1s here, in case the
+                // macro daemon is taking way too long.
+
                 kbd_com.send(&action);
 
                 // Receive keys to emit from the macro daemon.

@@ -13,3 +13,12 @@ mode("Programming mode", down + key "f7") + -up => {
     key "æ" => insert "}"
 }
 
+key "f2" => insert "s"
+--key "f2" => insert "s"
+
+down + key "f3" => {
+    insert "s"
+}
+-- down + key "f3" => {
+--    insert "s"
+-- }
