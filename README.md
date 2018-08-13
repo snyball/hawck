@@ -112,12 +112,29 @@ else should run just fine under Mac OS X or BSD.
 - C++17 compiler
   - Compiles under both `gcc 8.1.0` and `clang 6.0.1`
 
-### GUI
+## GUI
 
-A simple gui is planned so that simple cases can be covered for normal users,
-while more advanced users may write scripts instead.
+Currently the gui is in an unfinished state, but is still
+being worked on.
 
-### Security
+### Features
+
+#### Edit scripts
+
+<img src="./images/hawck_ui_screenshot_edit_scripts.png"/>
+
+In the edit scripts section you can perform quick edits
+on your scripts, and enable/disable them.
+
+After editing the script just click on "Use" to send
+the script to the daemon.
+
+### Planned features
+- Simplified key rebinding (no need to write a script)
+- Log browser
+- Simplified script controls for imported scripts.
+
+## Security
 
 When Hawck starts up it splits up into two daemons that communicate with
 each other:
@@ -154,7 +171,7 @@ If you are using X11 your key-presses can already be intercepted without any
 special permission, so all this extra security is unnecessary, but this program
 is primarily aimed towards Wayland users.
 
-### Known Bugs:
+## Known Bugs:
 
 - Outputting keys too quickly:
   - In macros that result in a lot of keys being outputted in
