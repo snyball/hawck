@@ -99,6 +99,7 @@ class HawckMainWindow(Gtk.ApplicationWindow):
                 f.write("The user has been warned about potential risks of using the software.\n")
 
     def addEditPage(self, path: str):
+        scrolled_window = Gtk.ScrolledWindow()
         src_view = GtkSource.View()
         src_view.set_show_line_numbers(True)
         src_view.set_highlight_current_line(True)
@@ -116,7 +117,8 @@ class HawckMainWindow(Gtk.ApplicationWindow):
             buf.set_text(f.read())
         name = os.path.basename(path)
         notebook = self.builder.get_object("edit_notebook")
-        notebook.append_page(src_view, Gtk.Label(name))
+        scrolled_window.add(src_view)
+        notebook.append_page(scrolled_window, Gtk.Label(name))
         notebook.show_all()
         self.edit_pages.append(path)
 
@@ -163,7 +165,7 @@ class HawckMainWindow(Gtk.ApplicationWindow):
 
     def getCurrentBuffer(self):
         notebook = self.builder.get_object("edit_notebook")
-        view = notebook.get_nth_page(notebook.get_current_page())
+        view = notebook.get_nth_page(notebook.get_current_page()).get_child()
         return view.get_buffer()
 
     def onTest(self, *_):

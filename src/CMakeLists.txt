@@ -14,22 +14,35 @@ add_definitions(
     -pthread
 )
 
-add_executable(hawck.x64
-    UDevice.cpp
+add_executable(hawck-macrod
     RemoteUDevice.cpp
-    hawck-s.cpp
+    Daemon.cpp
     MacroDaemon.cpp
-    KBDDaemon.cpp
     LuaUtils.cpp
     Keyboard.cpp
     FSWatcher.cpp
-    CSV.cpp
+    hawck-macrod.cpp
 )
 
-target_link_libraries(hawck.x64
+target_link_libraries(hawck-macrod
     -llua5.3
     -lnotify
     -ldbus-glib-1 -ldbus-1 -lgobject-2.0 -lglib-2.0
+    -lpthread
+    #-fsanitize=address
+)
+
+add_executable(hawck-inputd
+    UDevice.cpp
+    Daemon.cpp
+    KBDDaemon.cpp
+    Keyboard.cpp
+    FSWatcher.cpp
+    CSV.cpp
+    hawck-inputd.cpp
+)
+
+target_link_libraries(hawck-inputd
     -lpthread
     #-fsanitize=address
 )

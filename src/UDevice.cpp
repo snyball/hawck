@@ -13,7 +13,7 @@ extern "C" {
     #include <time.h>
 }
 
-UDevice::UDevice() : LuaIface(this, UDevice_lua_methods) {
+UDevice::UDevice() {
     fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
 
     if (fd < 0) {
@@ -99,5 +99,3 @@ void UDevice::flush() {
 void UDevice::done() {
     flush();
 }
-
-LUA_CREATE_BINDINGS(UDevice_lua_methods)

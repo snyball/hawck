@@ -165,6 +165,8 @@ FSEvent *FSWatcher::handleEvent(struct inotify_event *ev) {
     return nullptr;
 }
 
+#define CATCH_ERR 0
+
 void FSWatcher::watch(const function<bool(FSEvent &ev)> &callback) {
     // Local `running`, is set by the callback
     bool running = true;
@@ -175,38 +177,46 @@ void FSWatcher::watch(const function<bool(FSEvent &ev)> &callback) {
         pfd.fd = fd;
         pfd.events = POLLIN;
 
-        // Poll with a timeout of 128 ms, this is so that we can check
-        // `running` continuously.
-        switch (poll(&pfd, 1, 128)) {
-            case -1:
-                throw SystemError("Error in poll() on inotify fd: ", (int) errno);
+        #if CATCH_ERR
+        try {
+        #endif
+            // Poll with a timeout of 128 ms, this is so that we can check
+            // `running` continuously.
+            switch (poll(&pfd, 1, 128)) {
+                case -1:
+                    throw SystemError("Error in poll() on inotify fd: ", (int) errno);
 
-            case 0:
-                // Timeout
-                break;
+                case 0:
+                    // Timeout
+                    break;
 
-            default: {
-                // Acquire fs events and check for errors
-                ssize_t num_read = read(fd, evbuf, sizeof(evbuf));
-                if (num_read <= 0) {
-                    throw SystemError("Error in read() on inotify fd: ", (int) errno);
-                }
+                default: {
+                    // Acquire fs events and check for errors
+                    ssize_t num_read = read(fd, evbuf, sizeof(evbuf));
+                    if (num_read <= 0) {
+                        throw SystemError("Error in read() on inotify fd: ", (int) errno);
+                    }
 
-                struct inotify_event *ev;
-                // Go through received fs events.
-                for (char *p = &evbuf[0];
-                     p < &evbuf[num_read];
-                     p += sizeof(struct inotify_event) + ev->len)
-                {
-                    ev = (struct inotify_event *) p;
-                    FSEvent *fs_ev = handleEvent(ev);
-                    if (fs_ev != nullptr) {
-                        running = callback(*fs_ev);
-                        delete fs_ev;
+                    struct inotify_event *ev;
+                    // Go through received fs events.
+                    for (char *p = &evbuf[0];
+                         p < &evbuf[num_read];
+                         p += sizeof(struct inotify_event) + ev->len)
+                    {
+                        ev = (struct inotify_event *) p;
+                        FSEvent *fs_ev = handleEvent(ev);
+                        if (fs_ev != nullptr) {
+                            running = callback(*fs_ev);
+                            delete fs_ev;
+                        }
                     }
                 }
             }
+        #if CATCH_ERR
+        } catch (const exception &e) {
+            cout << "Error: " << e.what() << endl;
         }
+        #endif
     }
 }
 

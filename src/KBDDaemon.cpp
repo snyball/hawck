@@ -37,6 +37,7 @@ extern "C" {
 #include "KBDDaemon.hpp"
 #include "CSV.hpp"
 #include "utils.hpp"
+#include "Daemon.hpp"
 
 // #undef DANGER_DANGER_LOG_KEYS
 // #define DANGER_DANGER_LOG_KEYS 1
@@ -49,7 +50,7 @@ extern "C" {
 using namespace std;
 
 KBDDaemon::KBDDaemon(const char *device) :
-    kbd_com("kbd.sock"),
+    kbd_com("/var/lib/hawckd-input/kbd.sock"),
     kbd(device)
 {
     home_path = "/var/lib/hawckd-input";
@@ -144,6 +145,7 @@ static void handleSigPipe(int) {
 }
 
 void KBDDaemon::run() {
+
     signal(SIGPIPE, handleSigPipe);
 
     KBDAction action;
@@ -230,3 +232,4 @@ void KBDDaemon::run() {
 
     fprintf(stderr, "QUIT LOOP\n"); fflush(stderr);
 }
+

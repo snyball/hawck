@@ -27,18 +27,21 @@
  */
 #include <thread>
 #include <iostream>
-#include "MacroDaemon.hpp"
-#include "LuaUtils.hpp"
-#include <gtk/gtk.h>
 
 #define DEBUG_LOG_KEYS 0
 
 extern "C" {
+    #include <gtk/gtk.h>
     #include <glib.h>
     #include <libnotify/notify.h>
     #include <unistd.h>
     #include <sys/stat.h>
 }
+
+#include "Daemon.hpp"
+#include "MacroDaemon.hpp"
+#include "LuaUtils.hpp"
+#include "utils.hpp"
 
 using namespace Lua;
 using namespace std;
@@ -67,7 +70,7 @@ static inline void initEventStrs()
     event_str[EV_MAX      ] = "MAX"       ;
 }
 
-MacroDaemon::MacroDaemon() : kbd_srv("kbd.sock") {
+MacroDaemon::MacroDaemon() : kbd_srv("/var/lib/hawckd-input/kbd.sock") {
     initEventStrs();
     notify_init("Hawck");
     string HOME(getenv("HOME"));
@@ -110,10 +113,12 @@ void MacroDaemon::initScriptDir(const std::string &dir_path) {
         }
     }
 
-    fsw.addFrom(dir_path);
+    auto files = fsw.addFrom(dir_path);
+    delete files;
 }
 
 void MacroDaemon::loadScript(const std::string &rel_path) {
+    ChDir cd(home_dir + "/scripts");
 
     char *rpath_chars = realpath(rel_path.c_str(), nullptr);
     string path(rpath_chars);

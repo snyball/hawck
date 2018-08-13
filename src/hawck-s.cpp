@@ -51,39 +51,6 @@ extern "C" {
 
 using namespace std;
 
-/* FIXME: Sticky key
- *
- * If a key (like enter) is pressed as the program is started, the desktop environment
- * does not seem to receive the key-up properly. The result is that the key becomes unusable
- * while Hawck is running.
- *
- * The bug can also be reproduced with the following code:
- *   match[ up + key "s" ] = function()end
- *
- * When the 's' key is pressed the key-up will be hidden from the desktop environment
- * and the key becomes unusable no matter how many times it is pressed. This one should
- * be fixable by just faking another key-up event. However,
- *
- * Faking key-ups does not seem to work with keys that were originally received from a
- * physical keyboard. The problem seems to be that DEs like GNOME expect the key-up to
- * come from the same device as the key-down. This is illustrated by the following:
- *   Press and hold key on keyboard 0
- *   Press and hold the same key on keyboard 1
- *   Release key on either keyboard and the key will still be repeated.
- * This is what indicates that GNOME expects the key-up to come from the same keyboard.
- *
- * Workaround:
- *   When starting up, wait for a keypress using select()
- *   When a key is pressed, wait for the keyup.
- *   When the SYN for the keyup is received, lock the keyboard.
- * This should resolve the bug.
- * 
- * FIXME: UPDATE
- * 
- * The workaround has now been implemented inside `Keyboard::lock` and is working
- * as intended for single keypresses.
- */ 
-
 /** TODO: Compile for all of luajit, lua5.1, lua5.2, and lua5.3
  *
  * In the case of luajit, optimize all calls using the LuaJIT FFI.
@@ -141,40 +108,11 @@ using namespace std;
  *   hawctrl --rm-kbd=/path/to/kbd/device
  */
 
-/* TODO: Report errors
- *
- * Lua errors should be reported with a dialog box, the associated
- * event should be disabled (to avoid spam.)
- * 
- */
-
-/* TODO: More Lua utility functions
- *
- * Launching scripts:
- *   run("special-script.sh", arg0, arg1)
- * Forking shell:
- *   cmd("echo dis && echo dat")
- */
-
 /* TODO: Build/install scripts and packaging
  *
  * Package the program for:
  *   Debian/Ubuntu (ppa)
  *   Arch Linux (AUR)
- */
-
-/* TODO: Automatically reload scripts on changes.
- *
- * Use inotify to automatically reload scripts from /usr/share/hawck/scripts
- * and (if enabled) ~/.local/share/hawck/scripts/
- */
-
-/* TODO: The working directory of scripts
- *
- * Should be ~/.local/share/hawck/
- *
- * Now the user can place symlinks to any utility shell-scripts inside
- * there and run them easily with run("script.sh")
  */
 
 /**
