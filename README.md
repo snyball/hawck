@@ -1,4 +1,4 @@
-<img src="./images/hawck_text_logo.png"/>
+<img src="./icons/alt_hawck_logo_v2_red_with_text.png"/>
 
 ![License: BSD-2](https://img.shields.io/badge/license-BSD--2-brightgreen.svg)
 ![Version: 0.3-alpha](https://img.shields.io/badge/version-0.3--alpha-red.svg)
