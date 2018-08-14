@@ -367,7 +367,6 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
             <property name="receives_default">False</property>
             <property name="active">True</property>
             <property name="draw_indicator">True</property>
-            <signal name="toggled" handler="scriptOnErrorNotificationSet" swapped="no"/>
           </object>
           <packing>
             <property name="expand">True</property>
@@ -382,7 +381,6 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
             <property name="can_focus">True</property>
             <property name="receives_default">False</property>
             <property name="draw_indicator">True</property>
-            <signal name="toggled" handler="scriptOnErrorOpenSet" swapped="no"/>
           </object>
           <packing>
             <property name="expand">True</property>
@@ -399,7 +397,6 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
             <property name="image_position">right</property>
             <property name="active">True</property>
             <property name="draw_indicator">True</property>
-            <signal name="toggled" handler="scriptOnErrorStopSet" swapped="no"/>
           </object>
           <packing>
             <property name="expand">True</property>
@@ -483,6 +480,7 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
       <object class="GtkButtonBox">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
+        <property name="orientation">vertical</property>
         <property name="homogeneous">True</property>
         <property name="baseline_position">top</property>
         <property name="layout_style">start</property>
@@ -617,7 +615,7 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
                       <object class="GtkLabel">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="label" translatable="yes">Hawck v0.3-alpha</property>
+                        <property name="label" translatable="yes">Hawck v0.4-alpha</property>
                         <attributes>
                           <attribute name="font-desc" value="Ubuntu Light 16"/>
                         </attributes>
@@ -665,7 +663,7 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkSwitch">
+                              <object class="GtkSwitch" id="inputd_switch">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                               </object>
@@ -675,7 +673,7 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkSwitch">
+                              <object class="GtkSwitch" id="macrod_switch">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                               </object>
@@ -714,6 +712,7 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
                                 <property name="receives_default">True</property>
                                 <property name="image">image15</property>
                                 <property name="always_show_image">True</property>
+                                <signal name="clicked" handler="onPanicBtn" swapped="no"/>
                               </object>
                               <packing>
                                 <property name="left_attach">1</property>
@@ -914,7 +913,6 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
                       <object class="GtkSwitch" id="script_enabled_switch">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
-                        <signal name="state-set" handler="setScriptEnabled" swapped="no"/>
                       </object>
                       <packing>
                         <property name="position">0</property>
@@ -964,7 +962,7 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkTextView">
+                  <object class="GtkTextView" id="script_error_log">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="editable">False</property>
@@ -1003,15 +1001,7 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <child>
-                          <object class="GtkLabel">
-                            <property name="visible">True</property>
-                            <property name="can_focus">False</property>
-                            <property name="label" translatable="yes">Enabled</property>
-                          </object>
-                          <packing>
-                            <property name="left_attach">0</property>
-                            <property name="top_attach">0</property>
-                          </packing>
+                          <placeholder/>
                         </child>
                       </object>
                       <packing>
@@ -1028,175 +1018,6 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
                         <property name="margin_right">30</property>
                         <property name="row_spacing">30</property>
                         <property name="column_spacing">30</property>
-                        <child>
-                          <object class="GtkGrid">
-                            <property name="visible">True</property>
-                            <property name="can_focus">False</property>
-                            <property name="hexpand">True</property>
-                            <property name="vexpand">True</property>
-                            <property name="row_spacing">5</property>
-                            <property name="column_spacing">20</property>
-                            <child>
-                              <object class="GtkLabel">
-                                <property name="visible">True</property>
-                                <property name="can_focus">False</property>
-                                <property name="label" translatable="yes">Action 0</property>
-                              </object>
-                              <packing>
-                                <property name="left_attach">0</property>
-                                <property name="top_attach">1</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkLabel">
-                                <property name="visible">True</property>
-                                <property name="can_focus">False</property>
-                                <property name="label" translatable="yes">Action 1</property>
-                              </object>
-                              <packing>
-                                <property name="left_attach">0</property>
-                                <property name="top_attach">2</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkLabel">
-                                <property name="visible">True</property>
-                                <property name="can_focus">False</property>
-                                <property name="label" translatable="yes">Action 2</property>
-                              </object>
-                              <packing>
-                                <property name="left_attach">0</property>
-                                <property name="top_attach">3</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkLabel">
-                                <property name="visible">True</property>
-                                <property name="can_focus">False</property>
-                                <property name="margin_bottom">10</property>
-                                <property name="label" translatable="yes">Key bindings</property>
-                                <property name="single_line_mode">True</property>
-                                <attributes>
-                                  <attribute name="font-desc" value="Roboto Medium 16"/>
-                                </attributes>
-                              </object>
-                              <packing>
-                                <property name="left_attach">0</property>
-                                <property name="top_attach">0</property>
-                                <property name="width">2</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkButton">
-                                <property name="label" translatable="yes">Ctrl-F7</property>
-                                <property name="visible">True</property>
-                                <property name="can_focus">True</property>
-                                <property name="receives_default">True</property>
-                              </object>
-                              <packing>
-                                <property name="left_attach">1</property>
-                                <property name="top_attach">1</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkButton">
-                                <property name="label" translatable="yes">F10</property>
-                                <property name="visible">True</property>
-                                <property name="can_focus">True</property>
-                                <property name="receives_default">True</property>
-                              </object>
-                              <packing>
-                                <property name="left_attach">1</property>
-                                <property name="top_attach">2</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkButton">
-                                <property name="label" translatable="yes">Alt-t</property>
-                                <property name="visible">True</property>
-                                <property name="can_focus">True</property>
-                                <property name="receives_default">True</property>
-                              </object>
-                              <packing>
-                                <property name="left_attach">1</property>
-                                <property name="top_attach">3</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkLabel">
-                                <property name="visible">True</property>
-                                <property name="can_focus">False</property>
-                                <property name="label" translatable="yes">Action 2</property>
-                              </object>
-                              <packing>
-                                <property name="left_attach">0</property>
-                                <property name="top_attach">4</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkLabel">
-                                <property name="visible">True</property>
-                                <property name="can_focus">False</property>
-                                <property name="label" translatable="yes">Action 2</property>
-                              </object>
-                              <packing>
-                                <property name="left_attach">0</property>
-                                <property name="top_attach">5</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkLabel">
-                                <property name="visible">True</property>
-                                <property name="can_focus">False</property>
-                                <property name="label" translatable="yes">Action 2</property>
-                              </object>
-                              <packing>
-                                <property name="left_attach">0</property>
-                                <property name="top_attach">6</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkButton">
-                                <property name="label" translatable="yes">Alt-t</property>
-                                <property name="visible">True</property>
-                                <property name="can_focus">True</property>
-                                <property name="receives_default">True</property>
-                              </object>
-                              <packing>
-                                <property name="left_attach">1</property>
-                                <property name="top_attach">4</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkButton">
-                                <property name="label" translatable="yes">Alt-t</property>
-                                <property name="visible">True</property>
-                                <property name="can_focus">True</property>
-                                <property name="receives_default">True</property>
-                              </object>
-                              <packing>
-                                <property name="left_attach">1</property>
-                                <property name="top_attach">5</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkButton">
-                                <property name="label" translatable="yes">Alt-t</property>
-                                <property name="visible">True</property>
-                                <property name="can_focus">True</property>
-                                <property name="receives_default">True</property>
-                              </object>
-                              <packing>
-                                <property name="left_attach">1</property>
-                                <property name="top_attach">6</property>
-                              </packing>
-                            </child>
-                          </object>
-                          <packing>
-                            <property name="left_attach">1</property>
-                            <property name="top_attach">0</property>
-                          </packing>
-                        </child>
                         <child>
                           <object class="GtkGrid">
                             <property name="visible">True</property>
@@ -1290,6 +1111,9 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
                             <property name="left_attach">0</property>
                             <property name="top_attach">0</property>
                           </packing>
+                        </child>
+                        <child>
+                          <placeholder/>
                         </child>
                       </object>
                       <packing>
@@ -1761,6 +1585,7 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
                         <property name="can_focus">False</property>
                         <property name="margin_top">15</property>
                         <property name="orientation">vertical</property>
+                        <property name="spacing">20</property>
                         <property name="layout_style">start</property>
                         <child>
                           <object class="GtkGrid">
@@ -1839,7 +1664,7 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
                                   <object class="GtkLabel">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
-                                    <property name="label" translatable="yes">🇳🇴</property>
+                                    <property name="label" translatable="yes">Auto</property>
                                   </object>
                                 </child>
                               </object>
@@ -1862,7 +1687,17 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
                           </packing>
                         </child>
                         <child>
-                          <placeholder/>
+                          <object class="GtkButton">
+                            <property name="label" translatable="yes">Save</property>
+                            <property name="visible">True</property>
+                            <property name="can_focus">True</property>
+                            <property name="receives_default">True</property>
+                          </object>
+                          <packing>
+                            <property name="expand">True</property>
+                            <property name="fill">True</property>
+                            <property name="position">1</property>
+                          </packing>
                         </child>
                         <child>
                           <placeholder/>
@@ -1949,7 +1784,7 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
     <property name="transient_for">HawckMainWindow</property>
     <property name="attached_to">button1</property>
     <property name="program_name">Hawck</property>
-    <property name="version">v0.3-alpha</property>
+    <property name="version">v0.4-alpha</property>
     <property name="copyright" translatable="yes">Copyright (C) Jonas Møller 2018</property>
     <property name="website">https://github.com/snyball/Hawck</property>
     <property name="website_label" translatable="yes">GitHub</property>
@@ -2047,7 +1882,7 @@ Have fun.</property>
   </object>
   <object class="GtkPopover" id="use_script_error">
     <property name="can_focus">False</property>
-    <property name="relative_to">use_script_btn</property>
+    <property name="relative_to">script_error_log</property>
     <signal name="button-press-event" handler="onPopdown" swapped="no"/>
     <child>
       <object class="GtkGrid">

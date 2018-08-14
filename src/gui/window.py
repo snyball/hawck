@@ -26,6 +26,8 @@
 ## SOFTWARE.
 ## ================================================================================
 
+import time
+import threading
 import os
 import sys
 import shutil
@@ -47,7 +49,7 @@ LOCATIONS = {
     "scripts": os.path.join(HAWCK_HOME, "scripts"),
     "scripts-enabled": os.path.join(HAWCK_HOME, "scripts-enabled"),
     "first_use": os.path.join(HAWCK_HOME, ".user_has_been_warned"),
-    "hawck_bin": "/home/jonas/Documents/EvD/src/build/"
+    "hawck_bin": "/usr/share/hawck/bin"
 }
 
 SCRIPT_DEFAULT = """
@@ -73,6 +75,7 @@ class HawckMainWindow(Gtk.ApplicationWindow):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.internal_call = 0
         GObject.type_register(GtkSource.View)
         self.edit_pages = []
         self.init_template()
@@ -87,8 +90,10 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         self.window.connect("destroy", lambda *_: sys.exit(0))
         self.window.present()
         self.builder.connect_signals(self)
+        script_sw = self.builder.get_object("script_enabled_switch")
+        self.script_switch_handler_id = script_sw.connect("state-set", self.setScriptEnabled)
         self.prepareEditForPage(0)
-        self.internal_call = False
+        self.checkHawckDRunning()
 
         ## Check for first use, issue warning if the program has not been launched before.
         if not os.path.exists(LOCATIONS["first_use"]):
@@ -136,14 +141,14 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         switch_obj = self.builder.get_object("script_enabled_switch")
         name = HawckMainWindow.getScriptName(self.edit_pages[pagenr])
         enabled_path = os.path.join(LOCATIONS["scripts-enabled"], name + ".lua")
-        print(f"Enabled path: {enabled_path}")
         is_enabled = os.path.exists(enabled_path)
-        print(f"Enabled: {is_enabled}")
-        def fn():
+        with switch_obj.handler_block(self.script_switch_handler_id):
             switch_obj.set_state(is_enabled)
             switch_obj.set_active(is_enabled)
-        self.internal(fn)
-        print()
+        # def fn():
+        #     switch_obj.set_state(is_enabled)
+        #     switch_obj.set_active(is_enabled)
+        # self.internal(fn)
 
     def onEditChangePage(self, _notebook: Gtk.Notebook, _obj, pagenr: int):
         self.prepareEditForPage(pagenr)
@@ -189,7 +194,6 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         if ret != 0:
             lines = out.splitlines()
             _ = lines.pop()
-            print(lines)
             raise HawckInstallException("\n".join(l.decode("utf-8") for l in lines))
         ## TODO: elif "the script is enabled":
         ##          reinstall the script, so that it is reloaded by the daemon.
@@ -245,29 +249,43 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         being executed when the state of switches are set by the script.
         """
         if args:
-            self.internal_call = True
-            args[0]()
-            self.internal_call = False
-        cur = self.internal_call
-        self.internal_call = False
-        return cur
+            fn, *_ = args
+            self.internal_call += 1
+            fn()
+        else:
+            was = self.internal_call
+            self.internal_call -= 1
+            if self.internal_call < 0:
+                self.internal_call = 0
+            return was
 
     def setScriptEnabled(self, switch_obj: Gtk.Switch, enabled: bool):
         if self.internal(): return
 
-        print("Script enabled state changed")
-        print(f"Switch state: {enabled}")
         hwk_path = self.getCurrentEditFile()
         name = self.getCurrentScriptName()
 
         if not enabled:
             return HawckMainWindow.disableScript(name)
 
+        buf = self.builder.get_object("script_error_buffer")
         try:
+            print("Installing script ...")
             self.installScript(hwk_path)
-        except HawckInstallException:
-            switch_obj.set_state(False)
+            print("Success!")
+        except HawckInstallException as e:
+            print("EXCEPTION")
+            # self.internal_call += 2
+            # with switch_obj.handler_block(self.script_switch_handler_id):
+            popover = self.builder.get_object("use_script_error")
+            popover.popup()
+            buf.set_text(str(e))
             switch_obj.set_active(False)
+            switch_obj.set_state(False)
+            return True
+
+        buf.set_text("OK")
+
         HawckMainWindow.enableScript(name)
 
         return None
@@ -290,7 +308,6 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         about_dialog.hide()
 
     def saveScript(self, *_):
-        return
         sav_dialog = Gtk.FileChooserDialog("Save as", self,
                                            Gtk.FileChooserAction.SAVE,
                                            (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
@@ -299,7 +316,25 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         sav_dialog.set_do_overwrite_confirmation(True)
         sav_dialog.set_modal(True)
         sav_dialog.run()
-        sav_dialog.hide()
         path = sav_dialog.get_filename()
-        self.saveScript()
-        shutil.copy(self.getCurrentEditFile(), path)
+        if path:
+            shutil.copy(self.getCurrentEditFile(), path)
+        sav_dialog.destroy()
+
+    def checkHawckDRunning(self):
+        inputd_sw = self.builder.get_object("inputd_switch")
+        macrod_sw = self.builder.get_object("macrod_switch")
+        pgrep_loc = "/usr/bin/pgrep"
+
+        ret = Popen([pgrep_loc, "hawck-inputd"]).wait()
+        inputd_sw.set_state(not ret)
+        inputd_sw.set_active(not ret)
+
+        ret = Popen([pgrep_loc, "hawck-macrod"]).wait()
+        macrod_sw.set_state(not ret)
+        macrod_sw.set_active(not ret)
+
+    def onPanicBtn(self, *_):
+        p = Popen([os.path.join(LOCATIONS["hawck_bin"], "kill9_hawck.sh")])
+        p.wait()
+        self.checkHawckDRunning()
