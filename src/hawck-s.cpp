@@ -69,94 +69,18 @@ using namespace std;
  *   
  */ 
 
-/* TODO: Multiple Lua scripts
- *
- * ev should run as a daemon, and should be able to receive commands
- * to load Lua scripts or just add a new key-matching pattern.
- *
- * How commands should be received:
- *   D-Bus:
- *     Should be easy to work with on the client side.
- *   FIFO:
- *     Requires thinking more about protocol, but will
- *     be supported everywhere.
- *   TCP/IP:
- *     Bad idea.
- *
- * What commands to implement:
- *   loadScript(path :: string, name :: string)
- *   exec(script :: string, code :: string)
- *   stopScript(script :: string)
- *   addKeyboard(path :: string)
- *   removeKeyboard(path :: string)
- *   // Stop listening for events, free the keyboard
- *   stop()
- *   // Start again
- *   start()
- *   // Stop daemon entirely
- *   kill()
- *     
- * A Python script will be written for controlling the daemon.
- * It should be called "hawctrl" and should work like this
- *   hawctrl --load=path/to/<script-name>.hwk
- *   hawctrl --stop
- *   hawctrl --stop-script=script-name
- *   hawctrl --start
- *   hawctrl --kill
- *   hawctrl --exec="print('hello')" --script=script-name
- *   hawctrl --add-kbd=/path/to/kbd/device
- *   hawctrl --rm-kbd=/path/to/kbd/device
- */
-
-/* TODO: Build/install scripts and packaging
- *
- * Package the program for:
- *   Debian/Ubuntu (ppa)
- *   Arch Linux (AUR)
- */
-
-/**
- * Change stdout and stderr to point to different files, specified
- * by the given paths.
- *
- * Stdin will always be redirected from /dev/null, if /dev/null cannot
- * be open this will result in abort(). Note that after this call any
- * blocking reads on stdin will halt the program.
- */
-void dup_streams(string stdout_path, string stderr_path) {
-    using CFile = unique_ptr<FILE, decltype(&fclose)>;
-    auto fopen = [](string path, string mode) -> CFile {
-                     return CFile(::fopen(path.c_str(), mode.c_str()), fclose);
-                 };
-
-    // Attempt to open /dev/null
-    auto dev_null = fopen("/dev/null", "r");
-    if (dev_null == nullptr) {
-        abort();
-    }
-
-    // Open new output files
-    auto stdout_new = fopen(stdout_path, "w");
-    auto stderr_new = fopen(stderr_path, "w");
-    if (stdout_new == nullptr || stderr_new == nullptr) {
-        throw invalid_argument("Unable to open new stdout and stderr");
-    }
-
-    // Dup files
-    ::dup2(dev_null->_fileno, STDIN_FILENO);
-    ::dup2(stdout_new->_fileno, STDOUT_FILENO);
-    ::dup2(stderr_new->_fileno, STDERR_FILENO);
-}
-    
 int main(int argc, char *argv[])
 {
     #if DANGER_DANGER_LOG_KEYS
-        fprintf(stderr, "WARNING: This build has been compiled with DANGER_DANGER_LOG_KEYS, keys will be logged.");
-        fprintf(stderr, "WARNING: If you did not compile this yourself to perform debugging, please refrain from using this build of hawck");
+    fprintf(stderr, "WARNING: This build has been compiled with DANGER_DANGER_LOG_KEYS, keys will be logged.");
+    fprintf(stderr, "WARNING: If you did not compile this yourself to perform debugging, please refrain from using this build of hawck");
     #endif
 
+    int pfd_kbd[2];
+    int pfd_udev[2];
+
     if (argc < 2) {
-        fprintf(stderr, "Usage: hawck <input device>\n");
+        fprintf(stderr, "Usage: hawckd <input device>\n");
         return EXIT_FAILURE;
     }
 
@@ -165,6 +89,9 @@ int main(int argc, char *argv[])
     // In priviliged (root) process, fork and switch users around.
 
     fprintf(stderr, "Forking ...");
+
+    if (pipe(pfd_kbd) == -1 || pipe(pfd_udev) == -1)
+        throw SystemError("Error in pipe(): ", errno);
 
     pid_t cpid;
     switch (cpid = fork()) {
@@ -177,7 +104,6 @@ int main(int argc, char *argv[])
         case 0:
             // In child process.
         {
-            // dup_streams("lua_stdout.log", "lua_stderr.log");
             sleep(1);
             try {
                 MacroDaemon daemon;
@@ -192,7 +118,6 @@ int main(int argc, char *argv[])
         // Parent switches uid to keyboard-grabbing user. Has access to all input.
         default:
         {
-            // dup_streams("kbd_stdout.log", "kbd_stderr.log");
             try {
                 KBDDaemon daemon(dev);
                 daemon.run();
