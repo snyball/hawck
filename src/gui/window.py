@@ -189,6 +189,7 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         if ret != 0:
             lines = out.splitlines()
             _ = lines.pop()
+            print(lines)
             raise HawckInstallException("\n".join(l.decode("utf-8") for l in lines))
         ## TODO: elif "the script is enabled":
         ##          reinstall the script, so that it is reloaded by the daemon.
@@ -203,15 +204,25 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         name, _ = os.path.splitext(os.path.basename(hwk_path))
         return name
 
+    def onPopdown(self, p):
+        p.popdown()
+
     def useScript(self, *_):
         current_file = self.getCurrentEditFile()
+        buf = self.builder.get_object("script_error_buffer")
         try:
             self.installScript(current_file)
-        except HawckInstallException:
+        except HawckInstallException as e:
             ## TODO: Display the error properly
             ## TODO: Parse Lua errors to get the line number of the error, then highlight this
             ##       in the text editor margin.
-            pass
+            popover = self.builder.get_object("use_script_error")
+            popover.popup()
+            buf.set_text(str(e))
+            return
+        buf.set_text("OK")
+        popover = self.builder.get_object("use_script_success")
+        popover.popup()
         HawckMainWindow.enableScript(self.getCurrentScriptName())
 
     @staticmethod
