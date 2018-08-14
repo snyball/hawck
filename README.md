@@ -1,7 +1,7 @@
 <img src="./icons/alt_hawck_logo_v2_red_with_text.png"/>
 
 ![License: BSD-2](https://img.shields.io/badge/license-BSD--2-brightgreen.svg)
-![Version: 0.3-alpha](https://img.shields.io/badge/version-0.3--alpha-red.svg)
+![Version: 0.4-alpha](https://img.shields.io/badge/version-0.4--alpha-red.svg)
 ![Release: none](https://img.shields.io/badge/release-none-red.svg)
 
 ## A key-rebinding daemon
@@ -121,13 +121,16 @@ being worked on.
 
 #### Edit scripts
 
-<img src="./images/hawck_ui_screenshot_edit_scripts.png"/>
+<img src="./images/hawck_ui_screenshot_edit_scripts_success.png"/>
 
 In the edit scripts section you can perform quick edits
 on your scripts, and enable/disable them.
 
 After editing the script just click on "Use" to send
-the script to the daemon.
+the script to the daemon. The interface will then let
+you know whether or not the installation went smoothly.
+
+<img src="./images/hawck_ui_screenshot_edit_scripts_error.png"/>
 
 ### Planned features
 - Simplified key rebinding (no need to write a script)
