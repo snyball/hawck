@@ -74,6 +74,8 @@ class HawckMainWindow(Gtk.ApplicationWindow):
     __gtype_name__ = 'HawckMainWindow'
 
     def __init__(self, **kwargs):
+        settings = Gtk.Settings.get_default()
+        settings.set_property("gtk-application-prefer-dark-theme", True)
         super().__init__(**kwargs)
         self.internal_call = 0
         GObject.type_register(GtkSource.View)
@@ -115,6 +117,7 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         src_lang_manage = GtkSource.LanguageManager()
         lua_lang = src_lang_manage.get_language("lua")
         scheme_manager = GtkSource.StyleSchemeManager()
+        print(f"Schemes: {scheme_manager.get_scheme_ids()}")
         scheme = scheme_manager.get_scheme("oblivion")
         buf.set_language(lua_lang)
         buf.set_style_scheme(scheme)

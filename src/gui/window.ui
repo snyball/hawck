@@ -933,6 +933,8 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="tab_pos">right</property>
+                    <property name="scrollable">True</property>
+                    <property name="enable_popup">True</property>
                     <signal name="change-current-page" handler="onEditChangePage" swapped="no"/>
                     <signal name="select-page" handler="onEditSelectPage" swapped="no"/>
                     <signal name="switch-page" handler="onEditSwitchPage" swapped="no"/>

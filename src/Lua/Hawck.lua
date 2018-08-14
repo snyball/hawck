@@ -112,6 +112,7 @@ modkeys = {
   ctrl_r = "rightctrl",
   alt_r = "rightalt",
   alt_l = "leftalt",
+  alt = "alt",
 }
 
 for key, sys_key in pairs(modkeys) do
@@ -191,6 +192,7 @@ local OMNIPRESENT = {"control_r",
                      "shift_l",
                      "shift_r",
                      "altgr",
+                     "alt",
                      "shift"}
 
 for idx, name in ipairs(OMNIPRESENT) do
