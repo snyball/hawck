@@ -36,6 +36,7 @@ from pprint import PrettyPrinter
 
 import gi
 from gi.repository import Gtk
+from gi.repository import Gdk
 from gi.repository import GObject
 gi.require_version('GtkSource', '4')
 from gi.repository import GtkSource
@@ -61,14 +62,45 @@ down => {
   shift + alt + key "w" => app("firefox"):new_window("https://github.com/snyball/Hawck")
   ctrl  + alt + key "k" => function ()
     p = io.popen("fortune")
-    say(p:read())()
+    say(p:read("*a"))()
     p:close()
   end
 }
 """[1:]
 
+MODIFIER_NAMES = set([
+    "Alt",
+    "Alt_L",
+    "Alt_R",
+    "Control",
+    "Control_L",
+    "Control_R",
+    "Shift",
+    "Shift_L",
+    "Shift_R",
+    "Shift",
+    "Shift_L",
+    "Shift_R",
+    "AltGr",
+])
+
 class HawckInstallException(Exception):
     pass
+
+class KeyCap(GObject.Object):
+    __gtype_name__ = "KeyCap"
+
+    def __init__(self, win):
+        super().__init__()
+        self.win = win
+
+    @GObject.Signal(flags=GObject.SignalFlags.RUN_LAST,
+                    arg_types=(object, object),
+                    return_type=bool,
+                    accumulator=GObject.signal_accumulator_true_handled)
+    def onKeyCaptureDone(self, *_):
+        print(f"Keycap done: {_}")
+
 
 class HawckMainWindow(Gtk.ApplicationWindow):
     __gtype_name__ = 'HawckMainWindow'
@@ -97,6 +129,12 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         self.prepareEditForPage(0)
         self.checkHawckDRunning()
 
+        ## Key capture stuff
+        ## TODO: Separate the key capturing into its own class
+        self.keycap_names = []
+        self.keycap_codes = []
+        self.keycap_done = False
+
         ## Check for first use, issue warning if the program has not been launched before.
         if not os.path.exists(LOCATIONS["first_use"]):
             warning = self.builder.get_object("hawck_first_use_warning")
@@ -104,6 +142,8 @@ class HawckMainWindow(Gtk.ApplicationWindow):
             warning.hide()
             with open(LOCATIONS["first_use"], "w") as f:
                 f.write("The user has been warned about potential risks of using the software.\n")
+
+        self.captureKey()
 
     def addEditPage(self, path: str):
         scrolled_window = Gtk.ScrolledWindow()
@@ -148,10 +188,6 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         with switch_obj.handler_block(self.script_switch_handler_id):
             switch_obj.set_state(is_enabled)
             switch_obj.set_active(is_enabled)
-        # def fn():
-        #     switch_obj.set_state(is_enabled)
-        #     switch_obj.set_active(is_enabled)
-        # self.internal(fn)
 
     def onEditChangePage(self, _notebook: Gtk.Notebook, _obj, pagenr: int):
         self.prepareEditForPage(pagenr)
@@ -193,13 +229,12 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         p = Popen([os.path.join(LOCATIONS["hawck_bin"], "install_hwk_script.sh"), path], stdout=PIPE, stderr=STDOUT_REDIR)
         out = p.stdout.read()
         ret = p.wait()
+
         ## Handle error
         if ret != 0:
             lines = out.splitlines()
             _ = lines.pop()
             raise HawckInstallException("\n".join(l.decode("utf-8") for l in lines))
-        ## TODO: elif "the script is enabled":
-        ##          reinstall the script, so that it is reloaded by the daemon.
 
     @staticmethod
     def getScriptName(hwk_path):
@@ -341,3 +376,79 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         p = Popen([os.path.join(LOCATIONS["hawck_bin"], "kill9_hawck.sh")])
         p.wait()
         self.checkHawckDRunning()
+
+    def onKeyCaptureCancel(self, *_):
+        win = self.builder.get_object("key_capture_window")
+        win.hide()
+
+    def onKeyCaptureOK(self, *_):
+        win = self.builder.get_object("key_capture_window")
+        win.hide()
+        names = self.keycap_names
+        codes = self.keycap_codes
+        self.keycap_names = []
+        self.keycap_codes = []
+        self.emit("onKeyCaptureDone", names, codes)
+
+    def onKeyCaptureKeyRelease(self, window, ev):
+        if self.keycap_done:
+            return
+
+        ev_name = Gdk.keyval_name(ev.keyval)
+        is_modifier = ev_name in MODIFIER_NAMES
+        if not is_modifier and len(ev_name) == 1:
+            ev_name = ev_name.upper()
+        try:
+            idx = self.keycap_names.index(ev_name)
+            self.keycap_codes.remove(self.keycap_codes[idx])
+            self.keycap_names.remove(ev_name)
+        except ValueError:
+            return
+        self.setKeyCaptureLabel(self.keycap_names)
+
+    def onKeyCaptureReset(self, *_):
+        self.keycap_names = []
+        self.keycap_codes = []
+        self.keycap_done = False
+        self.setKeyCaptureLabel([])
+
+    def onKeyCaptureKeyPress(self, window, ev):
+        if self.keycap_done:
+            return
+
+        ev_name = Gdk.keyval_name(ev.keyval)
+        is_modifier = ev_name in MODIFIER_NAMES
+
+        if not is_modifier and len(ev_name) == 1:
+            ev_name = ev_name.upper()
+
+        ## Repeat key
+        if self.keycap_names and self.keycap_names[-1] == ev_name:
+            return
+
+        self.keycap_names.append(ev_name)
+        self.keycap_codes.append(ev.hardware_keycode)
+        self.setKeyCaptureLabel(self.keycap_names)
+
+        ## Check if we received a terminal key:
+        if not is_modifier:
+            self.keycap_done = True
+
+    def setKeyCaptureLabel(self, names):
+        fmt = "-".join(names)
+        label = self.builder.get_object("key_capture_display")
+        label.set_text(fmt)
+
+    @GObject.Signal(flags=GObject.SignalFlags.RUN_LAST,
+                    arg_types=(object, object),
+                    return_type=bool,
+                    accumulator=GObject.signal_accumulator_true_handled)
+    def onKeyCaptureDone(self, *_):
+        print(f"Keycap done: {_}")
+
+    def captureKey(self):
+        win = self.builder.get_object("key_capture_window")
+        # cap = KeyCap(win)
+        # self.emit("onKeyCaptureDone", ["Ctrl", "a"], [0, 0])
+        # self.builder.connect_signals(cap)
+        win.show_all()
