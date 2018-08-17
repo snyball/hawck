@@ -1,0 +1,11 @@
+(setq c-language-include-directories
+      '(".."
+        "."))
+        
+(setq c++-language-include-directories
+      '(".."
+        "."))
+
+(setq cpp-language-include-directories
+      '(".."
+        "."))

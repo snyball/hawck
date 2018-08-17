@@ -816,76 +816,16 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
-                      <object class="GtkSwitch" id="script_enabled_switch">
-                        <property name="visible">True</property>
-                        <property name="can_focus">True</property>
-                      </object>
-                      <packing>
-                        <property name="position">0</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkButton">
-                        <property name="label" translatable="yes">Save as</property>
-                        <property name="visible">True</property>
-                        <property name="can_focus">True</property>
-                        <property name="receives_default">True</property>
-                        <property name="image">image7</property>
-                        <property name="always_show_image">True</property>
-                        <signal name="clicked" handler="saveScript" swapped="no"/>
-                      </object>
-                      <packing>
-                        <property name="position">0</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkButton" id="use_script_btn">
-                        <property name="label" translatable="yes">Use</property>
-                        <property name="visible">True</property>
-                        <property name="can_focus">True</property>
-                        <property name="receives_default">True</property>
-                        <property name="image">image8</property>
-                        <property name="always_show_image">True</property>
-                        <signal name="clicked" handler="useScript" swapped="no"/>
-                      </object>
-                      <packing>
-                        <property name="position">0</property>
-                      </packing>
-                    </child>
-                    <child>
                       <object class="GtkMenuButton">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
-                        <property name="popover">popover4</property>
+                        <property name="popover">delete_script_popover</property>
                         <child>
-                          <object class="GtkGrid">
+                          <object class="GtkImage">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="column_spacing">3</property>
-                            <property name="row_homogeneous">True</property>
-                            <child>
-                              <object class="GtkLabel">
-                                <property name="visible">True</property>
-                                <property name="can_focus">False</property>
-                                <property name="label" translatable="yes">Import</property>
-                              </object>
-                              <packing>
-                                <property name="left_attach">1</property>
-                                <property name="top_attach">0</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkImage">
-                                <property name="visible">True</property>
-                                <property name="can_focus">False</property>
-                                <property name="icon_name">document-open</property>
-                              </object>
-                              <packing>
-                                <property name="left_attach">0</property>
-                                <property name="top_attach">0</property>
-                              </packing>
-                            </child>
+                            <property name="icon_name">edit-delete</property>
                           </object>
                         </child>
                       </object>
@@ -939,14 +879,74 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
-                        <property name="popover">delete_script_popover</property>
+                        <property name="popover">popover4</property>
                         <child>
-                          <object class="GtkImage">
+                          <object class="GtkGrid">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="icon_name">edit-delete</property>
+                            <property name="column_spacing">3</property>
+                            <property name="row_homogeneous">True</property>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="label" translatable="yes">Import</property>
+                              </object>
+                              <packing>
+                                <property name="left_attach">1</property>
+                                <property name="top_attach">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkImage">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="icon_name">document-open</property>
+                              </object>
+                              <packing>
+                                <property name="left_attach">0</property>
+                                <property name="top_attach">0</property>
+                              </packing>
+                            </child>
                           </object>
                         </child>
+                      </object>
+                      <packing>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="use_script_btn">
+                        <property name="label" translatable="yes">Use</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="image">image8</property>
+                        <property name="always_show_image">True</property>
+                        <signal name="clicked" handler="useScript" swapped="no"/>
+                      </object>
+                      <packing>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkButton">
+                        <property name="label" translatable="yes">Save as</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="image">image7</property>
+                        <property name="always_show_image">True</property>
+                        <signal name="clicked" handler="saveScript" swapped="no"/>
+                      </object>
+                      <packing>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkSwitch" id="script_enabled_switch">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
                       </object>
                       <packing>
                         <property name="position">0</property>
@@ -1289,11 +1289,10 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
                                 <property name="hexpand">True</property>
                                 <child>
                                   <object class="GtkButton">
-                                    <property name="label" translatable="yes">Hide error</property>
+                                    <property name="label" translatable="yes">Dismiss</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">True</property>
-                                    <property name="image">image13</property>
                                     <property name="always_show_image">True</property>
                                   </object>
                                   <packing>
@@ -1315,10 +1314,11 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
                                 </child>
                                 <child>
                                   <object class="GtkButton">
-                                    <property name="label" translatable="yes">Dismiss</property>
+                                    <property name="label" translatable="yes">Hide error</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">True</property>
+                                    <property name="image">image13</property>
                                     <property name="always_show_image">True</property>
                                   </object>
                                   <packing>

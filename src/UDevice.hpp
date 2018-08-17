@@ -20,6 +20,7 @@ class UDevice : public IUDevice {
 private:
     static const size_t evbuf_start_len = 128;
     int fd;
+    int dfd;
     uinput_setup usetup;
     size_t evbuf_len;
     size_t evbuf_top;

@@ -143,7 +143,7 @@ class HawckMainWindow(Gtk.ApplicationWindow):
             with open(LOCATIONS["first_use"], "w") as f:
                 f.write("The user has been warned about potential risks of using the software.\n")
 
-        self.captureKey()
+        # self.captureKey()
 
     def addEditPage(self, path: str):
         scrolled_window = Gtk.ScrolledWindow()
@@ -336,6 +336,8 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         page_num = notebook.get_current_page()
         notebook.remove_page(page_num)
         pg = self.edit_pages
+        name = self.getCurrentScriptName()
+        HawckMainWindow.disableScript(name)
         self.edit_pages = pg[:page_num] + pg[page_num+1:]
         os.remove(path)
 
@@ -394,7 +396,8 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         if self.keycap_done:
             return
 
-        ev_name = Gdk.keyval_name(ev.keyval)
+        oname = ev.string.strip()
+        ev_name = oname or Gdk.keyval_name(ev.keyval)
         is_modifier = ev_name in MODIFIER_NAMES
         if not is_modifier and len(ev_name) == 1:
             ev_name = ev_name.upper()
@@ -416,7 +419,17 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         if self.keycap_done:
             return
 
-        ev_name = Gdk.keyval_name(ev.keyval)
+        oname = ev.string.strip()
+        ev_name = oname or Gdk.keyval_name(ev.keyval)
+
+        print(f"name: {ev_name}")
+        print(f"ev.keycode: {ev.keyval}")
+        print(f"ev.hardware_keycode: {ev.hardware_keycode}")
+        print(f"ev.string.strip(): {oname}")
+        print(f"Gdk.keyval_name(ev.keyval): {Gdk.keyval_name(ev.keyval)}")
+        print(f"Gdk.keyval_to_unicode(ev.keyval): {Gdk.keyval_to_unicode(ev.keyval)}")
+        print("")
+
         is_modifier = ev_name in MODIFIER_NAMES
 
         if not is_modifier and len(ev_name) == 1:
@@ -435,7 +448,7 @@ class HawckMainWindow(Gtk.ApplicationWindow):
             self.keycap_done = True
 
     def setKeyCaptureLabel(self, names):
-        fmt = "-".join(names)
+        fmt = " - ".join(names)
         label = self.builder.get_object("key_capture_display")
         label.set_text(fmt)
 

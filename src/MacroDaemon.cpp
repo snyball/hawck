@@ -53,6 +53,12 @@ static const char *const evval[] = {
 };
 static const char *event_str[EV_CNT];
 
+inline bool goodLuaFilename(const string& name) {
+    return !(
+        name.size() < 4 || name[0] == '.' || name.find(".lua") != name.size()-4
+    );
+}
+
 static inline void initEventStrs()
 {
     event_str[EV_SYN      ] = "SYN"       ;
@@ -118,9 +124,17 @@ void MacroDaemon::initScriptDir(const std::string &dir_path) {
 }
 
 void MacroDaemon::loadScript(const std::string &rel_path) {
+    string bn = pathBasename(rel_path);
+    if (!goodLuaFilename(bn)) {
+        cout << "Wrong filename, not loading: " << bn << endl;
+        return;
+    }
+
     ChDir cd(home_dir + "/scripts");
 
     char *rpath_chars = realpath(rel_path.c_str(), nullptr);
+    if (rpath_chars == nullptr)
+        throw SystemError("Error in realpath: ", errno);
     string path(rpath_chars);
     free(rpath_chars);
 
@@ -271,14 +285,23 @@ void MacroDaemon::run() {
     fsw.setAutoAdd(false);
     fsw.begin([&](FSEvent &ev) {
                   lock_guard<mutex> lock(scripts_mtx);
-                  if (ev.mask & IN_DELETE) {
-                      cout << "Deleting script: " << ev.name << endl;
-                      unloadScript(ev.name);
-                  } else if (ev.mask & IN_CREATE) {
-                      cout << "Loading script: " << basename(ev.path.c_str()) << endl;
-                      loadScript(ev.path);
-                  } else {
-                      cout << "Received unhandled event" << endl;
+                  try {
+                      if (ev.mask & IN_DELETE) {
+                          cout << "Deleting script: " << ev.name << endl;
+                          unloadScript(ev.name);
+                      } else if (ev.mask & IN_MODIFY) {
+                          cout << "Reloading script: " << ev.path << endl;
+                          if (!S_ISDIR(ev.stbuf.st_mode)) {
+                              unloadScript(pathBasename(ev.path));
+                              loadScript(ev.path);
+                          }
+                      } else if (ev.mask & IN_CREATE) {
+                          loadScript(ev.path);
+                      } else {
+                          cout << "Received unhandled event" << endl;
+                      }
+                  } catch (exception &e) {
+                      cout << e.what() << endl;
                   }
                   return true;
               });

@@ -74,3 +74,10 @@ public:
         abort();
     }
 };
+
+inline std::string pathBasename(const std::string& path) {
+    const char *bn = basename(path.c_str());
+    if (bn == nullptr)
+        return std::string("");
+    return std::string(bn);
+}

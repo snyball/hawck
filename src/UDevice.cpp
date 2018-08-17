@@ -3,14 +3,47 @@
 //   https://www.kernel.org/doc/html/v4.12/input/uinput.html
 //
 
-#include "UDevice.hpp"
 #include <functional>
 #include <type_traits>
+#include <iostream>
 
 extern "C" {
     #include <unistd.h>
     #include <fcntl.h>
     #include <time.h>
+    #include <dirent.h>
+}
+
+#include "SystemError.hpp"
+#include "UDevice.hpp"
+#include "utils.hpp"
+
+using namespace std;
+
+static int getDevice(const string &by_name) {
+	char buf[256];
+    string devdir = "/dev/input";
+    DIR *dir = opendir(devdir.c_str());
+    if (dir == nullptr)
+        throw SystemError("Unable to open directory: ", errno);
+
+    struct dirent *entry;
+    while ((entry = readdir(dir))) {
+        int fd, ret;
+        sstream ss;
+        ss << devdir << "/" << entry->d_name;
+		fd = open(ss.str().c_str(), O_RDWR | O_CLOEXEC | O_NONBLOCK);
+		if (fd < 0)
+			continue;
+
+		ret = ioctl(fd, EVIOCGNAME(sizeof(buf)), buf);
+        string name(ret > 0 ? buf : "");
+        if (name == by_name)
+            return fd;
+		close(fd);
+	}
+
+	return -1;
 }
 
 UDevice::UDevice() {
@@ -41,6 +74,14 @@ UDevice::UDevice() {
         abort();
     }
     evbuf_top = 0;
+
+    int errors = 0;
+    while ((dfd = getDevice(usetup.name)) < 0) {
+        if (errors++ > 10)
+            throw SystemError("Unable to get file descriptor of udevice.");
+        cout << "Unable to get file descriptor of udevice, retrying ..." << endl;
+        usleep(10000);
+    }
 }    
 
 UDevice::~UDevice() {
