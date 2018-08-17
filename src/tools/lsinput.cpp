@@ -107,19 +107,19 @@ int main(int argc, char *argv[]) {
             continue;
         }
         string path = devdir + "/" + filename;
-		fd = open(path.c_str(), O_RDWR | O_CLOEXEC | O_NONBLOCK);
-		if (fd < 0)
-			continue;
+        fd = open(path.c_str(), O_RDWR | O_CLOEXEC | O_NONBLOCK);
+        if (fd < 0)
+            continue;
 
-		ret = ioctl(fd, EVIOCGNAME(sizeof(buf)), buf);
+        ret = ioctl(fd, EVIOCGNAME(sizeof(buf)), buf);
         string name(ret > 0 ? buf : "unknown");
         cout << basename(path.c_str()) << ": " << name << endl;
 
         printLinks(path, "/dev/input/by-path");
         printLinks(path, "/dev/input/by-id");
 
-		close(fd);
-	}
+        close(fd);
+    }
 
-	return 0;
+    return 0;
 }
