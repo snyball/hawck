@@ -7,7 +7,8 @@
 ## a bit easier.
 ##
 
-KBD_DEVICE='/dev/input/by-path/pci-0000:00:14.0-usb-0:8:1.0-event-kbd'
+## Use
+KBD_DEVICE=$(lsinput -s | awk '/Keyboard-event-kbd/{print $1}' | head -n1)
 
 export SPID=$$
 

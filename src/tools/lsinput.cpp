@@ -32,6 +32,7 @@
 #include <iostream>
 #include <memory>
 #include <vector>
+#include <functional>
 
 extern "C" {
     #include <unistd.h>
@@ -99,22 +100,30 @@ vector<string> *getLinksTo(const string& target_rel, const string& dirpath) {
     return vec.release();
 }
 
-static inline void printLinks(const string& path, const string& dir) {
+using PrintLinkFn = function<void(const string& dir_base,
+                                 const string& lnk)>;
+
+static inline void printLinks(const string& path,
+                              const string& dir,
+                              const PrintLinkFn& fn)
+{
     string dir_base = pathBasename(dir);
     try {
         auto links = mkuniq(getLinksTo(path, dir));
         for (const auto& lnk : *links)
-            cout << "    " << dir_base << ": " << pathBasename(lnk) << endl;
+            fn(dir_base, lnk);
+            // cout << indent << dir_base << ": " << pathBasename(lnk) << sep;
     } catch (const SystemError &e) {
-        cout << "    " << dir_base << ": " << "Unable to acquire links: " << e.what();
+        // cout << "    " << dir_base << ": " << "Unable to acquire links: " << e.what();
     }
 }
 
 int main(int argc, char *argv[]) {
     char buf[256];
     int c;
+    bool small = false;
 
-    while ((c = getopt(argc, argv, "hv")) != -1)
+    while ((c = getopt(argc, argv, "hvs")) != -1)
         switch (c) {
             case 'h':
                 cout <<
@@ -122,11 +131,20 @@ int main(int argc, char *argv[]) {
                     "    List all input devices from /dev/input/event*" << endl <<
                     "    Display their names, ids, and paths." << endl <<
                     "Usage:" << endl <<
-                    "    lsinput [-hv]" << endl;
+                    "    lsinput [-hvs]" << endl <<
+                    "Options:" << endl <<
+                    "    -h    Display this help info." << endl <<
+                    "    -v    Display version." << endl <<
+                    "    -s    Print each input device on a single line, easier for" << endl <<
+                    "          stream editors like awk and sed to deal with."
+                               << endl;
                 return EXIT_SUCCESS;
             case 'v':
                 printf("lsinput v0.1\n");
                 return EXIT_SUCCESS;
+            case 's':
+                small = true;
+                break;
         }
 
     string devdir = "/dev/input";
@@ -153,10 +171,25 @@ int main(int argc, char *argv[]) {
 
         ret = ioctl(fd, EVIOCGNAME(sizeof(buf)), buf);
         string name(ret > 0 ? buf : "unknown");
-        cout << pathBasename(path.c_str()) << ": " << name << endl;
 
-        printLinks(path, "/dev/input/by-path");
-        printLinks(path, "/dev/input/by-id");
+        PrintLinkFn fn;
+        if (small) {
+            cout << path << "\t" << "\"" << name << "\"";
+            fn = [](const string&, const string& lnk) {
+                     cout << "\t" << pathBasename(lnk);
+                 };
+        } else {
+            cout << pathBasename(path.c_str()) << ": " << name << endl;
+            fn = [](const string& dir, const string& lnk) {
+                     cout << "    " << dir << ": " << pathBasename(lnk) << endl;
+                 };
+        }
+
+        printLinks(path, "/dev/input/by-path", fn);
+        printLinks(path, "/dev/input/by-id", fn);
+
+        if (small)
+            cout << endl;
 
         close(fd);
     }
