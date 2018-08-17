@@ -21,15 +21,15 @@ DEVICES=( "$@" )
 ## Loop over arguments to find a suitable device to listen on.
 while [ "$#" -ge 1 ]; do
     KBD_MODEL="$1"
-    KBD_DEVICE=$(lsinput -s | grep -v if0 | awk "/$KBD_MODEL/"'{print $1}' | head -n1)
-    if [ "$KBD_DEVICE" != "" ]; then
+    DEVICE_FULL=$(lsinput -s | grep -v if0 | grep "$KBD_MODEL" | head -n1)
+    if [ "$DEVICE_FULL" != "" ]; then
         break
     fi
     shift
 done
 
 ## Did not find any device.
-if [ "$KBD_DEVICE" = "" ]; then
+if [ "$DEVICE_FULL" = "" ]; then
     echo "Unable to find any of the following devices:"
     for dev in "${DEVICES[@]}"; do
         echo "    $dev"
@@ -37,7 +37,10 @@ if [ "$KBD_DEVICE" = "" ]; then
     echo "Run lsinput to list input devices"
     exit 1
 fi
-echo "Found device: $KBD_DEVICE"
+
+KBD_DEVICE="$(awk -vFS='\t' '{print $1}' <<< $DEVICE_FULL)"
+KBD_DEVICE_NAME="$(awk -vFS='\t' '{print $2}' <<< $DEVICE_FULL)"
+echo "Found device: $KBD_DEVICE_NAME"
 
 ## Export PID of current shell to kill_hawck
 export SPID=$$
