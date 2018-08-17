@@ -1,3 +1,32 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * lsinput, list input devices from /dev/input/event                                 *
+ *                                                                                   *
+ * Copyright (C) 2018 Jonas Møller (no) <jonasmo441@gmail.com>                       *
+ * All rights reserved.                                                              *
+ *                                                                                   *
+ * Redistribution and use in source and binary forms, with or without                *
+ * modification, are permitted provided that the following conditions are met:       *
+ *                                                                                   *
+ * 1. Redistributions of source code must retain the above copyright notice, this    *
+ *    list of conditions and the following disclaimer.                               *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,      *
+ *    this list of conditions and the following disclaimer in the documentation      *
+ *    and/or other materials provided with the distribution.                         *
+ *                                                                                   *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND   *
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED     *
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE            *
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE      *
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL        *
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR        *
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER        *
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,     *
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE     *
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.              *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+/** @file */
+
 #include <string>
 #include <sstream>
 #include <iostream>
@@ -19,6 +48,14 @@ extern "C" {
 
 using namespace std;
 
+/**
+ * Find symbolic links to a target inode from within a directory.
+ *
+ * @param target_rel Path to the target.
+ * @param dirpath Path to the directory to search for links in.
+ * @return Pointer to vector of paths to symbolic links that
+ *         reference `target_rel`. Must be deleted by the caller.
+ */
 vector<string> *getLinksTo(const string& target_rel, const string& dirpath) {
     using VecT = unique_ptr<vector<string>>;
     DIR *dir = opendir(dirpath.c_str());
@@ -41,12 +78,15 @@ vector<string> *getLinksTo(const string& target_rel, const string& dirpath) {
 
         if (S_ISLNK(stbuf.st_mode)) {
             char lnk_rel_c[PATH_MAX];
+            // Get link contents
             ssize_t len = readlink(path.c_str(), lnk_rel_c, sizeof(lnk_rel_c));
             if (len == -1)
                 throw SystemError("Failure in readlink(): ", errno);
             string lnk_rel(lnk_rel_c, len);
+            // lnk_rel path may only be valid from within the directory.
             ChDir cd(dirpath);
             char *lnk_dst_real = realpath(lnk_rel.c_str(), nullptr);
+            cd.popd(); // May throw SystemError
             if (lnk_dst_real == nullptr)
                 throw SystemError("Failure in realpath(): ", errno);
             string lnk_dst(lnk_dst_real);
@@ -59,7 +99,7 @@ vector<string> *getLinksTo(const string& target_rel, const string& dirpath) {
     return vec.release();
 }
 
-static void printLinks(const string& path, const string& dir) {
+static inline void printLinks(const string& path, const string& dir) {
     string dir_base = pathBasename(dir);
     try {
         auto links = mkuniq(getLinksTo(path, dir));
@@ -113,7 +153,7 @@ int main(int argc, char *argv[]) {
 
         ret = ioctl(fd, EVIOCGNAME(sizeof(buf)), buf);
         string name(ret > 0 ? buf : "unknown");
-        cout << basename(path.c_str()) << ": " << name << endl;
+        cout << pathBasename(path.c_str()) << ": " << name << endl;
 
         printLinks(path, "/dev/input/by-path");
         printLinks(path, "/dev/input/by-id");
