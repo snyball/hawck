@@ -86,14 +86,14 @@ vector<string> *getLinksTo(const string& target_rel, const string& dirpath) {
             string lnk_rel(lnk_rel_c, len);
             // lnk_rel path may only be valid from within the directory.
             ChDir cd(dirpath);
-            char *lnk_dst_real = realpath(lnk_rel.c_str(), nullptr);
+            auto lnk_dst_real = mkuniq(realpath(lnk_rel.c_str(), nullptr), &free);
             cd.popd(); // May throw SystemError
             if (lnk_dst_real == nullptr)
                 throw SystemError("Failure in realpath(): ", errno);
-            string lnk_dst(lnk_dst_real);
-            free(lnk_dst_real);
-            if (target == lnk_dst)
+            char *lnk_dst_real_p = lnk_dst_real.release();
+            if (!strcmp(lnk_dst_real_p, target.c_str()))
                 vec->push_back(string(path));
+            free(lnk_dst_real_p);
         }
     }
 

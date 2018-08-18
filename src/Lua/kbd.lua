@@ -147,7 +147,9 @@ end
 
 function kbd:withCleanMods(f)
   -- Clear all modifiers by sending key-up events for them
-  for code, _ in pairs(self.keys_held) do
+  local keys_held = self.keys_held
+  self.keys_held = {}
+  for code, _ in pairs(keys_held) do
     if isModifier(code) then
       self:up(code)
     end
@@ -155,14 +157,16 @@ function kbd:withCleanMods(f)
 
   udev:flush()
 
-  f()
+  local succ, res = pcall(f)
 
   -- Reset the modifiers by sending key-down events
-  for code, _ in pairs(self.keys_held) do
+  for code, _ in pairs(keys_held) do
     if isModifier(code) then
       self:down(code)
     end
   end
+
+  self.keys_held = keys_held
 
   udev:flush()
 end

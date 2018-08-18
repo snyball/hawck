@@ -121,6 +121,8 @@ class HawckMainWindow(Gtk.ApplicationWindow):
             _, ext = os.path.splitext(fname)
             if ext == ".hwk":
                 self.addEditPage(os.path.join(script_dir, fname))
+        self.insert_key_handler_id = self.connect("onKeyCaptureDone", self.insertKeyHandler)
+        self.handler_block(self.insert_key_handler_id)
         self.window.connect("destroy", lambda *_: sys.exit(0))
         self.window.present()
         self.builder.connect_signals(self)
@@ -226,7 +228,12 @@ class HawckMainWindow(Gtk.ApplicationWindow):
 
     def installScript(self, path: str):
         self.saveCurrentScript()
-        p = Popen([os.path.join(LOCATIONS["hawck_bin"], "install_hwk_script.sh"), path], stdout=PIPE, stderr=STDOUT_REDIR)
+        p = Popen(
+            [
+                os.path.join(LOCATIONS["hawck_bin"],
+                             "install_hwk_script.sh"),
+                path
+            ], stdout=PIPE, stderr=STDOUT_REDIR)
         out = p.stdout.read()
         ret = p.wait()
 
@@ -361,6 +368,19 @@ class HawckMainWindow(Gtk.ApplicationWindow):
             shutil.copy(self.getCurrentEditFile(), path)
         sav_dialog.destroy()
 
+    def insertKeyHandler(self, window, names, codes):
+        self.handler_block(self.insert_key_handler_id)
+        print(f"Captured: {names}")
+        buf = self.getCurrentBuffer()
+        text = "down + "
+        text += " + ".join(n.lower() for n in names[:-1])
+        text += f" + key \"{names[-1].lower()}\" => "
+        buf.insert_at_cursor(text)
+
+    def onInsertKey(self, *_):
+        self.handler_unblock(self.insert_key_handler_id)
+        self.captureKey()
+
     def checkHawckDRunning(self):
         inputd_sw = self.builder.get_object("inputd_switch")
         macrod_sw = self.builder.get_object("macrod_switch")
@@ -458,6 +478,7 @@ class HawckMainWindow(Gtk.ApplicationWindow):
                     accumulator=GObject.signal_accumulator_true_handled)
     def onKeyCaptureDone(self, *_):
         print(f"Keycap done: {_}")
+        self.onKeyCaptureReset()
 
     def captureKey(self):
         win = self.builder.get_object("key_capture_window")

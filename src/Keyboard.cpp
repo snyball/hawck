@@ -57,6 +57,13 @@ void Keyboard::lock() {
     struct input_event ev;
     int down = 0, up = 0;
 
+    // TODO: Figure out initial key downs from this:
+    #if 0
+    unsigned char key_states[KEY_MAX/8 + 1];
+    memset(key_states, 0, sizeof(key_states));
+    ioctl(fd, EVIOCGKEY(sizeof(key_states)), key_states);
+    #endif
+
     // Wait for keyup
     do {
         get(&ev);

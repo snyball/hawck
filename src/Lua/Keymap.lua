@@ -28,6 +28,7 @@
 require "utils"
 
 DEFAULT_KEYMAP = require "keymaps/default_linux"
+ALIASES = require "keymaps/aliases"
 
 KEYMAP_MODS = {"Shift",
                "AltGr",
@@ -81,7 +82,7 @@ function readKeymap(path)
       if name:sub(1, 1) == "+" then
         name = name:sub(2)
       end
-      name = name:lower()
+      -- name = name:lower()
       code = tonumber(code)
       combo_pre_entry = {code, name}
       for v in rest:gmatch("[^%s]+") do
@@ -102,7 +103,7 @@ function readKeymap(path)
 
   local mod_codes = {}
   for i, mod in ipairs(KEYMAP_MODS) do
-    local mod_code = map[mod:lower()] or 0
+    local mod_code = map[mod--[[:lower()]]] or 0
     --print(mod:lower(), mod_code)
     table.insert(mod_codes, mod_code)
   end
@@ -120,8 +121,8 @@ function readKeymap(path)
       if sym_name:sub(1, 1) == "+" then
         sym_name = sym_name:sub(2)
       end
-      if mod_code ~= 0 then
-        combined_keys[sym_name:lower()] = {mod_code, root_code}
+      if mod_code ~= 0 and not combined_keys[sym_name] then
+        combined_keys[sym_name--[[:lower()]]] = {mod_code, root_code}
       end
     end
   end
@@ -145,6 +146,10 @@ function setKeymap(path)
 end
 
 function getKeysym(a)
+  if ALIASES and ALIASES[a] then
+    a = ALIASES[a]
+  end
+
   if KEYMAP and KEYMAP[a] then
     return KEYMAP[a]
   end
@@ -157,6 +162,10 @@ function getKeysym(a)
 end
 
 function getCombo(a)
+  if ALIASES and ALIASES[a] then
+    a = ALIASES[a]
+  end
+
   if COMBO_KEYMAP[a] then
     return COMBO_KEYMAP[a]
   end

@@ -51,10 +51,14 @@ end)
 always = any
 all = any
 
-none = Cond.new(function ()
+never = Cond.new(function ()
     return false
 end)
-never = none
+
+noop = function () end
+nothing = noop
+disable = noop
+off = noop
 
 key = function (key_name)
   __keys[key_name] = true
@@ -65,6 +69,20 @@ end
 
 press = LazyF.new(function (key)
     kbd:press(key)
+end)
+
+write = LazyF.new(function (text)
+  kbd:withCleanMods(function ()
+    for p, c in utf8.codes(text) do
+      local succ, _ = pcall(function ()
+        getEntryFunction(utf8.char(c))()
+        udev:flush()
+      end)
+      if not succ then
+        print("No such key: " .. c)
+      end
+    end
+  end)
 end)
 
 function getEntryFunction(sym)
@@ -122,6 +140,8 @@ end
 ctrl = ctrl_l / ctrl_r
 alt = alt_l / alt_r
 shift = shift_l / shift_r
+control_l = ctrl_l
+control_r = ctrl_r
 
 fn_keys = {}
 for i = 1, 24 do

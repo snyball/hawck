@@ -12,16 +12,19 @@ extern "C" {
     #include <fcntl.h>
     #include <time.h>
     #include <dirent.h>
+    #include <poll.h>
 }
 
 #include "SystemError.hpp"
 #include "UDevice.hpp"
 #include "utils.hpp"
 
+const char hawck_udev_name[] = "Hawck virtual keyboard device";
+
 using namespace std;
 
 static int getDevice(const string &by_name) {
-	char buf[256];
+    char buf[256];
     string devdir = "/dev/input";
     DIR *dir = opendir(devdir.c_str());
     if (dir == nullptr)
@@ -32,18 +35,19 @@ static int getDevice(const string &by_name) {
         int fd, ret;
         sstream ss;
         ss << devdir << "/" << entry->d_name;
-		fd = open(ss.str().c_str(), O_RDWR | O_CLOEXEC | O_NONBLOCK);
-		if (fd < 0)
-			continue;
+        fd = open(ss.str().c_str(), O_RDWR | O_CLOEXEC | O_NONBLOCK);
+        // fd = open(ss.str().c_str(), O_RDONLY);
+        if (fd < 0)
+            continue;
 
-		ret = ioctl(fd, EVIOCGNAME(sizeof(buf)), buf);
+        ret = ioctl(fd, EVIOCGNAME(sizeof(buf)), buf);
         string name(ret > 0 ? buf : "");
         if (name == by_name)
             return fd;
-		close(fd);
-	}
+        close(fd);
+    }
 
-	return -1;
+    return -1;
 }
 
 UDevice::UDevice() {
@@ -62,7 +66,7 @@ UDevice::UDevice() {
     usetup.id.bustype = BUS_USB;
     usetup.id.vendor = 0x1234; /* sample vendor */
     usetup.id.product = 0x5678; /* sample product */
-    strcpy(usetup.name, "Hawck");
+    strcpy(usetup.name, hawck_udev_name);
 
     ioctl(fd, UI_DEV_SETUP, &usetup);
     ioctl(fd, UI_DEV_CREATE);
@@ -117,23 +121,65 @@ void UDevice::emit(int type, int code, int val) {
 }
 
 void UDevice::flush() {
-    // if (evbuf_top == 0)
-    //     ;
-    // // 8 is a heuristic
-    // else if (evbuf_top <= 8)
-    //     write(fd, evbuf, sizeof(evbuf[0]) * evbuf_top);
-    // else {
-    // }
+    if (evbuf_top == 0)
+        return;
 
     input_event *bufp = evbuf;
+    struct pollfd pfd;
     for (size_t i = 0; i < evbuf_top; i++) {
-        write(fd, bufp++, sizeof(*bufp));
+        if (write(fd, bufp++, sizeof(*bufp)) != sizeof(*bufp))
+            throw SystemError("Error in write(): ", errno);
+
         // FIXME FIXME FIXME: This shit is ridiculous but I can't find any documentation
         //                    on how to handle this.
         // Quick-fix until I manage to receive events when keys are pressed
         // too fast
-        usleep(3500);
+        // UPDATE: The bug is specific to GNOME Wayland, no SYN_DROPPED messages
+        // are sent back on the virtual device. Wayland X11 applications work
+        // just fine.
+        // TTYs also seem to not be dropping any keys.
+        // GNOME Wayland applications will drop modifier keys resulting in borked
+        // macros.
+
+        usleep(3800);
+        // usleep(3600);
+        // usleep(13600);
     }
+
+
+    #if 0
+    cout << "BEGIN RECV" << endl;
+    for (;;) {
+        pfd.fd = dfd;
+        pfd.events = POLLIN;
+        // Wait for something to read for 16ms
+        switch (poll(&pfd, 1, 16)) {
+            case -1:
+                // throw SystemError("Error in poll(): ", errno);
+                cout << "Error in poll()" << endl;
+                break;
+
+            case 0:
+                // Timeout, skip events for now.
+                cout << "poll() on loopback kbd timed out." << endl;
+                goto loop_end;
+
+            default: {
+                input_event ev;
+                if (read(dfd, &ev, sizeof(ev)) != sizeof(ev))
+                    throw SystemError("Unable to receive event");
+                cout << "Received event" << endl;
+                if (ev.code == SYN_DROPPED && ev.type == EV_SYN)
+                    cout << "DROPPED" << endl;
+                cout << "ev.code: " << ev.code << endl;
+                cout << "ev.type: " << ev.type << endl;
+                cout << "ev.value: " << ev.value << endl;
+            }
+        }
+    } loop_end:
+    cout << "END RECV" << endl << endl ;
+    #endif
+
     evbuf_top = 0;
 }
 

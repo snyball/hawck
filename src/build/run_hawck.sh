@@ -11,6 +11,11 @@
 ##    ./run_hawck.sh "Logitech G710" "AT Translated"
 ##
 
+if [ "$#" -le 1 ]; then
+    echo "Usage: $0 <device name>..."
+    exit 1
+fi
+
 if ! which lsinput &>/dev/null; then
     echo "Did not find lsinput in PATH, please install it."
     exit 1

@@ -22,6 +22,11 @@ inline std::unique_ptr<T> mkuniq(T *p) {
     return std::unique_ptr<T>(p);
 }
 
+template <class T, class F>
+inline std::unique_ptr<T, F> mkuniq(T *p, F fn) {
+    return std::unique_ptr<T, decltype(fn)>(p, fn);
+}
+
 /**
  * stringstream is too much typing, use sstream (like the header)
  * instead.
