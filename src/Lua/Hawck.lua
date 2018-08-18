@@ -107,6 +107,15 @@ insert = LazyF.new(function (str)
     getEntryFunction(str)()
 end)
 
+replace = LazyF.new(function (key)
+    if kbd:hadKeyDown() then
+      kbd:down(key)
+    elseif kbd:hadKeyUp() then
+      kbd:up(key)
+    end
+end)
+sub = replace
+
 echo = ConcatF.new(function ()
     kbd:echo()
 end)

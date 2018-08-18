@@ -141,8 +141,8 @@ void UDevice::flush() {
         // GNOME Wayland applications will drop modifier keys resulting in borked
         // macros.
 
+        // usleep(700);
         usleep(3800);
-        // usleep(3600);
         // usleep(13600);
     }
 
