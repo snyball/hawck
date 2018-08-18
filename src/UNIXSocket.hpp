@@ -126,7 +126,7 @@ public:
         const size_t len = sizeof(saun.sun_family) + strlen(saun.sun_path);
         while (::connect(fd, (sockaddr*)&saun, len) != 0) {
             fprintf(stderr, "Connection failed, trying again ...\n");
-            sleep(2);
+            usleep(10000);
         }
         fprintf(stderr, "Connection established!\n");
     }

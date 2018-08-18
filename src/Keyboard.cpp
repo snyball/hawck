@@ -29,6 +29,7 @@
 #include "Keyboard.hpp"
 #include <sstream>
 #include <errno.h>
+#include <iostream>
 extern "C" {
     #include <string.h>
 }
@@ -64,6 +65,8 @@ void Keyboard::lock() {
     ioctl(fd, EVIOCGKEY(sizeof(key_states)), key_states);
     #endif
 
+    cout << "\033[32;1;4mKBD READY\033[0m" << endl;
+
     // Wait for keyup
     do {
         get(&ev);
@@ -81,7 +84,7 @@ void Keyboard::lock() {
 
     ioctl(fd, EVIOCGRAB, &grab);
 
-    printf("KBD LOCKED\n");
+    cout << "\033[31;1;4mKBD LOCKED\033[0m" << endl;
 }
 
 void Keyboard::unlock() {

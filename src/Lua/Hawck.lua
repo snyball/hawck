@@ -142,6 +142,7 @@ alt = alt_l / alt_r
 shift = shift_l / shift_r
 control_l = ctrl_l
 control_r = ctrl_r
+control = ctrl
 
 fn_keys = {}
 for i = 1, 24 do
@@ -206,14 +207,14 @@ ProtectedMeta = {
 
 setKeymap("./keymaps/qwerty/no.map")
 
-local OMNIPRESENT = {"control_r",
-                     "control_l",
-                     "control",
-                     "shift_l",
-                     "shift_r",
-                     "altgr",
-                     "alt",
-                     "shift"}
+local OMNIPRESENT = {"Control_R",
+                     "Control_L",
+                     "Control",
+                     "Shift_L",
+                     "Shift_R",
+                     "AltGr",
+                     "Alt",
+                     "Shift"}
 
 for idx, name in ipairs(OMNIPRESENT) do
   __keys[name] = true
