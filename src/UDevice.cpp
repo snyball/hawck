@@ -140,8 +140,18 @@ void UDevice::flush() {
         // TTYs also seem to not be dropping any keys.
         // GNOME Wayland applications will drop modifier keys resulting in borked
         // macros.
+        // UPDATE: XWayland also drops keys, but just not as badly as with
+        //         Wayland clients. I'll have to test this on X11.
+        //         X clients are fine with 500µs of sleep between events,
+        //         while Wayland clients need 3800µs between events.
+        //         It's also worth noting that this is a problem that
+        //         appeared quite suddenly, probably as a result of
+        //         an update.
+        //         There appears to be nothing I can do on my end,
+        //         the clients need to handle SYN_DROPPED events and
+        //         they don't seem to be doing that properly.
 
-        // usleep(700);
+        // usleep(500);
         usleep(3800);
         // usleep(13600);
     }

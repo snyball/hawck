@@ -39,6 +39,7 @@ extern "C" {
     #include <sys/inotify.h>
     #include <limits.h>
     #include <sys/stat.h>
+    #include <unistd.h>
 }
 
 #include <vector>
@@ -48,6 +49,7 @@ extern "C" {
 #include <mutex>
 #include <atomic>
 #include <functional>
+#include <stdexcept>
 
 /** Number of items inside the event buffer of \link FSWatcher \endlink */
 static constexpr size_t EVBUF_ITEMS = 10;
@@ -98,7 +100,7 @@ private:
     std::vector<FSEvent *> events;
     /** Set to true when \link FSWatcher::watch() \endlink is called,
      *  is set to false by calling \link FSWatcher::stop() \endlink */
-    std::atomic<bool> running = true;
+    std::atomic<bool> running = false;
     /** Whether or not to automatically add files that are created in
      *  watched directories. */
     bool auto_add = true;
@@ -182,23 +184,32 @@ public:
      * @param callback Passed to watch()
      */
     inline void begin(const FSWatchFn &callback) {
+        if (running)
+            throw std::logic_error("Have already begun watching.");
+
         std::thread t0([&]() {
                             watch(callback);
                        });
         t0.detach();
+
+        // Wait for the watch() to begin.
+        while (!running)
+            usleep(10);
     }
 
     /** Stop watching.
      * 
      * This call has no effect if watch() was
      * not called beforehand.
-     *
-     * Warning: Calling stop() right after calling watch() might
-     * result in the watch() call never stopping due to a race
-     * condition.
      */
     inline void stop() {
         running = false;
+    }
+
+    /** Check if the watcher is running.
+     */
+    inline bool isRunning() {
+        return running;
     }
 
     /** Set whether or not to receive events about directories */

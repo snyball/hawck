@@ -102,6 +102,7 @@ void FSWatcher::remove(string path) {
     wd_to_path.erase(wd);
     inotify_rm_watch(fd, wd);
 }
+
 vector<FSEvent> *FSWatcher::addFrom(string dir_path) {
     DIR *dir = opendir(dir_path.c_str());
     if (dir == nullptr) {
@@ -140,7 +141,6 @@ FSEvent *FSWatcher::handleEvent(struct inotify_event *ev) {
         string dir_path = wd_to_path[ev->wd];
         stringstream path;
         path << dir_path << "/" << ev->name;
-        cout << "IN_CREATE: " << path.str() << endl;
         if (auto_add)
             try {
                 add(path.str());
@@ -150,7 +150,6 @@ FSEvent *FSWatcher::handleEvent(struct inotify_event *ev) {
         fs_ev = new FSEvent(ev, path.str());
     } else if (ev->mask & (IN_MODIFY | IN_DELETE | IN_DELETE_SELF)) {
         // File modified, save event.
-        cout << "IN_MODIFY: " << wd_to_path[ev->wd] << "(" << (ev->len ? ev->name : "") << ")" << endl;
         fs_ev = new FSEvent(ev, wd_to_path[ev->wd]);
     } else {
         return nullptr;
@@ -218,6 +217,8 @@ void FSWatcher::watch(const function<bool(FSEvent &ev)> &callback) {
         }
         #endif
     }
+
+    this->running = false;
 }
 
 vector<FSEvent *> FSWatcher::getEvents() {

@@ -2,6 +2,7 @@
 
 #include "../catch.hpp"
 #include "../../FSWatcher.hpp"
+#include "../../utils.hpp"
 
 extern "C" {
     #include <unistd.h>
@@ -9,102 +10,143 @@ extern "C" {
 
 using namespace std;
 
-static inline tuple<thread*, FSWatcher*, string> watchOn(string path) {
-    FSWatcher *watcher = new FSWatcher();
-    char *rpath = realpath(path.c_str(), NULL);
-    string test_path(rpath);
-    free(rpath);
-    watcher->add(test_path);
-    std::thread *t0 = new std::thread([&]() -> void {
-                                          watcher->watch();
-                                      });
-    return make_tuple(t0, watcher, test_path);
-}
-
-static inline void finishWatch(thread *t0, FSWatcher *watch) {
-    watch->stop();
-    t0->join();
-    delete watch;
-    delete t0;
-}
-
 constexpr int MAX_RUNS = 1000;
 
-static inline void requireEvent(FSWatcher *w, vector<string>& test_path) {
-    int runs;
-    int i = 0;
-    for (runs = 0; runs < MAX_RUNS; runs++) {
-        usleep(1000);
-        vector<FSEvent *> events = w->getEvents();
-        if (events.size() > 0) {
-            for (FSEvent *ev : events) {
-                REQUIRE(i < test_path.size());
-                REQUIRE(ev->path == test_path[i++]);
-                delete ev;
-            }
-            break;
+struct TestData {
+public:
+    size_t idx;
+    string err;
+};
+
+static inline FSWatchFn getTestFn(FSWatcher *w,
+                                  vector<string>& paths,
+                                  string *err,
+                                  atomic<size_t> &idx) {
+    return [&](FSEvent &ev) {
+               auto cur_path = paths[idx++];
+
+               // Test case mismatch.
+               if (ev.path != cur_path) {
+                   sstream ss;
+                   ss << "Got " << ev.path << " but expected " << cur_path;
+                   *err = ss.str();
+                   return false;
+               }
+
+               // Test cases done.
+               if (idx == paths.size())
+                   return false;
+
+               return true;
+           };
+}
+
+static inline void runTestsCMD(FSWatcher *w, vector<string>& paths, vector<string> cmds) {
+    const int MAX_SLEEPS = 500;
+    const int SLEEP_TIME = 10000;
+    int sleeps = 0;
+    string err = "";
+    atomic<size_t> idx = 0;
+    auto fn = getTestFn(w, paths, &err, idx);
+    w->begin(fn);
+
+    for (string c : cmds)
+        system(c.c_str());
+
+    while (w->isRunning()) {
+        if (sleeps++ > MAX_SLEEPS) {
+            w->stop();
+            FAIL("Timeout");
         }
+        usleep(SLEEP_TIME);
     }
-    REQUIRE(runs != MAX_RUNS);
-    REQUIRE(i == test_path.size());
+    if (err != "") {
+        FAIL(err);
+    }
+}
+
+static inline vector<string> mkTestFiles(int num_files, bool create) {
+    system("rm -r /tmp/hwk-tests");
+    system("mkdir -p /tmp/hwk-tests");
+
+    vector<string> paths;
+    for (int i = 0; i < num_files; i++) {
+        sstream ss;
+        ss << "/tmp/hwk-tests/" << i << ".txt.test";
+        paths.push_back(ss.str());
+    }
+
+    if (create)
+        for (const string& path : paths)
+            system(("touch '" + path + "'").c_str());
+
+    return paths;
+}
+
+static inline vector<string> mkModCMDs(vector<string> &paths) {
+    vector<string> cmds;
+    for (const string& path : paths)
+        cmds.push_back("echo 'test line' >> '" + path + "'");
+    return cmds;
+}
+
+static inline vector<string> mkCreateCMDs(vector<string> &paths) {
+    vector<string> cmds;
+    for (const string& path : paths)
+        cmds.push_back("touch '" + path + "'");
+    return cmds;
+}
+
+static inline vector<string> mkRmCMDs(vector<string> &paths) {
+    vector<string> cmds;
+    for (const string& path : paths)
+        cmds.push_back("rm '" + path + "'");
+    return cmds;
 }
 
 // Test whether or not we receive file change notifications
 // for a single file.
-TEST_CASE("Single file modification", "[FSWatcher]") {
-    system("touch './01.txt.test'");
-
-    auto [t0, watcher, test_path] = watchOn("./01.txt.test");
-
-    system("echo 'test line' >> ./01.txt.test");
-
-    vector<string> paths = {test_path};
-    requireEvent(watcher, paths);
-
-    finishWatch(t0, watcher);
-
-    remove("01.txt.test");
+TEST_CASE("Explicitly watching files, not directories.", "[FSWatcher]") {
+    vector<string> paths = mkTestFiles(20, true);
+    FSWatcher watcher;
+    for (auto path : paths)
+        watcher.add(path);
+    vector<string> cmds = mkModCMDs(paths);
+    runTestsCMD(&watcher, paths, cmds);
 }
 
 // Test whether or not new files are being watched.
 TEST_CASE("Directory file addition", "[FSWatcher]") {
-    system("rm '02.txt.test'");
-    auto [t0, watcher, test_path] = watchOn(".");
-    system("touch '02.txt.test'");
-    system("echo 'test line' >> 02.txt.test");
-    remove("02.txt.test");
-    string test02_path = test_path + "/02.txt.test";
-    vector<string> paths = {test02_path, test02_path, test02_path};
-    requireEvent(watcher, paths);
-    // requireEvent(watcher, test_path);
-    usleep(1000);
-    finishWatch(t0, watcher);
+    vector<string> paths = mkTestFiles(20, false);
+    FSWatcher watcher;
+    watcher.add("/tmp/hwk-tests");
+    vector<string> cmds = mkCreateCMDs(paths);
+    vector<string> cmds_mod = mkModCMDs(paths);
+    vector<string> cmds_rm = mkRmCMDs(paths);
+    for (string cmd : cmds_mod)
+        cmds.push_back(cmd);
+    for (string cmd : cmds_rm)
+        cmds.push_back(cmd);
+    // Cmds: Create files, then modify files, then delete files.
+
+    // Expect three times paths.
+    vector<string> paths_cpy = paths;
+    for (auto path : paths_cpy)
+        paths.push_back(path);
+    for (auto path : paths_cpy)
+        paths.push_back(path);
+
+    runTestsCMD(&watcher, paths, cmds);
 }
 
 // Test FSWatcher::addFrom
 TEST_CASE("Watch whole directory", "[FSWatcher]") {
-    system("rm -r /tmp/hwk-tests");
-    system("mkdir -p /tmp/hwk-tests");
-    system("touch /tmp/hwk-tests/01.txt.test");
-    system("touch /tmp/hwk-tests/02.txt.test");
-    system("touch /tmp/hwk-tests/03.txt.test");
-    system("touch /tmp/hwk-tests/04.txt.test");
+    int num_tests = 30;
+    vector<string> paths = mkTestFiles(num_tests, true);
     FSWatcher watcher;
-    watcher.addFrom("/tmp/hwk-tests");
-    std::thread t0([&]() -> void {
-                       watcher.watch();
-                   });
-    system("echo 'test line' >> /tmp/hwk-tests/01.txt.test");
-    system("echo 'test line' >> /tmp/hwk-tests/02.txt.test");
-    system("echo 'test line' >> /tmp/hwk-tests/03.txt.test");
-    system("echo 'test line' >> /tmp/hwk-tests/04.txt.test");
-    vector<string> paths = {
-        "/tmp/hwk-tests/01.txt.test",
-        "/tmp/hwk-tests/02.txt.test",
-        "/tmp/hwk-tests/03.txt.test",
-        "/tmp/hwk-tests/04.txt.test",
-    };
-    requireEvent(&watcher, paths);
-    watcher.stop();
-    t0.join();
+    vector<FSEvent> *added = watcher.addFrom("/tmp/hwk-tests");
+    REQUIRE(added->size() == num_tests);
+    delete added;
+    vector<string> cmds = mkModCMDs(paths);
+    runTestsCMD(&watcher, paths, cmds);
 }
