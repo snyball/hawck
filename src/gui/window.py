@@ -31,8 +31,11 @@ import threading
 import os
 import sys
 import shutil
+import json
+import re
 from subprocess import Popen, PIPE, STDOUT as STDOUT_REDIR
 from pprint import PrettyPrinter
+from queue import Queue
 
 import gi
 from gi.repository import Gtk
@@ -101,6 +104,103 @@ class KeyCap(GObject.Object):
     def onKeyCaptureDone(self, *_):
         print(f"Keycap done: {_}")
 
+class LogRetriever:
+    def __init__(self):
+        self.logs = []
+        self.max_logs = 5 
+        self.last_log_text = ""
+        self.last_monotonic_time = 0
+        self.dismissed = set()
+
+    def append(self, log):
+        """
+        Return 1 if any logs needed to be popped, 0 otherwise.
+        """
+        num_removed = 0
+        if len(self.logs) >= self.max_logs:
+            self.logs = self.logs[1:]
+            num_removed = 1
+        self.logs.append(log)
+        return num_removed
+
+    def mklog(log):
+        lua_err_rx = re.compile(r"^(.+):(\d)+: (.*)")
+        log["TYPE"], _, log["MESSAGE"] = log["MESSAGE"].partition(":")
+        if log["TYPE"].upper() == "LUA":
+            m = lua_err_rx.match(log["MESSAGE"])
+            log["LUA_FILE"], log["LUA_LINE"], log["LUA_ERROR"] = m.groups()
+            log["LUA_LINE"] = int(log["LUA_LINE"])
+        items = list(log.items())
+        for (k, v) in items:
+            if type(v) == str and v.isdigit():
+                log[k] = int(v)
+        return log
+
+    def update(self):
+        """
+        Update logs, return new logs as well as the number of logs that
+        were removed.
+        """
+        p = Popen(
+            [os.path.join(LOCATIONS["hawck_bin"],
+                            "get-lua-errors.sh"),
+            ], stdout=PIPE, stderr=STDOUT_REDIR)
+        ret = p.wait()
+        if ret != 0:
+            return [], 0
+        out = p.stdout.read().decode("utf-8")
+        # if out == self.last_log_text:
+        #     return [], 0
+        self.last_log_text = out
+        added = []
+        objs = []
+        for line in out.splitlines():
+            obj = json.loads(line.strip())
+            objs.append(LogRetriever.mklog(obj))
+        objs = sorted(objs, key=lambda o: o["__MONOTONIC_TIMESTAMP"])
+        truncated_objs = []
+        last_log = None
+        if self.logs:
+            last_log = self.logs[-1]
+        skips = 0
+        for obj in objs:
+            ## Skip same messages
+            if last_log and obj["MESSAGE"] == last_log["MESSAGE"]:
+                skips += 1
+            else: ## New log
+                if last_log:
+                    last_log["DUP"] = last_log.get("DUP", 1) + skips
+                    truncated_objs.append(last_log)
+                skips = 0
+                last_log = obj
+        if last_log:
+            last_log["DUP"] = last_log.get("DUP", 1) + skips
+            truncated_objs.append(last_log)
+        added = list(o for o in truncated_objs if o["__MONOTONIC_TIMESTAMP"] > self.last_monotonic_time)
+        if added:
+            self.last_monotonic_time = added[-1]["__MONOTONIC_TIMESTAMP"]
+        num_removed = 0
+        for obj in added:
+            num_removed += self.append(obj)
+        return added, num_removed
+
+class TemplateManager:
+    def __init__(self, dir_path):
+        self.dir_path = dir_path
+        self.templates = {}
+
+    ## Get builder instance of template
+    def get(self, name):
+        src = self.templates[name]
+        builder = Gtk.Builder()
+        builder.add_from_string(src)
+        root = builder.get_object("root")
+        root.unparent()
+        return root, builder
+
+    def load(self, name):
+        with open(os.path.join(self.dir_path, name)) as f:
+            self.templates[name] = f.read()
 
 class HawckMainWindow(Gtk.ApplicationWindow):
     __gtype_name__ = 'HawckMainWindow'
@@ -112,6 +212,7 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         self.internal_call = 0
         GObject.type_register(GtkSource.View)
         self.edit_pages = []
+        self.scripts = {}
         self.init_template()
         self.builder = Gtk.Builder()
         self.builder.add_from_file('window.ui')
@@ -145,7 +246,57 @@ class HawckMainWindow(Gtk.ApplicationWindow):
             with open(LOCATIONS["first_use"], "w") as f:
                 f.write("The user has been warned about potential risks of using the software.\n")
 
-        # self.captureKey()
+        self.templates = TemplateManager(".")
+        self.templates.load("error_log.ui")
+        self.logs = LogRetriever()
+        self.updateLogs()
+
+        notebook = self.builder.get_object("edit_notebook")
+        notebook.set_current_page(0)
+
+    def updateLogs(self):
+        added, removed = self.logs.update()
+        loglist = self.builder.get_object("script_error_list")
+
+        for log in added:
+            ## Create new row and prepend it
+            row, builder = self.templates.get("error_log.ui")
+            buf = builder.get_object("error_script_buffer")
+            buf.set_text(log["LUA_ERROR"])
+            label = builder.get_object("error_script_name")
+            label.set_text(os.path.basename(log["LUA_FILE"]))
+            num_dup_label = builder.get_object("num_duplicates")
+            num_dup_label.set_text(str(log.get("DUP", 1)))
+            open_btn = builder.get_object("error_script_btn_open")
+            def openScript(*_):
+                edit_pg = self.builder.get_object("edit_script_box")
+                stack = self.builder.get_object("main_stack")
+                edit_notebook = self.builder.get_object("edit_notebook")
+                sname = HawckMainWindow.getScriptName(log["LUA_FILE"])
+                script = self.scripts[sname]
+                pagenr = script["pagenr"]
+                view = script["view"]
+                buf = script["buffer"]
+                edit_notebook.set_current_page(pagenr)
+                stack.set_visible_child(edit_pg)
+                text_iter = buf.get_start_iter()
+                text_iter.set_line(log["LUA_LINE"])
+                # mark = Gtk.TextMark()
+                # buf.add_mark(mark, text_iter)
+                view.scroll_to_iter(text_iter, 0, True, 0.0, 0.17)
+                errbuf = self.builder.get_object("script_error_buffer")
+                errbuf.set_text(f"{sname}:{log['LUA_LINE']}: {log['LUA_ERROR']}")
+            open_btn.connect("clicked", openScript)
+            loglist.prepend(row)
+            loglist.show_all()
+            row.show_all()
+
+    def onClickUpdateLogs(self, *_):
+        self.updateLogs()
+
+    ## TODO: Write this
+    def onToggleAutoUpdateLog(self, *_):
+        pass
 
     def addEditPage(self, path: str):
         scrolled_window = Gtk.ScrolledWindow()
@@ -170,7 +321,15 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         scrolled_window.add(src_view)
         notebook.append_page(scrolled_window, Gtk.Label(name))
         notebook.show_all()
+        pagenr = len(self.edit_pages)
+        notebook.set_current_page(pagenr)
         self.edit_pages.append(path)
+        sname = HawckMainWindow.getScriptName(path)
+        self.scripts[sname] = {
+            "pagenr": pagenr,
+            "buffer": buf,
+            "view": src_view
+        }
 
     def onImportScriptOK(self, *_):
         file_chooser = self.builder.get_object("import_script_file_button")
@@ -288,25 +447,7 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         except Exception:
             pass
 
-    def internal(self, *args):
-        """
-        This function is mainly to avoid handlers like setScriptEnabled
-        being executed when the state of switches are set by the script.
-        """
-        if args:
-            fn, *_ = args
-            self.internal_call += 1
-            fn()
-        else:
-            was = self.internal_call
-            self.internal_call -= 1
-            if self.internal_call < 0:
-                self.internal_call = 0
-            return was
-
     def setScriptEnabled(self, switch_obj: Gtk.Switch, enabled: bool):
-        if self.internal(): return
-
         hwk_path = self.getCurrentEditFile()
         name = self.getCurrentScriptName()
 

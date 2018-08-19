@@ -36,6 +36,7 @@ extern "C" {
     #include <libnotify/notify.h>
     #include <unistd.h>
     #include <sys/stat.h>
+    #include <syslog.h>
 }
 
 #include "Daemon.hpp"
@@ -266,6 +267,7 @@ bool MacroDaemon::runScript(Lua::Script *sc, struct input_event &ev) {
         lua_getstack(L, 1, &ar);
         // lua_getinfo(L, "l", &ar);
         notify("Lua error", err, sc, &ar);
+        syslog(LOG_ERR, "LUA:%s", err.c_str());
     } else {
         repeat = !lua_toboolean(L, -1);
     }

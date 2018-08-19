@@ -10,16 +10,7 @@ extern "C" {
 
 using namespace std;
 
-constexpr int MAX_RUNS = 1000;
-
-struct TestData {
-public:
-    size_t idx;
-    string err;
-};
-
-static inline FSWatchFn getTestFn(FSWatcher *w,
-                                  vector<string>& paths,
+static inline FSWatchFn getTestFn(vector<string>& paths,
                                   string *err,
                                   atomic<size_t> &idx) {
     return [&](FSEvent &ev) {
@@ -47,7 +38,7 @@ static inline void runTestsCMD(FSWatcher *w, vector<string>& paths, vector<strin
     int sleeps = 0;
     string err = "";
     atomic<size_t> idx = 0;
-    auto fn = getTestFn(w, paths, &err, idx);
+    auto fn = getTestFn(paths, &err, idx);
     w->begin(fn);
 
     for (string c : cmds)
@@ -107,7 +98,7 @@ static inline vector<string> mkRmCMDs(vector<string> &paths) {
 // Test whether or not we receive file change notifications
 // for a single file.
 TEST_CASE("Explicitly watching files, not directories.", "[FSWatcher]") {
-    vector<string> paths = mkTestFiles(20, true);
+    vector<string> paths = mkTestFiles(30, true);
     FSWatcher watcher;
     for (auto path : paths)
         watcher.add(path);
@@ -117,7 +108,7 @@ TEST_CASE("Explicitly watching files, not directories.", "[FSWatcher]") {
 
 // Test whether or not new files are being watched.
 TEST_CASE("Directory file addition", "[FSWatcher]") {
-    vector<string> paths = mkTestFiles(20, false);
+    vector<string> paths = mkTestFiles(30, false);
     FSWatcher watcher;
     watcher.add("/tmp/hwk-tests");
     vector<string> cmds = mkCreateCMDs(paths);
