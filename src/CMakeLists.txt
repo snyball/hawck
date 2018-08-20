@@ -4,10 +4,10 @@ cmake_minimum_required(VERSION 3.11)
 set(CMAKE_CXX_STANDARD 17)
 add_definitions(
     #-masm=intel
-    #-Wall
+    -Wall
     -Wextra
     -std=c++17
-    -fsanitize=address
+    #-fsanitize=address
     -Os 
     -g
     -rdynamic
@@ -29,7 +29,7 @@ target_link_libraries(hawck-macrod
     -lnotify
     -ldbus-glib-1 -ldbus-1 -lgobject-2.0 -lglib-2.0
     -lpthread
-    -fsanitize=address
+    #-fsanitize=address
 )
 
 add_executable(hawck-inputd
@@ -44,7 +44,7 @@ add_executable(hawck-inputd
 
 target_link_libraries(hawck-inputd
     -lpthread
-    -fsanitize=address
+    #-fsanitize=address
 )
 
 ## ======
@@ -60,6 +60,6 @@ add_executable(tests.x64
 )
 
 target_link_libraries(tests.x64
-    -fsanitize=address
+    #-fsanitize=address
     -lpthread
 )

@@ -7,6 +7,7 @@ using namespace std;
 int main(int argc, char *argv[]) {
     #if 1
     const char *home_cstring = getenv("HOME");
+    cout << "hawck-macrod forking ..." << endl;
     if (home_cstring == nullptr) {
         cout << "Unable to find home directory" << endl;
         daemonize("/dev/null");

@@ -11,6 +11,7 @@ int main(int argc, char *argv[]) {
 
     const char *dev = argv[1];
 
+    cout << "hawck-inputd forking ..." << endl;
     daemonize("/var/log/hawck-inputd/log");
 
     try {

@@ -75,9 +75,9 @@ private:
     LUA_METHOD_COLLECT(RemoteUDevice_lua_methods);
 
 public:
-    RemoteUDevice(UNIXSocket<KBDAction> *conn);
+    explicit RemoteUDevice(UNIXSocket<KBDAction> *conn);
 
-    ~RemoteUDevice();
+    virtual ~RemoteUDevice();
 
     virtual void emit(const input_event *send_event) override;
 

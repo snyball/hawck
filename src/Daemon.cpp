@@ -13,7 +13,7 @@ extern "C" {
 #include "SystemError.hpp"
 #include "Daemon.hpp"
 
-#define MESS_WITH_STREAMS 0
+#define MESS_WITH_STREAMS 1
 
 using namespace std;
 
@@ -32,8 +32,8 @@ void dup_streams(const string &stdout_path, const string &stderr_path) {
     }
 
     // Open new output files
-    auto stdout_new = fopen(stdout_path, "w");
-    auto stderr_new = fopen(stderr_path, "w");
+    auto stdout_new = fopen(stdout_path, "wa");
+    auto stderr_new = fopen(stderr_path, "wa");
     if (stdout_new == nullptr || stderr_new == nullptr) {
         throw invalid_argument("Unable to open new stdout and stderr");
     }

@@ -43,6 +43,8 @@ from gi.repository import Gdk
 from gi.repository import GObject
 gi.require_version('GtkSource', '4')
 from gi.repository import GtkSource
+from operator import eq
+from functools import partial as part
 # from gi_composites import GtkTemplate
 
 pprint = PrettyPrinter(indent = 4).pprint
@@ -136,6 +138,13 @@ class LogRetriever:
                 log[k] = int(v)
         return log
 
+    def dismiss(self, log_message):
+        """
+        Filter out logs with log["MESSAGE"] == log_message.
+        """
+        print(f"Filtering of {log_message!r} is not implemented")
+        pass
+
     def update(self):
         """
         Update logs, return new logs as well as the number of logs that
@@ -179,6 +188,8 @@ class LogRetriever:
         added = list(o for o in truncated_objs if o["__MONOTONIC_TIMESTAMP"] > self.last_monotonic_time)
         if added:
             self.last_monotonic_time = added[-1]["__MONOTONIC_TIMESTAMP"]
+        if len(added) > self.max_logs:
+            added = added[self.max_logs:]
         num_removed = 0
         for obj in added:
             num_removed += self.append(obj)
@@ -249,6 +260,7 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         self.templates = TemplateManager(".")
         self.templates.load("error_log.ui")
         self.logs = LogRetriever()
+        self.log_rows = []
         self.updateLogs()
 
         notebook = self.builder.get_object("edit_notebook")
@@ -258,7 +270,21 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         added, removed = self.logs.update()
         loglist = self.builder.get_object("script_error_list")
 
-        for log in added:
+        rm = []
+        print(f"added: {added}")
+        print(f"removed: {removed}")
+        print(f"log_rows_len: {len(self.log_rows)}")
+        if removed >= len(self.log_rows):
+            rm = self.log_rows
+            self.log_rows = []
+        elif removed:
+            self.log_rows, rm = self.log_rows[:removed], self.log_rows[removed:]
+        print(f"log_rows: {self.log_rows}")
+        print(f"rm: {rm}")
+        for row in rm:
+            loglist.remove(row)
+
+        for log in (l for l in added if l["TYPE"] == "LUA"):
             ## Create new row and prepend it
             row, builder = self.templates.get("error_log.ui")
             buf = builder.get_object("error_script_buffer")
@@ -267,7 +293,6 @@ class HawckMainWindow(Gtk.ApplicationWindow):
             label.set_text(os.path.basename(log["LUA_FILE"]))
             num_dup_label = builder.get_object("num_duplicates")
             num_dup_label.set_text(str(log.get("DUP", 1)))
-            open_btn = builder.get_object("error_script_btn_open")
             def openScript(*_):
                 edit_pg = self.builder.get_object("edit_script_box")
                 stack = self.builder.get_object("main_stack")
@@ -286,9 +311,16 @@ class HawckMainWindow(Gtk.ApplicationWindow):
                 view.scroll_to_iter(text_iter, 0, True, 0.0, 0.17)
                 errbuf = self.builder.get_object("script_error_buffer")
                 errbuf.set_text(f"{sname}:{log['LUA_LINE']}: {log['LUA_ERROR']}")
+            def dismissError(*_):
+                err = log["MESSAGE"]
+                self.logs.dismiss(err)
+            open_btn = builder.get_object("error_script_btn_open")
             open_btn.connect("clicked", openScript)
+            dismiss_btn = builder.get_object("error_script_btn_dismiss")
+            dismiss_btn.connect("clicked", dismissError)
             loglist.prepend(row)
             loglist.show_all()
+            self.log_rows.append(row)
             row.show_all()
 
     def onClickUpdateLogs(self, *_):

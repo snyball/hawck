@@ -446,6 +446,8 @@ namespace Lua {
             this->inst = inst;
         }
 
+        virtual ~LuaIface() {}
+
         virtual void luaOpen(lua_State *L, const char *name) {
             // Provide pointer to Lua
             lua_ptr.provide(L);
@@ -481,7 +483,7 @@ namespace Lua {
         std::string src;
         std::string abs_src;
 
-        Script(std::string path);
+        explicit Script(std::string path);
         ~Script() noexcept;
 
         lua_State *getL() noexcept;
