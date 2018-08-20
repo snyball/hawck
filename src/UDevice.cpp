@@ -125,7 +125,6 @@ void UDevice::flush() {
         return;
 
     input_event *bufp = evbuf;
-    struct pollfd pfd;
     for (size_t i = 0; i < evbuf_top; i++) {
         if (write(fd, bufp++, sizeof(*bufp)) != sizeof(*bufp))
             throw SystemError("Error in write(): ", errno);
@@ -158,6 +157,7 @@ void UDevice::flush() {
 
 
     #if 0
+    struct pollfd pfd;
     cout << "BEGIN RECV" << endl;
     for (;;) {
         pfd.fd = dfd;

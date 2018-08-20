@@ -64,8 +64,8 @@ if ! ninja -j8; then
     exit 1
 fi
 
-./hawck-inputd "$KBD_DEVICE" &
-./hawck-macrod &
+./src/hawck-inputd "$KBD_DEVICE" &
+./src/hawck-macrod &
 
 ## Wait for interrupt
 while true; do

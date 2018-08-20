@@ -909,7 +909,7 @@ stack traceback:
                       <object class="GtkImage">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="pixbuf">icons/alt_hawck_logo_v2_red_128x128.png</property>
+                        <property name="pixbuf">../../../../../../../../usr/share/hawck/icons/alt_hawck_logo_v2_red_128x128.png</property>
                       </object>
                       <packing>
                         <property name="left_attach">0</property>
@@ -1087,14 +1087,37 @@ stack traceback:
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
+                      <object class="GtkSwitch" id="script_enabled_switch">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                      </object>
+                      <packing>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
                       <object class="GtkButton">
-                        <property name="label" translatable="yes">Key</property>
+                        <property name="label" translatable="yes">Save as</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
-                        <property name="image">img_icon_key</property>
+                        <property name="image">image7</property>
                         <property name="always_show_image">True</property>
-                        <signal name="clicked" handler="onInsertKey" swapped="no"/>
+                        <signal name="clicked" handler="saveScript" swapped="no"/>
+                      </object>
+                      <packing>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="use_script_btn">
+                        <property name="label" translatable="yes">Use</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="image">image8</property>
+                        <property name="always_show_image">True</property>
+                        <signal name="clicked" handler="useScript" swapped="no"/>
                       </object>
                       <packing>
                         <property name="position">0</property>
@@ -1105,7 +1128,7 @@ stack traceback:
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
-                        <property name="popover">delete_script_popover</property>
+                        <property name="popover">popover4</property>
                         <child>
                           <object class="GtkGrid">
                             <property name="visible">True</property>
@@ -1116,7 +1139,7 @@ stack traceback:
                               <object class="GtkLabel">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
-                                <property name="label" translatable="yes">Delete</property>
+                                <property name="label" translatable="yes">Import</property>
                               </object>
                               <packing>
                                 <property name="left_attach">1</property>
@@ -1127,7 +1150,7 @@ stack traceback:
                               <object class="GtkImage">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
-                                <property name="icon_name">edit-delete</property>
+                                <property name="icon_name">document-open</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -1187,7 +1210,7 @@ stack traceback:
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
-                        <property name="popover">popover4</property>
+                        <property name="popover">delete_script_popover</property>
                         <child>
                           <object class="GtkGrid">
                             <property name="visible">True</property>
@@ -1198,7 +1221,7 @@ stack traceback:
                               <object class="GtkLabel">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
-                                <property name="label" translatable="yes">Import</property>
+                                <property name="label" translatable="yes">Delete</property>
                               </object>
                               <packing>
                                 <property name="left_attach">1</property>
@@ -1209,7 +1232,7 @@ stack traceback:
                               <object class="GtkImage">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
-                                <property name="icon_name">document-open</property>
+                                <property name="icon_name">edit-delete</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -1224,37 +1247,14 @@ stack traceback:
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkButton" id="use_script_btn">
-                        <property name="label" translatable="yes">Use</property>
-                        <property name="visible">True</property>
-                        <property name="can_focus">True</property>
-                        <property name="receives_default">True</property>
-                        <property name="image">image8</property>
-                        <property name="always_show_image">True</property>
-                        <signal name="clicked" handler="useScript" swapped="no"/>
-                      </object>
-                      <packing>
-                        <property name="position">0</property>
-                      </packing>
-                    </child>
-                    <child>
                       <object class="GtkButton">
-                        <property name="label" translatable="yes">Save as</property>
+                        <property name="label" translatable="yes">Key</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
-                        <property name="image">image7</property>
+                        <property name="image">img_icon_key</property>
                         <property name="always_show_image">True</property>
-                        <signal name="clicked" handler="saveScript" swapped="no"/>
-                      </object>
-                      <packing>
-                        <property name="position">0</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkSwitch" id="script_enabled_switch">
-                        <property name="visible">True</property>
-                        <property name="can_focus">True</property>
+                        <signal name="clicked" handler="onInsertKey" swapped="no"/>
                       </object>
                       <packing>
                         <property name="position">0</property>
@@ -1930,7 +1930,7 @@ stack traceback:
     <property name="website">https://github.com/snyball/Hawck</property>
     <property name="website_label" translatable="yes">GitHub</property>
     <property name="authors">Jonas Møller</property>
-    <property name="logo">icons/alt_hawck_logo_v2_red_256x256.png</property>
+    <property name="logo">../../../../../../../../usr/share/hawck/icons/alt_hawck_logo_v2_red_256x256.png</property>
     <property name="license_type">bsd</property>
     <child>
       <placeholder/>

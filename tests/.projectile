@@ -1,0 +1,11 @@
+(setq c-language-include-directories
+      '("../src"
+        "."))
+        
+(setq c++-language-include-directories
+      '("../src"
+        "."))
+
+(setq cpp-language-include-directories
+      '("../src"
+        "."))

@@ -1,10 +1,3 @@
-project('Hawck', 'cpp', version : '0.4',
-        default_options : ['c_std=c11',
-                           'cpp_std=c++17',
-                           '-O=s',
-                          ]
-       )
-
 luadep = dependency('lua', version : '>=5.3')
 gtkdep = dependency('gtk+-3.0', version: '>=3.6')
 dbusdep = dependency('dbus-1')
@@ -27,7 +20,8 @@ executable('hawck-macrod',
            macrod_src,
            dependencies : [luadep, gtkdep, dbusdep,
                            gobjectdep, glibdep, pthreaddep,
-                           notifydep]
+                           notifydep],
+           install : true
           )
 
 inputd_src = [
@@ -41,20 +35,11 @@ inputd_src = [
 ]
 executable('hawck-inputd',
            inputd_src,
-           dependencies : [pthreaddep]
-          )
-
-tests_src = [
-  'tests/CSV-tests.cpp',
-  'tests/FSWatcher-tests.cpp',
-  'tests/tests-main.cpp',
-  'FSWatcher.cpp',
-  'CSV.cpp'
-]
-executable('hawck-tests',
-           tests_src,
-           dependencies : [pthreaddep, catch2dep]
+           dependencies : [pthreaddep],
+           install : true
           )
 
 executable('lsinput',
-           'tools/lsinput.cpp')
+           'tools/lsinput.cpp',
+           install : true
+          )

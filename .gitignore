@@ -1,0 +1,12 @@
+*.html
+*.pyc
+__pycache__
+*.o
+unused/*
+*~
+.#*
+.~*
+build/*
+latex/*
+html/*
+*.out

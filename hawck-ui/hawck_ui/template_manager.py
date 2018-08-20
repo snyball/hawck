@@ -1,7 +1,6 @@
-#!/usr/bin/python3
-
 ## ================================================================================
-## main.py
+## template_manager.py is a part of hawck-ui, which is distributed under the
+## following license:
 ##
 ## Copyright (C) 2018 Jonas Møller (no) <jonasmo441@gmail.com>
 ## All rights reserved.
@@ -28,28 +27,27 @@
 ## SOFTWARE.
 ## ================================================================================
 
-import sys
-import gi
+import os
 
-gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk
 
-from gi.repository import Gtk, Gio
+class TemplateManager:
+    def __init__(self, dir_path):
+        self.dir_path = dir_path
+        self.templates = {}
 
-from window import HawckMainWindow
+    ## Get builder instance of template
+    def get(self, name):
+        src = self.templates[name]
+        builder = Gtk.Builder()
+        builder.add_from_string(src)
+        root = builder.get_object("root")
+        root.unparent()
+        return root, builder
 
+    def load(self, name):
+        with open(os.path.join(self.dir_path, name)) as f:
+            self.insert(name, f.read())
 
-class Application(Gtk.Application):
-    def __init__(self):
-        super().__init__(application_id='org.gnome.Hawck-Ui',
-                         flags=Gio.ApplicationFlags.FLAGS_NONE)
-
-    def do_activate(self):
-        win = HawckMainWindow(application=self)
-
-def main(version):
-    app = Application()
-    app.run(sys.argv)
-    # Gtk.main()
-
-if __name__ == "__main__":
-    main(3)
+    def insert(self, name, string):
+        self.templates[name] = string

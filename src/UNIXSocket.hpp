@@ -45,10 +45,7 @@ extern "C" {
 #include <exception>
 #include <system_error>
 #include <cstring>
-
-#include "json.hpp"
-
-using json = nlohmann::json;
+#include <vector>
 
 class SocketError : public std::exception {
 private:
@@ -234,44 +231,5 @@ public:
             throw SocketError("Unable to accept connections.");
         }
         return ns;
-    }
-};
-
-/**
- * Json communication channel.
- *
- * TODO: Finish this class up and test it.
- */
-class JSONChannel {
-private:
-    int fd;
-
-public:
-    static const ssize_t MAX_JSON_MSG_LEN = 8192;
-
-    explicit JSONChannel(int fd) : fd(fd) {}
-
-    json recv() {
-        ssize_t len;
-        recvAll(fd, &len);
-        if (len > JSONChannel::MAX_JSON_MSG_LEN) {
-            throw SocketError("Message was too large");
-        }
-
-        char msg[len];
-        recvAll(fd, msg, len);
-
-        return json::parse(msg);
-    }
-
-    void send(const json &obj) {
-        std::string data = obj.dump();
-        ssize_t len = data.size();
-        if (::send(fd, &len, sizeof(len), 0) != sizeof(len)) {
-            throw SocketError("Unable to send json message length");
-        }
-        if (::send(fd, data.c_str(), len, 0) != len) {
-            throw SocketError("Unable to send json message");
-        }
     }
 };
