@@ -60,7 +60,7 @@ function kill_hawck() {
 
 trap kill_hawck SIGINT
 
-if ! make -j8; then
+if ! ninja -j8; then
     exit 1
 fi
 

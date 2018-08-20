@@ -1,8 +1,8 @@
 #include <iostream>
 
-#include "../catch.hpp"
-#include "../../FSWatcher.hpp"
-#include "../../utils.hpp"
+#include <catch2/catch.hpp>
+#include "FSWatcher.hpp"
+#include "utils.hpp"
 
 extern "C" {
     #include <unistd.h>

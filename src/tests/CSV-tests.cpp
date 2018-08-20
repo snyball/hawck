@@ -1,5 +1,5 @@
-#include "../catch.hpp"
-#include "../../CSV.hpp"
+#include <catch2/catch.hpp>
+#include "CSV.hpp"
 
 // TODO: Test with random data.
 

@@ -12,6 +12,7 @@ gobjectdep = dependency('gobject-2.0')
 glibdep = dependency('glib-2.0')
 pthreaddep = dependency('threads')
 notifydep = dependency('libnotify')
+catch2dep = dependency('catch2')
 
 macrod_src = [
   'RemoteUDevice.cpp',
@@ -44,15 +45,16 @@ executable('hawck-inputd',
           )
 
 tests_src = [
-  'tests/CSV-tests/CSV-tests.cpp',
-  'tests/FSWatcher-tests/FSWatcher-tests.cpp',
+  'tests/CSV-tests.cpp',
+  'tests/FSWatcher-tests.cpp',
   'tests/tests-main.cpp',
   'FSWatcher.cpp',
   'CSV.cpp'
 ]
 executable('hawck-tests',
            tests_src,
-           dependencies : [pthreaddep]
+           dependencies : [pthreaddep, catch2dep]
           )
 
-executable('lsinput', 'tools/lsinput.cpp')
+executable('lsinput',
+           'tools/lsinput.cpp')
