@@ -67,3 +67,7 @@ chmod 770 /var/lib/hawck-input
 chown hawck-input:hawck-input /var/lib/hawck-input/keys
 chmod 750 /var/lib/hawck-input/keys
 
+## Make sure that hawck-input can create virtual input devices.
+## FIXME: Is this preserved on reboot?
+chown root:input /dev/uinput
+chmod 660 /dev/uinput

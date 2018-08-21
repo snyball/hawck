@@ -77,7 +77,7 @@ static inline void initEventStrs()
     event_str[EV_MAX      ] = "MAX"       ;
 }
 
-MacroDaemon::MacroDaemon() : kbd_srv("/var/lib/hawckd-input/kbd.sock") {
+MacroDaemon::MacroDaemon() : kbd_srv("/var/lib/hawck-input/kbd.sock") {
     initEventStrs();
     notify_init("Hawck");
     string HOME(getenv("HOME"));

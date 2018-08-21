@@ -30,6 +30,7 @@ require "utils"
 require "match"
 require "app"
 kbd = require "kbd"
+local unpack = table.unpack
 
 FALLTHROUGH = 0x3141592654
 
