@@ -33,7 +33,6 @@ meson -Ddesktop_user=$(whoami) || die
 meson configure -Ddesktop_user=$(whoami) || die
 ninja -j4 || die
 ninja hawck-ui || die
-exit 1
 ninja install || die
 popd
 
