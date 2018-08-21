@@ -1,2 +1,2 @@
-from main import main
+from hawck_ui.main import main
 main()

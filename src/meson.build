@@ -1,11 +1,14 @@
-luadep = dependency('lua', version : '>=5.3')
+luadep = dependency('lua', version : '>=5.3', required : false)
+if not luadep.found()
+  luadep = dependency('lua5.3', version : '>=5.3.0')
+endif
+
 gtkdep = dependency('gtk+-3.0', version: '>=3.6')
 dbusdep = dependency('dbus-1')
 gobjectdep = dependency('gobject-2.0')
 glibdep = dependency('glib-2.0')
 pthreaddep = dependency('threads')
 notifydep = dependency('libnotify')
-catch2dep = dependency('catch2')
 
 macrod_src = [
   'RemoteUDevice.cpp',

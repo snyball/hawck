@@ -38,7 +38,7 @@ import gi
 from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import GObject
-gi.require_version('GtkSource', '4')
+#gi.require_version('GtkSource', '3')
 from gi.repository import GtkSource
 
 from hawck_ui.template_manager import TemplateManager

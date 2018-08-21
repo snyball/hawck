@@ -13,6 +13,9 @@ add_global_arguments('-Wno-parentheses',
 add_global_arguments('-Os',
                      language : 'cpp')
 
+add_global_arguments('-I/usr/include/lua5.3',
+                     language : 'cpp')
+
 inc = include_directories('src')
 
 subdir('src')

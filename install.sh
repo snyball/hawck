@@ -20,15 +20,20 @@ if ! doxygen &>/dev/null; then
     echo "Failed, skipping."
 fi
 
+## Install dependencies
+if which apt; then
+    pkexec xargs apt install < build-scripts/dependencies/debian-deps.txt
+fi
+
 mkdir build
 cp build-scripts/run-hawck.sh build/
-
 ## Configure, build, install
 pushd "build"
 meson -Ddesktop_user=$(whoami) || die
 meson configure -Ddesktop_user=$(whoami) || die
 ninja -j4 || die
 ninja hawck-ui || die
+exit 1
 ninja install || die
 popd
 
