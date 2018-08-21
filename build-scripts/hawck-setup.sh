@@ -1,35 +1,30 @@
-#!/usr/bin/pkexec /bin/bash
+#!/bin/bash
 
 ##
 ## Script to be run as root.
 ##
 
 export SPID=$$
-function fail() {
-    echo "$1"
+function die() {
+    echo "$1" >&2
     kill $SPID
 }
 
-if [ "$#" -lt 2 ]; then
-    fail "Not enough arguments, do not use this script directly, use install.sh"
+if [ "$#" -lt 1 ]; then
+    die "Not enough arguments, do not use this script directly, use install.sh"
 fi
 USER="$1"
-HAWCK_SRC_ROOT="$2"
 
-pushd "$HAWCK_SRC_ROOT"
-
-pushd "hawck-ui"
-chmod +x setup.py
-if ! ./setup.py; then
-    fail "Unable to install hawck-ui"
-fi
-popd
+pushd "${MESON_SOURCE_ROOT}"
 
 HAWCK_BIN=/usr/share/hawck/bin
 mkdir -p "$HAWCK_BIN"
 pushd "src/scripts"
 cp ./*.sh "$HAWCK_BIN/"
-chmod 755 "$HAWCK_BIN/*.sh"
+for script in $HAWCK_BIN/*.sh; do
+    echo "Script: $script"
+    chmod 755 "$script"
+done
 chown -R root:root "$HAWCK_BIN"
 popd
 
@@ -39,6 +34,9 @@ cp src/Lua/*.lua "$HAWCK_LLIB/"
 
 cp -r keymaps /usr/share/hawck/keymaps
 cp -r icons /usr/share/hawck/icons
+
+#find /usr/share/hawck -type d -exec chmod 755 '{}' \;
+#find /usr/share/hawck \( -type f -and -not -name "*.sh" \) -exec chmod 755 '{}' \;
 
 echo "Currently in: $(pwd -P)"
 USER_HOME=$(realpath /home/$USER/)
@@ -66,6 +64,6 @@ chown hawck-input:hawck-input-share /var/lib/hawck-input
 chmod 770 /var/lib/hawck-input
 
 ## Make sure the keys are locked down with correct permissions.
-chown hwack-input:hawck-input /var/lib/hawck-input/keys
+chown hawck-input:hawck-input /var/lib/hawck-input/keys
 chmod 750 /var/lib/hawck-input/keys
 

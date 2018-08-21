@@ -1,0 +1,1 @@
+option('desktop_user', type : 'string', value : '', description : 'The desktop user installing Hawck')
