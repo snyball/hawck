@@ -13,7 +13,7 @@ extern "C" {
 #include "SystemError.hpp"
 #include "Daemon.hpp"
 
-#define MESS_WITH_STREAMS 0
+#define MESS_WITH_STREAMS 1
 
 using namespace std;
 
