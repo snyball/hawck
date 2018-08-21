@@ -3,11 +3,13 @@ Description=Hawck input daemon
 #After=
 
 [Service]
+User=hawck-input
+Group=hawck-input
 WorkingDirectory=/var/lib/hawck-input
 Type=simple
-ExecStart=/usr/local/bin/hawck-inputd
+ExecStart=/bin/bash -c '/usr/local/bin/hawck-inputd $(xargs /usr/share/hawck/bin/get-kbd.sh < /var/lib/hawck-input/keyboards.txt)'
 ExecStop=/bin/bash -c 'kill $(pidof hawck-inputd)'
-TimeoutStopSec=5
+#TimeoutStopSec=5
 KillMode=mixed
 
 [Install]

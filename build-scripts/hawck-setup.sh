@@ -54,11 +54,13 @@ HAWCK_LLIB=/usr/share/hawck/LLib
 mkdir -p "$HAWCK_LLIB"
 cp src/Lua/*.lua "$HAWCK_LLIB/"
 
-cp -r keymaps /usr/share/hawck/keymaps
-cp -r icons /usr/share/hawck/icons
+KEYMAPS_DIR=/usr/share/hawck/keymaps
+[ -d $KEYMAPS_DIR ] && rm -r $KEYMAPS_DIR
+cp -r keymaps $KEYMAPS_DIR
 
-#find /usr/share/hawck -type d -exec chmod 755 '{}' \;
-#find /usr/share/hawck \( -type f -and -not -name "*.sh" \) -exec chmod 755 '{}' \;
+ICONS_DIR=/usr/share/hawck/icons
+[ -d $ICONS_DIR ] && rm -r $ICONS_DIR
+cp -r icons $ICONS_DIR
 
 BIN=/usr/local/bin/
 
@@ -82,8 +84,12 @@ cp build-scripts/99-hawck-input.rules /etc/udev/rules.d/
 chown root:root /etc/udev/rules.d/99-hawck-input.rules
 chmod 644 /etc/udev/rules.d/99-hawck-input.rules
 
+## Hawck desktop integration.
 cp build-scripts/hawck.desktop /usr/share/applications/
 chmod 644 /usr/share/applications/hawck.desktop
+
+## Default keyboards to listen on.
+cp build-scripts/keyboards.txt /var/lib/hawck-input/
 
 popd &>/dev/null ## Done installing files
 
