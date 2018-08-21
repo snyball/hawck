@@ -1,0 +1,15 @@
+[Unit]
+Description=Hawck input daemon
+#After=
+
+[Service]
+WorkingDirectory=/var/lib/hawck-input
+Type=simple
+ExecStart=/usr/local/bin/hawck-inputd
+ExecStop=/bin/bash -c 'kill $(pidof hawck-inputd)'
+TimeoutStopSec=5
+KillMode=mixed
+
+[Install]
+WantedBy=multi-user.target
+
