@@ -52,10 +52,11 @@ for res in 32 64 128 256 512; do
     res2="$res"'x'"$res"
     icon_src="alt_hawck_logo_v2_red_$res2.png"
     if [ -f "$icon_src" ]; then
-        cp "$icon_src" /usr/share/icons/hicolor/$res2/hawck.png
+        cp "$icon_src" /usr/share/icons/hicolor/$res2/apps/hawck.png
     fi
 done
 popd
+gtk-update-icon-cache /usr/share/icons/hicolor/
 
 ## Install rules to make /dev/uinput available to hawck-uinput users
 cp build-scripts/99-hawck-input.rules /etc/udev/rules.d/
@@ -85,7 +86,7 @@ chown hawck-input:hawck-input-share /var/lib/hawck-input
 chmod 770 /var/lib/hawck-input
 
 ## Make sure the keys are locked down with correct permissions.
-chown hawck-input:hawck-input /var/lib/hawck-input/keys
+chown hawck-input:hawck-input-share /var/lib/hawck-input/keys
 chmod 750 /var/lib/hawck-input/keys
 
 ## Make sure that hawck-input can create virtual input devices.
