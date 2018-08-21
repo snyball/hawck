@@ -22,7 +22,7 @@ fi
 
 ## Install dependencies
 if which apt; then
-    pkexec xargs apt install < build-scripts/dependencies/debian-deps.txt
+    pkexec xargs apt -y install < build-scripts/dependencies/debian-deps.txt
 fi
 
 mkdir build

@@ -46,6 +46,25 @@ BIN=/usr/local/bin/
 cp src/hwk2lua/hwk2lua.py "$BIN/hwk2lua"
 chmod 755 "$BIN/hwk2lua"
 
+## Copy icons
+pushd "icons"
+for res in 32 64 128 256 512; do
+    res2="$res"'x'"$res"
+    icon_src="alt_hawck_logo_v2_red_$res2.png"
+    if [ -f "$icon_src" ]; then
+        cp "$icon_src" /usr/share/icons/hicolor/$res2/hawck.png
+    fi
+done
+popd
+
+## Install rules to make /dev/uinput available to hawck-uinput users
+cp build-scripts/99-hawck-input.rules /etc/udev/rules.d/
+chown root:root /etc/udev/rules.d/99-hawck-input.rules
+chmod 644 /etc/udev/rules.d/99-hawck-input.rules
+
+cp build-scripts/hawck.desktop /usr/share/applications/
+chmod 644 /usr/share/applications/hawck.desktop
+
 popd ## Done installing files
 
 ## Set up hawck-input home directory
@@ -57,6 +76,8 @@ usermod -aG input hawck-input
 usermod --home /var/lib/hawck-input hawck-input
 groupadd hawck-input-share
 usermod -aG hawck-input-share hawck-input
+groupadd hawck-uinput
+usermod -aG hawck-uinput hawck-input
 
 ## Allow for sharing of key inputs via UNIX sockets.
 usermod -aG hawck-input-share "$USER"
@@ -71,3 +92,5 @@ chmod 750 /var/lib/hawck-input/keys
 ## FIXME: Is this preserved on reboot?
 chown root:input /dev/uinput
 chmod 660 /dev/uinput
+
+
