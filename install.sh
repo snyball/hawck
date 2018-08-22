@@ -22,11 +22,12 @@ fi
 
 ## Install dependencies
 if which apt; then
-    pkexec xargs apt -y install < build-scripts/dependencies/debian-deps.txt || die "Failed to install dependencies"
+    pkexec xargs apt -y install < bin/dependencies/debian-deps.txt || die "Failed to install dependencies"
 fi
 
 mkdir build
-cp build-scripts/run-hawck.sh build/
+cp bin/run-hawck.sh build/
+cp bin/run-tests.sh build/
 ## Configure, build, install
 pushd "build" &>/dev/null
 meson -Ddesktop_user=$(whoami) || die "Failed to create build"

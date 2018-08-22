@@ -77,16 +77,16 @@ popd &>/dev/null
 gtk-update-icon-cache /usr/share/icons/hicolor/ && ok "Updated icon cache"
 
 ## Install rules to make /dev/uinput available to hawck-uinput users
-cp build-scripts/99-hawck-input.rules /etc/udev/rules.d/
+cp bin/99-hawck-input.rules /etc/udev/rules.d/
 chown root:root /etc/udev/rules.d/99-hawck-input.rules
 chmod 644 /etc/udev/rules.d/99-hawck-input.rules
 
 ## Hawck desktop integration.
-cp build-scripts/hawck.desktop /usr/share/applications/
+cp bin/hawck.desktop /usr/share/applications/
 chmod 644 /usr/share/applications/hawck.desktop
 
 ## Default keyboards to listen on.
-cp build-scripts/keyboards.txt /var/lib/hawck-input/
+cp bin/keyboards.txt /var/lib/hawck-input/
 
 popd &>/dev/null ## Done installing files
 

@@ -4,7 +4,7 @@ catch2dep = dependency('catch2', required : false)
 if not catch2dep.found()
   message('Downloading Catch2 header file ...')
   p = run_command(
-    '../build-scripts/dl-dep.sh',
+    '../bin/dl-dep.sh',
     'https://github.com/catchorg/Catch2/releases/download/v2.3.0/catch.hpp',
     'catch2'
     )
