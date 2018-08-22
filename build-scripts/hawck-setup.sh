@@ -39,14 +39,12 @@ pushd "${MESON_SOURCE_ROOT}" &>/dev/null
 
 HAWCK_BIN=/usr/share/hawck/bin
 mkdir -p "$HAWCK_BIN"
-pushd "src/scripts" &>/dev/null
-cp ./*.sh "$HAWCK_BIN/"
-for script in $HAWCK_BIN/*.sh; do
-    echo "Script: $script"
-    chmod 755 "$script"
+for src in src/scripts/*.sh; do
+    name=$(basename $src)
+    echo "\$ install -m 755 '$src' '$HAWCK_BIN/$name'"
+    install -m 755 "$src" "$HAWCK_BIN/$name"
 done
 chown -R root:root "$HAWCK_BIN"
-popd &>/dev/null
 
 ok "Installed scripts to hawck/bin"
 
@@ -64,8 +62,7 @@ cp -r icons $ICONS_DIR
 
 BIN=/usr/local/bin/
 
-cp src/hwk2lua/hwk2lua.py "$BIN/hwk2lua"
-chmod 755 "$BIN/hwk2lua"
+install -m 755 src/hwk2lua/hwk2lua.py "$BIN/hwk2lua"
 
 ## Copy icons
 pushd "icons" &>/dev/null
@@ -117,8 +114,8 @@ chown hawck-input:hawck-input-share /var/lib/hawck-input/keys
 chmod 750 /var/lib/hawck-input/keys
 
 ## Make sure that hawck-input can create virtual input devices.
-## FIXME: Is this preserved on reboot?
-chown root:input /dev/uinput
+## After a reboot this will be done by the 99-hawck-input.rules file.
+chown root:hawck-uinput /dev/uinput
 chmod 660 /dev/uinput
 
 echo -e "$WHITEB""Installation was succesful$NC"
