@@ -49,7 +49,7 @@ class Application(Gtk.Application):
 def main():
     app = Application()
     app.run(sys.argv)
-    # Gtk.main()
+    return 0
 
 if __name__ == "__main__":
     main()
