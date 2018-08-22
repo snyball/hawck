@@ -66,6 +66,8 @@ struct FSEvent {
     struct stat stbuf;
     /** True if this event was sent as a result of FSWatcher::add() */
     bool added = false;
+    /** True if this event was sent as a result of file deletion. */
+    bool deleted = false;
 
     /** Initialize an FSEvent from an inotify event */
     FSEvent(struct inotify_event *ev, std::string path);

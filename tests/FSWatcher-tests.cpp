@@ -14,6 +14,7 @@ static inline FSWatchFn getTestFn(vector<string>& paths,
                                   string *err,
                                   atomic<size_t> &idx) {
     return [&](FSEvent &ev) {
+               REQUIRE(idx < paths.size());
                auto cur_path = paths[idx++];
 
                // Test case mismatch.
@@ -32,6 +33,15 @@ static inline FSWatchFn getTestFn(vector<string>& paths,
            };
 }
 
+static inline void system_s(string cmd) {
+    int ret = system(cmd.c_str());
+    if (ret != 0) {
+        sstream ss;
+        ss << "Command `" << cmd << "` exited with " << ret;
+        throw SystemError(ss.str());
+    }
+}
+
 static inline void runTestsCMD(FSWatcher *w, vector<string>& paths, vector<string> cmds) {
     const int MAX_SLEEPS = 500;
     const int SLEEP_TIME = 10000;
@@ -42,11 +52,12 @@ static inline void runTestsCMD(FSWatcher *w, vector<string>& paths, vector<strin
     w->begin(fn);
 
     for (string c : cmds)
-        system(c.c_str());
+        system_s(c);
 
     while (w->isRunning()) {
         if (sleeps++ > MAX_SLEEPS) {
             w->stop();
+	    while (w->isRunning()) continue;
             FAIL("Timeout");
         }
         usleep(SLEEP_TIME);
@@ -58,7 +69,7 @@ static inline void runTestsCMD(FSWatcher *w, vector<string>& paths, vector<strin
 
 static inline vector<string> mkTestFiles(int num_files, bool create) {
     system("rm -r /tmp/hwk-tests");
-    system("mkdir -p /tmp/hwk-tests");
+    system_s("mkdir -p /tmp/hwk-tests");
 
     vector<string> paths;
     for (int i = 0; i < num_files; i++) {
@@ -69,7 +80,7 @@ static inline vector<string> mkTestFiles(int num_files, bool create) {
 
     if (create)
         for (const string& path : paths)
-            system(("touch '" + path + "'").c_str());
+            system_s("touch '" + path + "'");
 
     return paths;
 }
@@ -97,6 +108,7 @@ static inline vector<string> mkRmCMDs(vector<string> &paths) {
 
 // Test whether or not we receive file change notifications
 // for a single file.
+#if 1
 TEST_CASE("Explicitly watching files, not directories.", "[FSWatcher]") {
     vector<string> paths = mkTestFiles(30, true);
     FSWatcher watcher;
@@ -105,6 +117,7 @@ TEST_CASE("Explicitly watching files, not directories.", "[FSWatcher]") {
     vector<string> cmds = mkModCMDs(paths);
     runTestsCMD(&watcher, paths, cmds);
 }
+#endif
 
 // Test whether or not new files are being watched.
 TEST_CASE("Directory file addition", "[FSWatcher]") {
@@ -131,6 +144,7 @@ TEST_CASE("Directory file addition", "[FSWatcher]") {
 }
 
 // Test FSWatcher::addFrom
+#if 1
 TEST_CASE("Watch whole directory", "[FSWatcher]") {
     int num_tests = 30;
     vector<string> paths = mkTestFiles(num_tests, true);
@@ -141,3 +155,4 @@ TEST_CASE("Watch whole directory", "[FSWatcher]") {
     vector<string> cmds = mkModCMDs(paths);
     runTestsCMD(&watcher, paths, cmds);
 }
+#endif

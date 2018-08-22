@@ -45,7 +45,7 @@ extern "C" {
 using namespace std;
 
 FSWatcher::FSWatcher() {
-    if ((fd = inotify_init()) < 0) {
+    if ((this->fd = inotify_init()) < 0) {
         throw SystemError("Error in inotify_init()");
     }
 }
@@ -116,7 +116,9 @@ vector<FSEvent> *FSWatcher::addFrom(string dir_path) {
         ss << dir_path << "/" << entry->d_name;
         string path = ss.str();
         struct stat stbuf;
-        stat(path.c_str(), &stbuf);
+        if (stat(path.c_str(), &stbuf) == -1) {
+            throw SystemError("Unable to stat(): ", errno);
+        }
         // Only add regular files.
         if (S_ISREG(stbuf.st_mode) || S_ISLNK(stbuf.st_mode)) {
             try {
@@ -150,21 +152,35 @@ FSEvent *FSWatcher::handleEvent(struct inotify_event *ev) {
         fs_ev = new FSEvent(ev, path.str());
     } else if (ev->mask & (IN_MODIFY | IN_DELETE | IN_DELETE_SELF)) {
         // File modified, save event.
+        if (wd_to_path.find(ev->wd) == wd_to_path.end()) {
+            throw SystemError("Received watch descriptor for file that we are not watching.");
+        }
         fs_ev = new FSEvent(ev, wd_to_path[ev->wd]);
+        //if (ev->mask & IN_DELETE) {
+        //    fs_ev->deleted = true;
+        //    if (ev->len > 0) {
+        //        //fs_ev->path += "/" + string(ev->name, ev->len);
+        //        delete fs_ev;
+        //        return nullptr;
+        //    }
+        //    //int wd = ev->wd;
+        //    //string rpath = wd_to_path[wd];
+        //    //path_to_wd.erase(rpath);
+        //    //wd_to_path.erase(wd);
+        //    //inotify_rm_watch(fd, wd);
+        //}
     } else {
         return nullptr;
     }
 
     // Do not send events about directories.
-    if (!S_ISDIR(fs_ev->stbuf.st_mode) || watch_dirs) {
+    if (fs_ev->deleted || !S_ISDIR(fs_ev->stbuf.st_mode) || watch_dirs) {
         return fs_ev;
     }
 
     delete fs_ev;
     return nullptr;
 }
-
-#define CATCH_ERR 0
 
 void FSWatcher::watch(const function<bool(FSEvent &ev)> &callback) {
     // Local `running`, is set by the callback
@@ -173,12 +189,10 @@ void FSWatcher::watch(const function<bool(FSEvent &ev)> &callback) {
     this->running = true;
     struct pollfd pfd;
     while (running && this->running) {
-        pfd.fd = fd;
+        pfd.fd = this->fd;
         pfd.events = POLLIN;
 
-        #if CATCH_ERR
         try {
-        #endif
             // Poll with a timeout of 128 ms, this is so that we can check
             // `running` continuously.
             switch (poll(&pfd, 1, 128)) {
@@ -191,7 +205,7 @@ void FSWatcher::watch(const function<bool(FSEvent &ev)> &callback) {
 
                 default: {
                     // Acquire fs events and check for errors
-                    ssize_t num_read = read(fd, evbuf, sizeof(evbuf));
+                    ssize_t num_read = read(this->fd, evbuf, sizeof(evbuf));
                     if (num_read <= 0) {
                         throw SystemError("Error in read() on inotify fd: ", (int) errno);
                     }
@@ -211,11 +225,9 @@ void FSWatcher::watch(const function<bool(FSEvent &ev)> &callback) {
                     }
                 }
             }
-        #if CATCH_ERR
         } catch (const exception &e) {
             cout << "Error: " << e.what() << endl;
         }
-        #endif
     }
 
     this->running = false;
@@ -234,7 +246,8 @@ FSEvent::FSEvent(struct inotify_event *ev, string path)
     : path(path),
       mask(ev->mask)
 {
-    stat(path.c_str(), &stbuf);
+    if (stat(path.c_str(), &stbuf) == -1)
+        memset(&stbuf, 0, sizeof(stbuf));
     if (ev->len) {
         name = string(ev->name);
     }
