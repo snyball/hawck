@@ -212,7 +212,6 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         pass
 
     def addEditPage(self, path: str):
-        return
         scrolled_window = Gtk.ScrolledWindow()
         src_view = GtkSource.View()
         src_view.set_show_line_numbers(True)
