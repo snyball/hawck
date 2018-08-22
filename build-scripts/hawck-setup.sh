@@ -4,10 +4,20 @@
 ## Script to be run as root.
 ##
 
+RED="\033[0;31m"
+REDB="\033[1;31m"
+WHITEB="\033[1;37m"
+GREENB="\033[1;32m"
+NC="\033[0m"
+
 export SPID=$$
 function die() {
-    echo "$1" >&2
+    echo -e "$REDB""Setup error: $1$NC"
     kill $SPID
+}
+
+function ok() {
+    echo -e "$WHITEB""OK: $GREENB$1$NC"
 }
 
 if [ "$#" -lt 1 ]; then
@@ -15,38 +25,73 @@ if [ "$#" -lt 1 ]; then
 fi
 USER="$1"
 
-pushd "${MESON_SOURCE_ROOT}"
+if [ "$USER" = "" ]; then
+    die "Desktop user not defined, run: 'meson configure -Ddesktop_user=\$(whoami)'"
+fi
+
+if [ "$USER" = "root" ]; then
+    die "Desktop user was set to 'root', this is not allowed, run: 'meson configure -Ddesktop_user=\$(whoami)'"
+fi
+
+ok "Setting up hawck for $USER"
+
+pushd "${MESON_SOURCE_ROOT}" &>/dev/null
 
 HAWCK_BIN=/usr/share/hawck/bin
 mkdir -p "$HAWCK_BIN"
-pushd "src/scripts"
+pushd "src/scripts" &>/dev/null
 cp ./*.sh "$HAWCK_BIN/"
 for script in $HAWCK_BIN/*.sh; do
     echo "Script: $script"
     chmod 755 "$script"
 done
 chown -R root:root "$HAWCK_BIN"
-popd
+popd &>/dev/null
+
+ok "Installed scripts to hawck/bin"
 
 HAWCK_LLIB=/usr/share/hawck/LLib
 mkdir -p "$HAWCK_LLIB"
 cp src/Lua/*.lua "$HAWCK_LLIB/"
 
-cp -r keymaps /usr/share/hawck/keymaps
-cp -r icons /usr/share/hawck/icons
+KEYMAPS_DIR=/usr/share/hawck/keymaps
+[ -d $KEYMAPS_DIR ] && rm -r $KEYMAPS_DIR
+cp -r keymaps $KEYMAPS_DIR
 
-#find /usr/share/hawck -type d -exec chmod 755 '{}' \;
-#find /usr/share/hawck \( -type f -and -not -name "*.sh" \) -exec chmod 755 '{}' \;
-
-echo "Currently in: $(pwd -P)"
-USER_HOME=$(realpath /home/$USER/)
+ICONS_DIR=/usr/share/hawck/icons
+[ -d $ICONS_DIR ] && rm -r $ICONS_DIR
+cp -r icons $ICONS_DIR
 
 BIN=/usr/local/bin/
 
 cp src/hwk2lua/hwk2lua.py "$BIN/hwk2lua"
 chmod 755 "$BIN/hwk2lua"
 
-popd ## Done installing files
+## Copy icons
+pushd "icons" &>/dev/null
+for res in 32 64 128 256 512; do
+    res2="$res"'x'"$res"
+    icon_src="alt_hawck_logo_v2_red_$res2.png"
+    if [ -f "$icon_src" ]; then
+        cp "$icon_src" /usr/share/icons/hicolor/$res2/apps/hawck.png
+    fi
+done
+popd &>/dev/null
+gtk-update-icon-cache /usr/share/icons/hicolor/ && ok "Updated icon cache"
+
+## Install rules to make /dev/uinput available to hawck-uinput users
+cp build-scripts/99-hawck-input.rules /etc/udev/rules.d/
+chown root:root /etc/udev/rules.d/99-hawck-input.rules
+chmod 644 /etc/udev/rules.d/99-hawck-input.rules
+
+## Hawck desktop integration.
+cp build-scripts/hawck.desktop /usr/share/applications/
+chmod 644 /usr/share/applications/hawck.desktop
+
+## Default keyboards to listen on.
+cp build-scripts/keyboards.txt /var/lib/hawck-input/
+
+popd &>/dev/null ## Done installing files
 
 ## Set up hawck-input home directory
 mkdir -p /var/lib/hawck-input/keys
@@ -57,6 +102,10 @@ usermod -aG input hawck-input
 usermod --home /var/lib/hawck-input hawck-input
 groupadd hawck-input-share
 usermod -aG hawck-input-share hawck-input
+groupadd hawck-uinput
+usermod -aG hawck-uinput hawck-input
+
+ok "Configured groups"
 
 ## Allow for sharing of key inputs via UNIX sockets.
 usermod -aG hawck-input-share "$USER"
@@ -64,6 +113,12 @@ chown hawck-input:hawck-input-share /var/lib/hawck-input
 chmod 770 /var/lib/hawck-input
 
 ## Make sure the keys are locked down with correct permissions.
-chown hawck-input:hawck-input /var/lib/hawck-input/keys
+chown hawck-input:hawck-input-share /var/lib/hawck-input/keys
 chmod 750 /var/lib/hawck-input/keys
 
+## Make sure that hawck-input can create virtual input devices.
+## FIXME: Is this preserved on reboot?
+chown root:input /dev/uinput
+chmod 660 /dev/uinput
+
+echo -e "$WHITEB""Installation was succesful$NC"

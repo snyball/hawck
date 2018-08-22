@@ -29,13 +29,13 @@
 ##                                                                                    ##
 ########################################################################################
 
-HAWCKD_INPUT_USER=jonas
+HAWCKD_INPUT_USER=hawck-input
 SCRIPTS_DIR="$HOME/.local/share/hawck/scripts/"
 
 script_path="$1"
 name=$(basename "$script_path" | sed -r 's/\.[^.]+$//')
 keys_filename="$name - keys.csv"
-real_keys="/var/lib/hawckd-input/keys/$keys_filename"
+real_keys="/var/lib/hawck-input/keys/$keys_filename"
 
 ## Transpile hwk script to Lua
 hwk_out=$(hwk2lua "$script_path")
@@ -53,7 +53,7 @@ chmod 744 "$script_path"
 pushd "$SCRIPTS_DIR"
 
 ## Check the script for correctness
-if ! lua "$script_path"; then
+if ! lua5.3 "$script_path"; then
     echo "!ERROR: Lua"
     exit 1
 fi
@@ -66,7 +66,7 @@ echo "key_name,key_code" > "$tmp_keys"
 ## Write keys to CSV file.
 ## Output is sorted as the Lua table iteration is
 ## not deterministic.
-lua -l "$name" -e '
+lua5.3 -l "$name" -e '
 for name, _ in pairs(__keys) do
     local succ, key = pcall(function ()
         return getKeysym(name)
@@ -84,13 +84,14 @@ popd
 if ! cmp "$real_keys" "$tmp_keys" &>/dev/null; then
     ## Check if we can execute the copy command:
     if [ "$(whoami)" = "$HAWCKD_INPUT_USER" ]; then
-        mv "$tmp_keys" "$real_keys"
+        cp "$tmp_keys" "$real_keys"
         chmod 644 "$real_keys"
     else
-        rm "$tmp_keys"
-
-        ## Rerun script with input user
+        ## Send key requests to the input daemon.
         which notify-send && notify-send -a "Hawck install" "Hawck install: Require authentication"
-        exec pkexec --user "$HAWCKD_INPUT_USER" "$0" "$@"
+	chmod o+r "$tmp_keys"
+	echo "Running pkexec ..."
+        pkexec --user "$HAWCKD_INPUT_USER" sh -c "cp '$tmp_keys' '$real_keys'" > /tmp/LOG
+	rm "$tmp_keys"
     fi
 fi

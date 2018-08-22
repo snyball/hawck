@@ -27,9 +27,10 @@
 
 u = {}
 local indent_str = "  "
-local builtins = require "builtins"
+local builtins = {} -- require "builtins"
 local string_byte, string_char, concat = string.byte, string.char, table.concat
 local serialize_recursive
+local unpack = table.unpack
 
 function u.append(t, val)
   t[#t + 1] = val

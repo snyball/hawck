@@ -27,6 +27,8 @@
 
 require "utils"
 
+local unpack = table.unpack
+
 PatternScopeMeta = {
   __call = function (t)
     for u, patt in ipairs(t.patterns) do

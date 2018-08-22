@@ -59,43 +59,51 @@ using namespace std;
  */
 vector<string> *getLinksTo(const string& target_rel, const string& dirpath) {
     using VecT = unique_ptr<vector<string>>;
-    DIR *dir = opendir(dirpath.c_str());
-    if (dir == nullptr)
-        throw SystemError("Unable to open directory: ", errno);
     char *target_real_c = realpath(target_rel.c_str(), nullptr);
     if (target_real_c == nullptr)
         throw SystemError("Failure in realpath(): ", errno);
     string target(target_real_c);
     free(target_real_c);
+    DIR *dir = opendir(dirpath.c_str());
+    if (dir == nullptr)
+        throw SystemError("Unable to open directory: ", errno);
 
     VecT vec = VecT(new vector<string>);
-    struct dirent *entry;
-    while ((entry = readdir(dir))) {
-        string path = dirpath + "/" + string(entry->d_name);
-        struct stat stbuf;
-        // Use lstat, as it won't silently look up symbolic links.
-        if (lstat(path.c_str(), &stbuf) == -1)
-            throw SystemError("Failure in stat(): ", errno);
 
-        if (S_ISLNK(stbuf.st_mode)) {
-            char lnk_rel_c[PATH_MAX];
-            // Get link contents
-            ssize_t len = readlink(path.c_str(), lnk_rel_c, sizeof(lnk_rel_c));
-            if (len == -1)
-                throw SystemError("Failure in readlink(): ", errno);
-            string lnk_rel(lnk_rel_c, len);
-            // lnk_rel path may only be valid from within the directory.
-            ChDir cd(dirpath);
-            auto lnk_dst_real = mkuniq(realpath(lnk_rel.c_str(), nullptr), &free);
-            cd.popd(); // May throw SystemError
-            if (lnk_dst_real == nullptr)
-                throw SystemError("Failure in realpath(): ", errno);
-            char *lnk_dst_real_p = lnk_dst_real.release();
-            if (!strcmp(lnk_dst_real_p, target.c_str()))
-                vec->push_back(string(path));
-            free(lnk_dst_real_p);
+    try {
+        struct dirent *entry;
+        while ((entry = readdir(dir))) {
+            string path = dirpath + "/" + string(entry->d_name);
+            struct stat stbuf;
+            // Use lstat, as it won't silently look up symbolic links.
+            if (lstat(path.c_str(), &stbuf) == -1)
+                throw SystemError("Failure in stat(): ", errno);
+
+            if (S_ISLNK(stbuf.st_mode)) {
+                char lnk_rel_c[PATH_MAX];
+                // Get link contents
+                ssize_t len = readlink(path.c_str(), lnk_rel_c, sizeof(lnk_rel_c));
+                if (len == -1)
+                    throw SystemError("Failure in readlink(): ", errno);
+                string lnk_rel(lnk_rel_c, len);
+                // lnk_rel path may only be valid from within the directory.
+                ChDir cd(dirpath);
+                auto lnk_dst_real = mkuniq(realpath(lnk_rel.c_str(), nullptr), &free);
+                cd.popd(); // May throw SystemError
+                if (lnk_dst_real == nullptr)
+                    throw SystemError("Failure in realpath(): ", errno);
+                char *lnk_dst_real_p = lnk_dst_real.release();
+                if (!strcmp(lnk_dst_real_p, target.c_str()))
+                    vec->push_back(string(path));
+                free(lnk_dst_real_p);
+            }
         }
+    } catch (exception &e) {
+        closedir(dir);
+        throw e;
     }
+
+    closedir(dir);
 
     return vec.release();
 }
@@ -193,6 +201,8 @@ int main(int argc, char *argv[]) {
 
         close(fd);
     }
+
+    closedir(dir);
 
     return 0;
 }

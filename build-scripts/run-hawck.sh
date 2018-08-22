@@ -11,7 +11,7 @@
 ##    ./run_hawck.sh "Logitech G710" "AT Translated"
 ##
 
-if [ "$#" -le 1 ]; then
+if [ "$#" -lt 1 ]; then
     echo "Usage: $0 <device name>..."
     exit 1
 fi
@@ -24,9 +24,10 @@ fi
 echo "Probing devices ..."
 DEVICES=( "$@" )
 ## Loop over arguments to find a suitable device to listen on.
+input_devices=$(pkexec --user hawck-input lsinput -s)
 while [ "$#" -ge 1 ]; do
     KBD_MODEL="$1"
-    DEVICE_FULL=$(lsinput -s | grep -v if0 | grep "$KBD_MODEL" | head -n1)
+    DEVICE_FULL=$(echo "$input_devices" | grep -v if0 | grep "$KBD_MODEL" | head -n1)
     if [ "$DEVICE_FULL" != "" ]; then
         break
     fi

@@ -28,6 +28,9 @@ subdir('tests')
 subdir('hawck-ui')
 
 de_user = get_option('desktop_user')
+if de_user == ''
+  warning('Option desktop_user not defined, run `meson configure -Ddesktop_user=$(whoami)`')
+endif
 
 meson.add_install_script('build-scripts/hawck-setup.sh', de_user)
 #meson.add_install_script('build-scripts/install-hawck-ui.sh')

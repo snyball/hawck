@@ -1,0 +1,2 @@
+cd ../tests/
+./hawck-tests
