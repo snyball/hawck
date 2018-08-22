@@ -19,24 +19,11 @@ if ! doxygen &>/dev/null; then
     echo "Failed, skipping."
 fi
 
-#git pull || die "Failed to pull from git repo"
-
 ## Install dependencies
 if which apt; then
     pkexec xargs apt -y install < bin/dependencies/debian-deps.txt || die "Failed to install dependencies"
 fi
 
-mkdir build
-cp bin/run-hawck.sh build/
-cp bin/run-tests.sh build/
-## Configure, build, install
-pushd "build" &>/dev/null
-meson -Ddesktop_user=$(whoami) || die "Failed to create build"
-meson configure -Ddesktop_user=$(whoami) || die "Failed to configure meson"
-ninja -j4 || die "Failed to build hawck-macrod and hawck-inputd"
-ninja hawck-ui || die "Failed to build hawck-ui"
-pkexec bash -c "cd $(pwd) && ninja install" || die "Installation failed"
-popd &>/dev/null
 function run() {
     ## Generate documentation
     echo "Generating documentation ..."
