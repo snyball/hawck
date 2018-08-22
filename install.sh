@@ -13,7 +13,6 @@ if [ $(whoami) = 'root' ]; then
     exit 1
 fi
 
-<<<<<<< HEAD
 ## Generate documentation
 echo "Generating documentation ..."
 if ! doxygen &>/dev/null; then
@@ -38,7 +37,6 @@ ninja -j4 || die "Failed to build hawck-macrod and hawck-inputd"
 ninja hawck-ui || die "Failed to build hawck-ui"
 pkexec bash -c "cd $(pwd) && ninja install" || die "Installation failed"
 popd &>/dev/null
-=======
 function run() {
     ## Generate documentation
     echo "Generating documentation ..."
@@ -53,7 +51,6 @@ function run() {
     fi
     
     echo "20%"
->>>>>>> e6af00c743ed40a10d8307e71fd2284ed64c4f03
 
     mkdir build
     cp bin/run-hawck.sh build/
