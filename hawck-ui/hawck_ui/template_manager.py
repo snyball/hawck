@@ -30,6 +30,7 @@
 import os
 
 from gi.repository import Gtk
+import pkg_resources as pkg
 
 class TemplateManager:
     def __init__(self, dir_path):
@@ -46,7 +47,11 @@ class TemplateManager:
         return root, builder
 
     def load(self, name):
-        with open(os.path.join(self.dir_path, name)) as f:
+        fpath = pkg.resource_filename(
+                    "hawck_ui",
+                    os.path.join(self.dir_path, name)
+                )
+        with open(fpath) as f:
             self.insert(name, f.read())
 
     def insert(self, name, string):

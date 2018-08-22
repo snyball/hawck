@@ -2,6 +2,7 @@
 
 export SPID=$$
 function die() {
+    echo "100%"
     echo "$1." >&2
     zenity --error --ellipsize --text="$1"
     kill $SPID
@@ -12,6 +13,7 @@ if [ $(whoami) = 'root' ]; then
     exit 1
 fi
 
+<<<<<<< HEAD
 ## Generate documentation
 echo "Generating documentation ..."
 if ! doxygen &>/dev/null; then
@@ -36,18 +38,59 @@ ninja -j4 || die "Failed to build hawck-macrod and hawck-inputd"
 ninja hawck-ui || die "Failed to build hawck-ui"
 pkexec bash -c "cd $(pwd) && ninja install" || die "Installation failed"
 popd &>/dev/null
+=======
+function run() {
+    ## Generate documentation
+    echo "Generating documentation ..."
+    if ! doxygen &>/dev/null; then
+        echo "Failed, skipping." >&2
+    fi
+    echo "10%"
 
-## Set up user directories
+    ## Install dependencies
+    if which apt; then
+        pkexec xargs apt -y install < bin/dependencies/debian-deps.txt || die "Failed to install dependencies"
+    fi
+    
+    echo "20%"
+>>>>>>> e6af00c743ed40a10d8307e71fd2284ed64c4f03
 
-LOCAL_SHARE="$HOME/.local/share"
-if ! [ -d "$LOCAL_SHARE" ]; then
-    mkdir -p "$LOCAL_SHARE"
+    mkdir build
+    cp bin/run-hawck.sh build/
+    ## Configure, build, install
+    pushd "build" &>/dev/null
+    meson -Ddesktop_user=$(whoami) >&2 || die "Failed to create build"
+    meson configure -Ddesktop_user=$(whoami) >&2 || die "Failed to configure meson"
+    echo "40%"
+    ninja -j4 >&2 || die "Failed to build hawck-macrod and hawck-inputd"
+    echo "60%"
+    ninja hawck-ui >&2 || die "Failed to build hawck-ui"
+    echo "80%"
+    pkexec bash -c "cd $(pwd) && ninja install" >&2 || die "Installation failed"
+    popd &>/dev/null
+    
+    ## Set up user directories
+    
+    LOCAL_SHARE="$HOME/.local/share"
+    if ! [ -d "$LOCAL_SHARE" ]; then
+        mkdir -p "$LOCAL_SHARE"
+    fi
+    
+    mkdir -p "$LOCAL_SHARE/hawck/scripts"
+    mkdir -p "$LOCAL_SHARE/hawck/scripts-enabled"
+    ln -s /usr/share/hawck/LLib "$LOCAL_SHARE/hawck/scripts/LLib" &>/dev/null
+    ln -s /usr/share/hawck/keymaps "$LOCAL_SHARE/hawck/scripts/keymaps" &>/dev/null
+    ln -s /usr/share/hawck/LLib/init.lua "$LOCAL_SHARE/hawck/scripts/init.lua" &>/dev/null
+    
+    echo "100%"
+}
+
+if which zenity &>/dev/null && [ "$1" == "--zenity" ]; then
+    zenity --info --ellipsize --text="Will now install Hawck, you will be prompted for your password twice during the installation." --title="Hawck installation"
+    run 2>install_log.txt | tee | zenity --progress --auto-close
+    sed -e 's/\x1b\[[;0-9]*m//g' -i install_log.txt
+    zenity --info --ellipsize --text="Installation was successful" --title='Hawck'
+else
+    run
+    echo "Installation was successful"
 fi
-
-mkdir -p "$LOCAL_SHARE/hawck/scripts"
-mkdir -p "$LOCAL_SHARE/hawck/scripts-enabled"
-ln -s /usr/share/hawck/LLib "$LOCAL_SHARE/hawck/scripts/LLib" &>/dev/null
-ln -s /usr/share/hawck/keymaps "$LOCAL_SHARE/hawck/scripts/keymaps" &>/dev/null
-ln -s /usr/share/hawck/LLib/init.lua "$LOCAL_SHARE/hawck/scripts/init.lua" &>/dev/null
-
-zenity --info --ellipsize --text="Installation was successful" --title='Hawck'
