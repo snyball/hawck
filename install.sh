@@ -61,6 +61,7 @@ function run() {
 if which zenity &>/dev/null && [ "$1" == "--zenity" ]; then
     zenity --info --ellipsize --text="Will now install Hawck, you will be prompted for your password twice during the installation." --title="Hawck installation"
     run 2>install_log.txt | tee | zenity --progress --auto-close
+    sed -e 's/\x1b\[[;0-9]*m//g' -i install_log.txt
     zenity --info --ellipsize --text="Installation was successful" --title='Hawck'
 else
     run
