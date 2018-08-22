@@ -13,7 +13,9 @@ if catch2dep.found()
              tests_src,
              include_directories : inc,
              dependencies : [pthreaddep, catch2dep],
-             install : true
+             install : false,
+             #c_pch : 'pch/tests_pch.h',
+             #cpp_pch : 'pch/tests_pch.hpp',
             )
 else
   warning('Unable to compile tests, did not find catch2')

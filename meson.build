@@ -5,6 +5,11 @@ project('Hawck', 'cpp',
                            'cpp_std=c++17',
                           ])
 
+os = host_machine.system()
+if os != 'linux'
+  error('Hawck is currently only supported on Linux')
+endif
+
 ## Hide warnings emitted by GTK+
 add_global_arguments('-Wno-parentheses',
                      language : 'cpp')

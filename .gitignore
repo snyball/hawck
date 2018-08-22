@@ -9,4 +9,5 @@ unused/*
 build/*
 latex/*
 html/*
+docs/*
 *.out

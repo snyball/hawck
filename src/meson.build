@@ -24,7 +24,9 @@ executable('hawck-macrod',
            dependencies : [luadep, gtkdep, dbusdep,
                            gobjectdep, glibdep, pthreaddep,
                            notifydep],
-           install : true
+           install : true,
+           #c_pch : 'pch/macrod_pch.h',
+           #cpp_pch : 'pch/macrod_pch.hpp',
           )
 
 inputd_src = [
@@ -39,10 +41,14 @@ inputd_src = [
 executable('hawck-inputd',
            inputd_src,
            dependencies : [pthreaddep],
-           install : true
+           install : true,
+           #c_pch : 'pch/inputd_pch.h',
+           #cpp_pch : 'pch/inputd_pch.hpp',
           )
 
 executable('lsinput',
            'tools/lsinput.cpp',
-           install : true
+           install : true,
+           #c_pch : 'pch/lsinput_pch.h',
+           #cpp_pch : 'pch/lsinput_pch.hpp',
           )
