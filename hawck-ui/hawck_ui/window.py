@@ -128,10 +128,8 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         self.keycap_codes = []
         self.keycap_done = False
 
-        self.templates = TemplateManager(".")
-        self.templates.load(
-            pkg.resource_filename("hawck_ui",
-                                  "resources/glade-xml/error_log.ui"))
+        self.templates = TemplateManager("resources/glade-xml/")
+        self.templates.load("error_log.ui")
         self.logs = LogRetriever()
         self.log_rows = []
         self.updateLogs()

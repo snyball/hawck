@@ -86,8 +86,6 @@ class LogRetriever:
         if ret != 0:
             return [], 0
         out = p.stdout.read().decode("utf-8")
-        if out == self.last_log_text:
-            return [], 0
         self.last_log_text = out
         added = []
         objs = []
