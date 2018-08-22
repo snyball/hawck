@@ -1973,6 +1973,7 @@ stack traceback:
   <object class="GtkMessageDialog" id="hawck_first_use_warning">
     <property name="can_focus">False</property>
     <property name="modal">True</property>
+    <property name="window_position">center</property>
     <property name="destroy_with_parent">True</property>
     <property name="icon_name">dialog-warning</property>
     <property name="type_hint">dialog</property>

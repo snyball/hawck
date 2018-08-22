@@ -128,14 +128,6 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         self.keycap_codes = []
         self.keycap_done = False
 
-        ## Check for first use, issue warning if the program has not been launched before.
-        if not os.path.exists(LOCATIONS["first_use"]):
-            warning = self.builder.get_object("hawck_first_use_warning")
-            warning.run()
-            warning.hide()
-            with open(LOCATIONS["first_use"], "w") as f:
-                f.write("The user has been warned about potential risks of using the software.\n")
-
         self.templates = TemplateManager(".")
         self.templates.load(
             pkg.resource_filename("hawck_ui",
@@ -151,6 +143,14 @@ class HawckMainWindow(Gtk.ApplicationWindow):
 
         notebook = self.builder.get_object("edit_notebook")
         notebook.set_current_page(0)
+
+        ## Check for first use, issue warning if the program has not been launched before.
+        if not os.path.exists(LOCATIONS["first_use"]):
+            warning = self.builder.get_object("hawck_first_use_warning")
+            warning.run()
+            warning.hide()
+            with open(LOCATIONS["first_use"], "w") as f:
+                f.write("The user has been warned about potential risks of using the software.\n")
 
     def updateLogs(self):
         added, removed = self.logs.update()
