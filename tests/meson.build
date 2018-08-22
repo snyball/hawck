@@ -1,5 +1,24 @@
 catch2dep = dependency('catch2', required : false)
 
+## Try to download catch2
+if not catch2dep.found()
+  message('Downloading Catch2 header file ...')
+  p = run_command(
+    '../build-scripts/dl-dep.sh',
+    'https://github.com/catchorg/Catch2/releases/download/v2.3.0/catch.hpp',
+    'catch2'
+    )
+  if p.returncode() != 0
+    warning('Unable to download catch2')
+  else
+    catch2_inc_dir = p.stdout().strip()
+    catch2_inc = include_directories(['../src/include-ext'])
+    catch2dep = declare_dependency(
+      include_directories : catch2_inc,
+    )
+  endif
+endif
+
 if catch2dep.found()
   tests_src = [
     'CSV-tests.cpp',
