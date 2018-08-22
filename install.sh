@@ -13,17 +13,6 @@ if [ $(whoami) = 'root' ]; then
     exit 1
 fi
 
-## Generate documentation
-echo "Generating documentation ..."
-if ! doxygen &>/dev/null; then
-    echo "Failed, skipping."
-fi
-
-## Install dependencies
-if which apt; then
-    pkexec xargs apt -y install < bin/dependencies/debian-deps.txt || die "Failed to install dependencies"
-fi
-
 function run() {
     ## Generate documentation
     echo "Generating documentation ..."

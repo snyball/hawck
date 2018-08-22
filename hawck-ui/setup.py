@@ -7,7 +7,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="hawck_ui",
-    version="0.4.0",
+    version="0.5.0",
     author="Jonas Møller",
     author_email="jonasmo441@gmail.com",
     description="User interface for the Hawck keyboard macro system.",
