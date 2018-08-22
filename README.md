@@ -1,7 +1,7 @@
 <img src="./icons/alt_hawck_logo_v2_red_with_text.png"/>
 
 ![License: BSD-2](https://img.shields.io/badge/license-BSD--2-brightgreen.svg)
-![Version: 0.4-alpha](https://img.shields.io/badge/version-0.4--alpha-red.svg)
+![Version: 0.5-alpha](https://img.shields.io/badge/version-0.5--alpha-red.svg)
 ![Release: none](https://img.shields.io/badge/release-none-red.svg)
 
 ## A key-rebinding daemon

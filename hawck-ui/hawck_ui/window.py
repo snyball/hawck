@@ -38,15 +38,14 @@ import gi
 from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import GObject
-#gi.require_version('GtkSource', '3')
+gi.require_version('GtkSource', '3.0')
 from gi.repository import GtkSource
 
 from hawck_ui.template_manager import TemplateManager
 from hawck_ui.log_retriever import LogRetriever
+from hawck_ui.locations import HAWCK_HOME, LOCATIONS, resourcePath
 
 pprint = PrettyPrinter(indent = 4).pprint
-
-from hawck_ui.locations import HAWCK_HOME, LOCATIONS, resourcePath
 
 SCRIPT_DEFAULT = """
 require "init"
@@ -88,18 +87,27 @@ class HawckMainWindow(Gtk.ApplicationWindow):
     def __init__(self, **kwargs):
         settings = Gtk.Settings.get_default()
         settings.set_property("gtk-application-prefer-dark-theme", True)
+
+        ## Get version
+        self.version = kwargs["version"]
+        del kwargs["version"]
+
         super().__init__(**kwargs)
         self.internal_call = 0
         GObject.type_register(GtkSource.View)
         self.edit_pages = []
         self.scripts = {}
         self.init_template()
+        ## FIXME: Gtk.Builder() causes the following error:
+        ## (hawck_ui:21372): Gtk-CRITICAL **: 17:10:54.315: gtk_widget_init_template: assertion 'template != NULL' failed
         self.builder = Gtk.Builder()
         rs = pkg.resource_string("hawck_ui",
                                  "resources/glade-xml/window.ui")
         self.builder.add_from_string(rs.decode("utf-8"))
         self.window = self.builder.get_object("HawckMainWindow")
         script_dir = LOCATIONS["scripts"]
+        self.src_lang_manager = GtkSource.LanguageManager()
+        self.scheme_manager = GtkSource.StyleSchemeManager()
         for fname in os.listdir(script_dir):
             _, ext = os.path.splitext(fname)
             if ext == ".hwk":
@@ -136,6 +144,11 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         self.log_rows = []
         self.updateLogs()
 
+        hawck_status_version = self.builder.get_object("hawck_status_version")
+        hawck_status_version.set_text(f"Hawck v{self.version}")
+        hawck_about = self.builder.get_object("hawck_about_dialog")
+        hawck_about.set_version(self.version)
+
         notebook = self.builder.get_object("edit_notebook")
         notebook.set_current_page(0)
 
@@ -144,16 +157,11 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         loglist = self.builder.get_object("script_error_list")
 
         rm = []
-        print(f"added: {added}")
-        print(f"removed: {removed}")
-        print(f"log_rows_len: {len(self.log_rows)}")
         if removed >= len(self.log_rows):
             rm = self.log_rows
             self.log_rows = []
         elif removed:
             self.log_rows, rm = self.log_rows[:removed], self.log_rows[removed:]
-        print(f"log_rows: {self.log_rows}")
-        print(f"rm: {rm}")
         for row in rm:
             loglist.remove(row)
 
@@ -204,6 +212,7 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         pass
 
     def addEditPage(self, path: str):
+        return
         scrolled_window = Gtk.ScrolledWindow()
         src_view = GtkSource.View()
         src_view.set_show_line_numbers(True)
@@ -212,11 +221,9 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         src_view.set_monospace(True)
         src_view.set_vexpand(True)
         buf = src_view.get_buffer()
-        src_lang_manage = GtkSource.LanguageManager()
-        lua_lang = src_lang_manage.get_language("lua")
-        scheme_manager = GtkSource.StyleSchemeManager()
-        print(f"Schemes: {scheme_manager.get_scheme_ids()}")
-        scheme = scheme_manager.get_scheme("oblivion")
+        lua_lang = self.src_lang_manager.get_language("lua")
+        # print(f"Schemes: {self.scheme_manager.get_scheme_ids()}")
+        scheme = self.scheme_manager.get_scheme("oblivion")
         buf.set_language(lua_lang)
         buf.set_style_scheme(scheme)
         with open(path) as f:
@@ -246,7 +253,9 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         self.addEditPage(dst_path)
 
     def prepareEditForPage(self, pagenr: int):
-        print(f"Now editing: {self.edit_pages[pagenr]}")
+        if pagenr >= len(self.edit_pages):
+            return
+
         switch_obj = self.builder.get_object("script_enabled_switch")
         name = HawckMainWindow.getScriptName(self.edit_pages[pagenr])
         enabled_path = os.path.join(LOCATIONS["scripts-enabled"], name + ".lua")
@@ -488,13 +497,13 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         oname = ev.string.strip()
         ev_name = oname or Gdk.keyval_name(ev.keyval)
 
-        print(f"name: {ev_name}")
-        print(f"ev.keycode: {ev.keyval}")
-        print(f"ev.hardware_keycode: {ev.hardware_keycode}")
-        print(f"ev.string.strip(): {oname}")
-        print(f"Gdk.keyval_name(ev.keyval): {Gdk.keyval_name(ev.keyval)}")
-        print(f"Gdk.keyval_to_unicode(ev.keyval): {Gdk.keyval_to_unicode(ev.keyval)}")
-        print("")
+        # print(f"name: {ev_name}")
+        # print(f"ev.keycode: {ev.keyval}")
+        # print(f"ev.hardware_keycode: {ev.hardware_keycode}")
+        # print(f"ev.string.strip(): {oname}")
+        # print(f"Gdk.keyval_name(ev.keyval): {Gdk.keyval_name(ev.keyval)}")
+        # print(f"Gdk.keyval_to_unicode(ev.keyval): {Gdk.keyval_to_unicode(ev.keyval)}")
+        # print("")
 
         is_modifier = ev_name in MODIFIER_NAMES
 
@@ -529,3 +538,6 @@ class HawckMainWindow(Gtk.ApplicationWindow):
     def captureKey(self):
         win = self.builder.get_object("key_capture_window")
         win.show_all()
+
+    def onSearchKeyboardUpdate(self, *_):
+        pass ## Not implemented

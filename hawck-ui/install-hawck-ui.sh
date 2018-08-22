@@ -1,6 +1,6 @@
 #!/bin/bash
 
-pushd "${MESON_SOURCE_ROOT}/hawck-ui"
+cd "${MESON_SOURCE_ROOT}/hawck-ui"
 
 ## Assume that setup.py build has already been run, this
 ## is to avoid root owning all the build files.
@@ -14,5 +14,3 @@ rm -r dist
 
 ## Install executable python entry point.
 install -m 755 bin/hawck-ui.py /usr/local/bin/hawck-ui
-
-popd

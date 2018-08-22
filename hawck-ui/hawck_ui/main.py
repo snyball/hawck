@@ -37,19 +37,19 @@ from gi.repository import Gtk, Gio
 
 from hawck_ui.window import HawckMainWindow
 
-
 class Application(Gtk.Application):
-    def __init__(self):
+    def __init__(self, version):
+        self.version = version
         super().__init__(application_id='org.gnome.Hawck-Ui',
                          flags=Gio.ApplicationFlags.FLAGS_NONE)
 
     def do_activate(self):
-        win = HawckMainWindow(application=self)
+        win = HawckMainWindow(application=self, version=self.version)
 
-def main():
-    app = Application()
+def main(version):
+    app = Application(version)
     app.run(sys.argv)
     return 0
 
 if __name__ == "__main__":
-    main()
+    main("unknown-version (main.py)")
