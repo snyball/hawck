@@ -81,6 +81,11 @@ cp bin/99-hawck-input.rules /etc/udev/rules.d/
 chown root:root /etc/udev/rules.d/99-hawck-input.rules
 chmod 644 /etc/udev/rules.d/99-hawck-input.rules
 
+## Make sure the uinput module is loaded, this isn't necessary on
+## some systems, but is required on Arch Linux. If this isn't done
+## the 99-hawck-input.rules file will have no effect.
+echo uinput > /etc/modules-load.d/hawck-uinput.conf
+
 ## Hawck desktop integration.
 cp bin/hawck-ui.desktop /usr/share/applications/
 chmod 644 /usr/share/applications/hawck-ui.desktop

@@ -26,10 +26,6 @@
  * =====================================================================================
  */
 
-extern "C" {
-    #include <signal.h>
-}
-
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -147,14 +143,7 @@ void KBDDaemon::initPassthrough() {
         loadPassthrough(&file);
 }
 
-static void handleSigPipe(int) {
-    fprintf(stderr, "KBDDaemon aborting due to SIGPIPE\n");
-    abort();
-}
-
 void KBDDaemon::run() {
-
-    signal(SIGPIPE, handleSigPipe);
 
     KBDAction action;
 

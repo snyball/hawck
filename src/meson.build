@@ -14,7 +14,7 @@ conf_data = configuration_data()
 conf_data.set_quoted('VERSION', meson.project_version())
 conf_data.set_quoted('MACROD_VERSION', meson.project_version())
 conf_data.set_quoted('INPUTD_VERSION', meson.project_version())
-conf_data.set('REDIRECT_STD_STREAMS', 0)
+conf_data.set10('REDIRECT_STD_STREAMS', get_option('redirect_std'))
 configure_file(output : 'hawck_config.h',
                configuration : conf_data
               )

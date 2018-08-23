@@ -7,9 +7,9 @@ User=hawck-input
 Group=hawck-input
 WorkingDirectory=/var/lib/hawck-input
 Type=forking
+PIDFile=/var/lib/hawck-input/pid
 ExecStart=/bin/bash -c '/usr/local/bin/hawck-inputd $(/usr/share/hawck/bin/get-kbd-args.sh)'
-ExecStop=/bin/bash -c 'kill $(pidof hawck-inputd)'
-KillMode=mixed
+ExecStop=/bin/bash -c 'kill $(cat /var/lib/hawck-input/pid)'
 
 [Install]
 WantedBy=multi-user.target

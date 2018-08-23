@@ -15,17 +15,15 @@ endif
 add_global_arguments('-Wno-parentheses',
                      language : 'cpp')
 
+## This option is on a completely different level of pedantically ridiculous.
 add_global_arguments('-Wno-reorder',
                      language : 'cpp')
 
-add_global_arguments('-g',
-                     language : 'cpp')
-
-## Optimize for size
-add_global_arguments('-Os',
-                     language : 'cpp')
-
+## Force includes of lua5.3, fails to be included on some systems.
 add_global_arguments('-I/usr/include/lua5.3',
+                     language : 'cpp')
+
+add_global_arguments('-DMESON_COMPILE=1',
                      language : 'cpp')
 
 inc = include_directories('src')
