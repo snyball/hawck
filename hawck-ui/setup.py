@@ -1,15 +1,18 @@
 #!/usr/bin/python3
 
-import setuptools
+import setuptools, json
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
+with open("../build/hawck-ui/setup_config.json") as rf:
+    config = json.load(rf)
+
 setuptools.setup(
     name="hawck_ui",
-    version="0.5.0",
+    version=config.get("version", ""),
     author="Jonas Møller",
-    author_email="jonasmo441@gmail.com",
+    author_email="sanoj@nimda.no",
     description="User interface for the Hawck keyboard macro system.",
     long_description=long_description,
     long_description_content_type="text/markdown",

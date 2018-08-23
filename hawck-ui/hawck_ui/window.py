@@ -105,6 +105,8 @@ class HawckMainWindow(Gtk.ApplicationWindow):
                                  "resources/glade-xml/window.ui")
         self.builder.add_from_string(rs.decode("utf-8"))
         self.window = self.builder.get_object("HawckMainWindow")
+        self.window.set_icon_name("hawck")
+        self.window.set_default_icon_name("hawck")
         script_dir = LOCATIONS["scripts"]
         self.src_lang_manager = GtkSource.LanguageManager()
         self.scheme_manager = GtkSource.StyleSchemeManager()
