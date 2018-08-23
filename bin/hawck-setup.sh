@@ -82,8 +82,8 @@ chown root:root /etc/udev/rules.d/99-hawck-input.rules
 chmod 644 /etc/udev/rules.d/99-hawck-input.rules
 
 ## Hawck desktop integration.
-cp bin/hawck.desktop /usr/share/applications/
-chmod 644 /usr/share/applications/hawck.desktop
+cp bin/hawck-ui.desktop /usr/share/applications/
+chmod 644 /usr/share/applications/hawck-ui.desktop
 
 ## Default keyboards to listen on.
 cp bin/keyboards.txt /var/lib/hawck-input/

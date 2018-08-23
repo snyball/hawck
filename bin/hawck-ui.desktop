@@ -1,13 +1,12 @@
 [Desktop Entry]
 Version=1.0
-Name=Hawck
-Comment=Keyboard macro system
+Name=Hawck UI
+Comment=Set custom keybindings.
 GenericName=Keyboard macro system
 Keywords=Keyboard;
 Exec=hawck-ui
 Terminal=false
-X-MultipleArgs=false
 Type=Application
 Icon=hawck
-Categories=GNOME;GTK;Utilities;
-StartupNotify=true
+Categories=GNOME;GTK;Utility;
+StartupNotify=false

@@ -1,4 +1,4 @@
-from main import main
+from hawck_ui.main import main
 import pkg_resources
 
 version = "unknown-version"
