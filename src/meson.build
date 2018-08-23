@@ -10,6 +10,16 @@ glibdep = dependency('glib-2.0')
 pthreaddep = dependency('threads')
 notifydep = dependency('libnotify')
 
+conf_data = configuration_data()
+conf_data.set_quoted('VERSION', meson.project_version())
+conf_data.set_quoted('MACROD_VERSION', meson.project_version())
+conf_data.set_quoted('INPUTD_VERSION', meson.project_version())
+conf_data.set('REDIRECT_STD_STREAMS', 0)
+configure_file(output : 'hawck_config.h',
+               configuration : conf_data
+              )
+conf_inc = include_directories('.')
+
 macrod_src = [
   'RemoteUDevice.cpp',
   'Daemon.cpp',
@@ -24,6 +34,7 @@ executable('hawck-macrod',
            dependencies : [luadep, gtkdep, dbusdep,
                            gobjectdep, glibdep, pthreaddep,
                            notifydep],
+           include_directories : conf_inc,
            install : true,
            #c_pch : 'pch/macrod_pch.h',
            #cpp_pch : 'pch/macrod_pch.hpp',
@@ -41,6 +52,7 @@ inputd_src = [
 executable('hawck-inputd',
            inputd_src,
            dependencies : [pthreaddep],
+           include_directories : conf_inc,
            install : true,
            #c_pch : 'pch/inputd_pch.h',
            #cpp_pch : 'pch/inputd_pch.hpp',

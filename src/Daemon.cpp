@@ -13,7 +13,7 @@ extern "C" {
 #include "SystemError.hpp"
 #include "Daemon.hpp"
 
-#define MESS_WITH_STREAMS 1
+#include <hawck_config.h>
 
 using namespace std;
 
@@ -71,7 +71,7 @@ void daemonize(const string &logfile_path) {
     umask(0);
     chdir("/");
 
-    #if MESS_WITH_STREAMS
+    #if REDIRECT_STD_STREAMS
     // Close all files
     int maxfd = sysconf(_SC_OPEN_MAX);
     maxfd = (maxfd == -1) ? BD_MAX_CLOSE : maxfd;

@@ -1,5 +1,6 @@
 #include "KBDDaemon.hpp"
 #include "Daemon.hpp"
+#include <hawck_config.h>
 
 using namespace std;
 
@@ -11,7 +12,7 @@ int main(int argc, char *argv[]) {
 
     const char *dev = argv[1];
 
-    cout << "hawck-inputd forking ..." << endl;
+    cout << "hawck-inputd v" INPUTD_VERSION " forking ..." << endl;
     //daemonize("/var/log/hawck-input/log");
     daemonize("/tmp/hawck-inputd.log");
 

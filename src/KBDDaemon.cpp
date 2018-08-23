@@ -127,7 +127,7 @@ void KBDDaemon::loadPassthrough(FSEvent *ev) {
         printf("LOG: perm=%X; uid=%d\n", perm, getuid());
         loadPassthrough(ev->path);
     } else {
-        printf("ERROR: Invalid permissions for: %s\n", ev->path.c_str());
+        printf("ERROR: Invalid permissions for '%s', require 0644\n", ev->path.c_str());
         printf("LOG: perm=%X; uid=%d\n", perm, getuid());
     }
 }
