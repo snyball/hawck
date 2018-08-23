@@ -65,7 +65,7 @@ if ! ninja -j8; then
     exit 1
 fi
 
-./src/hawck-inputd "$KBD_DEVICE" &
+pkexec --user hawck-input $(realpath './src/hawck-inputd') "$KBD_DEVICE" &
 ./src/hawck-macrod &
 
 ## Wait for interrupt

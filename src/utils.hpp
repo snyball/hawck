@@ -27,6 +27,16 @@ inline std::unique_ptr<T, F> mkuniq(T *p, F fn) {
     return std::unique_ptr<T, decltype(fn)>(p, fn);
 }
 
+template <class T>
+inline std::shared_ptr<T> mkshr(T *p) {
+    return std::shared_ptr<T>(p);
+}
+
+template <class T>
+inline std::shared_ptr<T> mkshr(T *p, const std::function<void(T *p)>& fn) {
+    return std::shared_ptr<T>(p, fn);
+}
+
 /**
  * stringstream is too much typing, use sstream (like the header)
  * instead.

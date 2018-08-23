@@ -17,17 +17,16 @@ private:
 
     inline void printBacktrace() {
         constexpr int elems = 100;
-        void *array[elems];
-        size_t size;
-        size = backtrace(array, elems);
-        backtrace_symbols_fd(array, size, stderr->_fileno);
+        void *stack[elems];
+        size_t size = backtrace(stack, elems);
+        backtrace_symbols_fd(stack + 1, size - 1, fileno(stderr));
     }
 
 public:
     explicit SystemError(const std::string &expl) : expl(expl) {}
 
     SystemError(const std::string &expl, int errnum) : expl(expl) {
-        char errbuf[1024];
+        char errbuf[8192];
         memset(errbuf, 0, sizeof(errbuf));
         if (strerror_r(errnum, errbuf, sizeof(errbuf))) {
             switch (errno) {
@@ -36,6 +35,7 @@ public:
                 default:     strncpy(errbuf, "[strerror_r:UNKNOWN]", sizeof(errbuf)); break;
             }
         }
+        printBacktrace();
         this->expl += errbuf;
     }
 

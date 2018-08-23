@@ -54,19 +54,29 @@ class KBDDaemon {
 private:
     std::set<int> passthrough_keys;
     std::mutex passthrough_keys_mtx;
-    std::string home_path;
-    std::unordered_map<std::string, std::string> data_dirs;
+    std::string home_path = "/var/lib/hawck-input";
+    std::unordered_map<std::string, std::string> data_dirs = {
+        {"keys", home_path + "/keys"}
+    };
     std::unordered_map<std::string, std::vector<int>*> key_sources;
     UNIXSocket<KBDAction> kbd_com;
     UDevice udev;
     Keyboard kbd;
+    std::vector<Keyboard> kbds;
     FSWatcher fsw;
 
 public:
     explicit KBDDaemon(const char *device);
+    KBDDaemon();
     ~KBDDaemon();
 
     void initPassthrough();
+
+    /** Listen on a new device.
+     *
+     * @param device Full path to the device in /dev/input/
+     */
+    void addDevice(const char *device);
 
     /**
      * Load passthrough keys from a file at `path`.

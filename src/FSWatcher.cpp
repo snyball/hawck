@@ -117,7 +117,7 @@ vector<FSEvent> *FSWatcher::addFrom(string dir_path) {
         string path = ss.str();
         struct stat stbuf;
         if (stat(path.c_str(), &stbuf) == -1) {
-            throw SystemError("Unable to stat(): ", errno);
+            throw SystemError("Unable to stat(" + path + "): ", errno);
         }
         // Only add regular files.
         if (S_ISREG(stbuf.st_mode) || S_ISLNK(stbuf.st_mode)) {

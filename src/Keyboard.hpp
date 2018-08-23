@@ -47,7 +47,7 @@ extern "C" {
 
 class KeyboardError : public std::runtime_error {
 public:
-    inline KeyboardError(std::string&& msg) : std::runtime_error(msg) {}
+    explicit inline KeyboardError(std::string&& msg) : std::runtime_error(msg) {}
 };
 
 /**
@@ -55,11 +55,14 @@ public:
  */
 class Keyboard {
 private:
-    int fd;
     bool locked;
+    std::string name;
+    int fd;
+    int event_n = 0;
 
 public:
-    Keyboard(const char *path);
+    explicit Keyboard(const char *path);
+    Keyboard();
     ~Keyboard();
 
     /** Acquire an exclusive lock to the keyboard. */

@@ -53,9 +53,17 @@ KBDDaemon::KBDDaemon(const char *device) :
     kbd_com("/var/lib/hawck-input/kbd.sock"),
     kbd(device)
 {
-    home_path = "/var/lib/hawck-input";
-    data_dirs["keys"] = home_path + "/keys";
     initPassthrough();
+}
+
+KBDDaemon::KBDDaemon() :
+    kbd_com("/var/lib/hawck-input/kbd.sock")
+{
+    initPassthrough();
+}
+
+void KBDDaemon::addDevice(const char *device) {
+    kbds.push_back(Keyboard(device));
 }
 
 KBDDaemon::~KBDDaemon() {

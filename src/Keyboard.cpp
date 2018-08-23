@@ -37,14 +37,28 @@ extern "C" {
 using namespace std;
 
 Keyboard::Keyboard(const char *path) {
+    char name_buf[256];
     fd = open(path, O_RDONLY);
+
     if (fd == -1) {
         std::stringstream err("Cannot open: ");
         err << path << ": ";
         err << strerror(errno);
         throw KeyboardError(err.str());
     }
+
+    if (ioctl(fd, EVIOCGNAME(sizeof(name_buf)), name_buf) <= 0) {
+        cout << "Unable to get name for" << path << endl;
+        this->name = "unknown";
+    } else
+        this->name = string(name_buf);
 }
+
+Keyboard::Keyboard() :
+    name("uninitialized"),
+    fd(-1),
+    locked(false)
+{}
 
 Keyboard::~Keyboard() {
     if (locked)

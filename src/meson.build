@@ -27,7 +27,8 @@ macrod_src = [
   'LuaUtils.cpp',
   'Keyboard.cpp',
   'FSWatcher.cpp',
-  'hawck-macrod.cpp'
+  'hawck-macrod.cpp',
+  #'Dir.cpp',
 ]
 executable('hawck-macrod',
            macrod_src,
@@ -47,7 +48,8 @@ inputd_src = [
   'Keyboard.cpp',
   'FSWatcher.cpp',
   'CSV.cpp',
-  'hawck-inputd.cpp'
+  'hawck-inputd.cpp',
+  #'Dir.cpp',
 ]
 executable('hawck-inputd',
            inputd_src,
