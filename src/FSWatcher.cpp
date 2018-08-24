@@ -35,8 +35,7 @@ extern "C" {
     #include <string.h>
     #include <unistd.h>
     #include <poll.h>
-    /* Linux-kernel specific */
-    #include <sys/inotify.h>
+    #include <syslog.h>
 }
 
 #include "FSWatcher.hpp"
@@ -50,12 +49,26 @@ FSWatcher::FSWatcher() {
     }
 }
 
-FSWatcher::~FSWatcher() {
-    lock_guard<mutex> lock(events_mtx);
+FSWatcher::~FSWatcher() noexcept(false) {
+    stop();
+
     for (auto ev : events)
         delete ev;
     events.clear();
-    close(fd);
+
+    if (close(fd) == -1)
+        syslog(LOG_ERR, "Unable to close inotify file descriptor");
+}
+
+void FSWatcher::stop() noexcept(false) {
+    int max_wait_usec = FSW_THREAD_STOP_TIMEOUT_SEC * 1000000;
+    int wait_usec = 0;
+    running = RunState::STOPPING;
+    while (running != RunState::STOPPED) {
+        usleep(10);
+        if ((wait_usec += 10) >= max_wait_usec)
+            throw std::runtime_error("Unable to stop FSWatcher thread");
+    }
 }
 
 void FSWatcher::add(string path) {
@@ -184,17 +197,16 @@ FSEvent *FSWatcher::handleEvent(struct inotify_event *ev) {
 
 void FSWatcher::watch(const function<bool(FSEvent &ev)> &callback) {
     // Local `running`, is set by the callback
-    bool running = true;
     // Instance-wide `running` set by FSWatcher::stop()
-    this->running = true;
     struct pollfd pfd;
-    while (running && this->running) {
+    while (running == RunState::RUNNING) {
         pfd.fd = this->fd;
         pfd.events = POLLIN;
 
         try {
             // Poll with a timeout of 128 ms, this is so that we can check
             // `running` continuously.
+            errno = 0;
             switch (poll(&pfd, 1, 128)) {
                 case -1:
                     throw SystemError("Error in poll() on inotify fd: ", (int) errno);
@@ -205,9 +217,15 @@ void FSWatcher::watch(const function<bool(FSEvent &ev)> &callback) {
 
                 default: {
                     // Acquire fs events and check for errors
-                    ssize_t num_read = read(this->fd, evbuf, sizeof(evbuf));
-                    if (num_read <= 0) {
-                        throw SystemError("Error in read() on inotify fd: ", (int) errno);
+                    ssize_t num_read;
+                    if (this->backup_num_read == 0) {
+                        num_read = read(this->fd, evbuf, sizeof(evbuf));
+                        if (num_read <= 0) {
+                            throw SystemError("Error in read() on inotify fd: ", (int) errno);
+                        }
+                    } else {
+                        num_read = this->backup_num_read;
+                        this->backup_num_read = 0;
                     }
 
                     struct inotify_event *ev;
@@ -219,8 +237,16 @@ void FSWatcher::watch(const function<bool(FSEvent &ev)> &callback) {
                         ev = (struct inotify_event *) p;
                         FSEvent *fs_ev = handleEvent(ev);
                         if (fs_ev != nullptr) {
-                            running = callback(*fs_ev);
+                            if (!callback(*fs_ev))
+                                running = RunState::STOPPING;
                             delete fs_ev;
+                        }
+                        if (running != RunState::RUNNING) {
+                            p += sizeof(struct inotify_event);
+                            size_t len = (evbuf + sizeof(evbuf)) - p;
+                            memmove(&evbuf[0], p, len);
+                            this->backup_num_read = len;
+                            break;
                         }
                     }
                 }
@@ -230,16 +256,7 @@ void FSWatcher::watch(const function<bool(FSEvent &ev)> &callback) {
         }
     }
 
-    this->running = false;
-}
-
-vector<FSEvent *> FSWatcher::getEvents() {
-    lock_guard<mutex> lock(events_mtx);
-    vector<FSEvent *> nevents;
-    for (FSEvent *ev : events)
-        nevents.push_back(ev);
-    events.clear();
-    return nevents;
+    this->running = STOPPED;
 }
 
 FSEvent::FSEvent(struct inotify_event *ev, string path)

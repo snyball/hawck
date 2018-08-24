@@ -142,15 +142,16 @@ you know whether or not the installation went smoothly.
 When Hawck starts up it splits up into two daemons that communicate with
 each other:
 
-- Keyboard daemon
-  - Runs under the 'hawck-grab' user and is part of the input group,
+- InputD
+  - Runs under the 'hawck-input' user and is part of the input group,
     letting it read from /dev/input/ devices.
+  - Member of the hawck-uinput group, allowing it to use /dev/uinput
   - Grabs keyboard input exclusively.
   - Knows which keys to pass over to the macro daemon
   - Controls a virtual keyboard that is used to emulate
     keypresses, this includes re-pressing keys that did
     not need to be handled by the macro daemon.
-- Macro daemon
+- MacroD
   - Runs under the desktop user.
   - Listens for keypresses sent from the keyboard daemon.
   - Passes received keypresses into Lua scripts in order to

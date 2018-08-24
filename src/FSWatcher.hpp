@@ -29,18 +29,29 @@
 
 /** @file FSWatcher.hpp
  *
- * @brief File system watcher (inotify)
+ * @brief File system watcher
  *
- * This class exposes the Linux kernel inotify API,
- * allowing programs to listen for file system events.
+ * Exposes the OS file watching API.
+ *
+ * Currently only the inotify API from Linux is supported.
  */
 
 extern "C" {
-    #include <sys/inotify.h>
     #include <limits.h>
     #include <sys/stat.h>
     #include <unistd.h>
 }
+
+#if __linux
+    extern "C" {
+        #include <sys/inotify.h>
+    }
+    using OSEvent = struct inotify_event;
+    using OSAPIHandle = int;
+    using OSFileStat = struct stat;
+#else
+    #error "This class currently only supports the Linux inotify API."
+#endif
 
 #include <vector>
 #include <string>
@@ -53,6 +64,10 @@ extern "C" {
 
 /** Number of items inside the event buffer of \link FSWatcher \endlink */
 static constexpr size_t EVBUF_ITEMS = 10;
+
+/** Time before runtime_error is thrown in stop() if it cannot stop
+ *  the thread. */
+static constexpr int FSW_THREAD_STOP_TIMEOUT_SEC = 15;
 
 /** File system event */
 struct FSEvent {
@@ -79,15 +94,56 @@ struct FSEvent {
 
 using FSWatchFn = std::function<bool(FSEvent &ev)>;
 
+enum RunState {
+    STOPPED,
+    RUNNING,
+    STOPPING,
+};
+
 /** File system watcher.
  *
  * Uses the Linux inotify API to listen for file system
  * events.
+ *
+ * Example:
+ *
+ *   FSWatcher fsw;
+ *   fsw.addFrom("/dev/input/")
+ *   fsw.begin([](FSEvent ev) {
+ *       if (ev.path == my_special_path) {
+ *           doSpecialThing(ev);
+ *           // Stop running.
+ *           return false;
+ *       } else if (S_ISDIR(ev.stbuf))
+ *           doDirectoryThing(ev);
+ *       // Keep running
+ *       return true;
+ *   })
+ *   ...
+ *   fsw.stop();
+ *   ...
+ *   // Will resume where the last handler quit.
+ *   fsw.begin([](FSEvent ev) {
+ *       ...
+ *   })
+ *   fsw.stop();
+ *   ...
+ *   fsw.begin([](FSEvent ev) {
+ *       // Bad idea:
+ *       sleep(100);
+ *       // Other bad idea:
+ *       while (never_false)
+ *           ;
+ *   })
+ *   
+ *   } // fsw now out of scope
+ *   // This leads to an abort() as FSWatcher::stop() is unable
+ *   // to stop the last handler in time.
  */
 class FSWatcher {
 private:
     /** Inotify main file descriptor. */
-    int fd;
+    OSAPIHandle fd;
     /** Event buffer used to receive inotify events. */
     char evbuf[EVBUF_ITEMS * (sizeof(struct inotify_event) + NAME_MAX + 1)];
     /** Maps paths to watch descriptors. */
@@ -100,17 +156,32 @@ private:
     /** Holds received events, is emptied by calling
      *  \link FSWatcher::getEvents() \endlink */
     std::vector<FSEvent *> events;
-    /** Set to true when \link FSWatcher::watch() \endlink is called,
-     *  is set to false by calling \link FSWatcher::stop() \endlink */
-    std::atomic<bool> running = false;
+    /** Set to RUNNING when \link FSWatcher::watch() \endlink is called,
+     *  is set to STOPPED by calling \link FSWatcher::stop() \endlink */
+    std::atomic<RunState> running = RunState::STOPPED;
     /** Whether or not to automatically add files that are created in
      *  watched directories. */
     bool auto_add = true;
     /** Whether or not to receive events about directories. */
     bool watch_dirs = false;
+    /** Used for backing up the number of unread evbuf elements
+     *  present when a callback function terminated, the watcher
+     *  can then be restarted without missing any events.
+     *  XXX: I'm guessing the kernel will eventually start to drop
+     *       events if there are too many unread ones. So if you don't
+     *       want to miss out then you should probably not leave the
+     *       FSW instance hanging around for too long. */
+    size_t backup_num_read = 0;
 
     /** Handle an event. */
     FSEvent *handleEvent(struct inotify_event *ev);
+
+    /** Watch the added files using a given callback.
+     *
+     * @param callback Callback for handling file system events, returning
+     *                 false from the handler stops watch().
+     */
+    void watch(const FSWatchFn &callback);
 
 public:
     /**
@@ -118,7 +189,18 @@ public:
      */
     FSWatcher();
 
-    ~FSWatcher();
+    /**
+     * FSWatcher destructor, stops the currently running thread.
+     *
+     * If we time out on stopping the thread a runtime_exception
+     * will be thrown, this can happen if your callback ran into
+     * an infinite loop, has gotten stuck in a syscall, or is doing
+     * something it really shouldn't be doing like sleep()ing.
+     *
+     * @see FSW_THREAD_STOP_TIMEOUT_SEC For the actual amount of seconds
+     *                                  you should expect.
+     */
+    ~FSWatcher() noexcept(false);
 
     /** Add a single file.
      *
@@ -164,17 +246,6 @@ public:
      */
     void removeFrom(std::string path);
 
-    /** Watch the added files. */
-    [[deprecated]]
-    void watch();
-
-    /** Watch the added files using a given callback.
-     *
-     * @param callback Callback for handling file system events, returning
-     *                 false from the handler stops watch().
-     */
-    void watch(const std::function<bool(FSEvent &ev)> &callback);
-
     /**
      * Spawn a thread watching over the added files, this
      * new thread calls watch() with the provided callback.
@@ -183,35 +254,39 @@ public:
      * stop() on the FSWatcher instance, or by returning false
      * from the callback.
      *
+     * This function can throw std::runtime_error, however these
+     * errors should not be caught.
+     *
+     * Note: begin can only be called once, unless you call stop
+     *       first.
+     *
      * @param callback Passed to watch()
      */
     inline void begin(const FSWatchFn &callback) {
-        if (running)
-            throw std::logic_error("Have already begun watching.");
+        if (running == RunState::RUNNING)
+            throw std::runtime_error("Have already begun watching.");
 
+        running = RunState::RUNNING;
         std::thread t0([&]() {
                             watch(callback);
                        });
         t0.detach();
-
-        // Wait for the watch() to begin.
-        while (!running)
-            usleep(10);
     }
 
     /** Stop watching.
+     *
+     * Note: This function will call runtime_error if it times out
+     *       on stopping your handler function.
      * 
-     * This call has no effect if watch() was
-     * not called beforehand.
+     * @see FSW_THREAD_STOP_TIMEOUT_SEC For the actual amount of seconds
+     *                                  you should expect.
      */
-    inline void stop() {
-        running = false;
-    }
+    void stop();
 
     /** Check if the watcher is running.
      */
     inline bool isRunning() {
-        return running;
+        return running == RunState::RUNNING;
     }
 
     /** Set whether or not to receive events about directories */
@@ -224,16 +299,6 @@ public:
     inline void setAutoAdd(bool auto_add) {
         this->auto_add = auto_add;
     }
-
-    /** Get events.
-     *
-     * This function is thread safe for a single reader, race-conditions
-     * occur with multiple readers.
-     *
-     * It is an error to use getEvents() while using watch(callback),
-     * it is only intended to be used when calling watch() without any
-     * arguments.
-     */
-    [[deprecated]]
-    std::vector<FSEvent *> getEvents();
 };
+
+

@@ -6,6 +6,7 @@ function die() {
     echo "$1." >&2
     zenity --error --ellipsize --text="$1"
     kill $SPID
+    exit 1
 }
 
 if [ $(whoami) = 'root' ]; then
@@ -34,9 +35,9 @@ function run() {
     pushd "build" &>/dev/null
     meson -Ddesktop_user=$(whoami) >&2 || die "Failed to create build"
     meson configure -Ddesktop_user=$(whoami) >&2 || die "Failed to configure meson"
-    echo "40%"
-    ninja -j4 >&2 || die "Failed to build hawck-macrod and hawck-inputd"
-    echo "60%"
+    echo "25%"
+    (ninja || die "Unable to compile hawck") | ../bin/ninja-get-percent.awk 25 45
+    echo "70%"
     ninja hawck-ui >&2 || die "Failed to build hawck-ui"
     echo "80%"
     pkexec bash -c "cd $(pwd) && ninja install" >&2 || die "Installation failed"

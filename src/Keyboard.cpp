@@ -26,18 +26,61 @@
  * =====================================================================================
  */
 
-#include "Keyboard.hpp"
 #include <sstream>
 #include <errno.h>
 #include <iostream>
 extern "C" {
     #include <string.h>
+    #include <poll.h>
+    #include <syslog.h>
 }
+
+#include "Keyboard.hpp"
+#include "SystemError.hpp"
+#include "utils.hpp"
 
 using namespace std;
 
+/** Size of buffers given to ioctl. */
+constexpr size_t ioctl_get_bufsz = 512;
+
+/**
+ * Retrieve a string from a device using ioctl,
+ *
+ * @param _fd File descriptor of ioctl
+ * @param _what A macro taking a length argument, should be one of
+ *              the EVIOCG* function-like macros from <linux/uinput.h>.
+ */
+#define ioctlGetString(_fd, _what) \
+    _ioctlGetString((_fd), _what(ioctl_get_bufsz))
+
+/**
+ * @see ioctlGetString(_fd, _what)
+ */
+static inline string _ioctlGetString(int fd, int what) {
+    char buf[ioctl_get_bufsz];
+    ssize_t sz;
+    if ((sz = ioctl(fd, what, buf)) == -1)
+        return "";
+    return string(buf);
+}
+
+/**
+ * Retrieve an integer value from a device using ioctl.
+ *
+ * @param fd File descriptor for the device.
+ * @param what What information to retrieve, should be one of the
+ *             EVIOCG* non-function macros from <linux/input.h>.
+ * @return The integer received.
+ */
+static inline int ioctlGetInt(int fd, int what) {
+    int ret;
+    if (ioctl(fd, what, &ret) == -1)
+        return -1;
+    return ret;
+}
+
 Keyboard::Keyboard(const char *path) {
-    char name_buf[256];
     fd = open(path, O_RDONLY);
 
     if (fd == -1) {
@@ -47,23 +90,29 @@ Keyboard::Keyboard(const char *path) {
         throw KeyboardError(err.str());
     }
 
-    if (ioctl(fd, EVIOCGNAME(sizeof(name_buf)), name_buf) <= 0) {
-        cout << "Unable to get name for" << path << endl;
-        this->name = "unknown";
-    } else
-        this->name = string(name_buf);
+    name = ioctlGetString(fd, EVIOCGNAME);
+    uniq_id = ioctlGetString(fd, EVIOCGUNIQ);
+    phys = ioctlGetString(fd, EVIOCGPHYS);
+    // Not a 32-bit integer actually is input_id, a 64 bit struct.
+    // num_id = ioctlGetInt(fd, EVIOCGID);
 }
-
-Keyboard::Keyboard() :
-    name("uninitialized"),
-    fd(-1),
-    locked(false)
-{}
 
 Keyboard::~Keyboard() {
     if (locked)
         unlock();
     close(fd);
+}
+
+bool Keyboard::isMe(const char *path) const {
+    auto ext = mkuniq(fopen(path, "r"), &fclose);
+    if (ext == nullptr)
+        throw SystemError("Error in fopen(): ", errno);
+    int fd = ext->_fileno;
+
+    return (name == ioctlGetString(fd, EVIOCGNAME) &&
+            uniq_id == ioctlGetString(fd, EVIOCGUNIQ) &&
+            phys == ioctlGetString(fd, EVIOCGPHYS) &&
+            num_id == ioctlGetInt(fd, EVIOCGID));
 }
 
 void Keyboard::lock() {
@@ -77,6 +126,13 @@ void Keyboard::lock() {
     unsigned char key_states[KEY_MAX/8 + 1];
     memset(key_states, 0, sizeof(key_states));
     ioctl(fd, EVIOCGKEY(sizeof(key_states)), key_states);
+    int was_down = 0;
+    for (size_t i = 0; i < sizeof(key_states); i++)
+        // Shift bits to count downed keys.
+        for (unsigned int bs = 1; bs <= 128; bs <<= 1)
+            was_down += bs & key_states[i];
+    syslog(LOG_INFO, "Keys held: %d", was_down);
+    cout << "Keys held: " << was_down << endl;
     #endif
 
     cout << "\033[32;1;4mKBD READY\033[0m" << endl;
@@ -112,5 +168,48 @@ void Keyboard::get(struct input_event *ev) {
         stringstream err("read() failed, returned: ");
         err << n << ": " << strerror(errno);
         throw KeyboardError(err.str());
+    }
+}
+
+void Keyboard::disable() noexcept {
+    if (close(fd) == -1) {
+        auto exc = SystemError("Unable to close(): ", fd);
+        syslog(LOG_ERR, "%s", exc.what());
+    }
+    fd = -1;
+}
+
+void Keyboard::reset(const char *path) {
+    int fd = open(path, O_RDONLY);
+    if (fd < 0)
+        throw SystemError("Error in open(): ", errno);
+    this->fd = fd;
+}
+
+int kbdMultiplex(const std::vector<Keyboard*>& kbds, int timeout) {
+    struct pollfd pfds[kbds.size()];
+    size_t idx = 0;
+    for (const auto& kbd : kbds) {
+        pfds[idx].revents = POLLIN;
+        pfds[idx++].fd = kbd->getfd();
+    }
+
+    int fd;
+    errno = 0;
+    switch (fd = poll(pfds, kbds.size(), timeout)) {
+        case -1:
+            throw SystemError("Error in poll(): ", errno);
+
+        case 0:
+            if (timeout == -1)
+                throw SystemError("Poll should not have timed out");
+            return -1;
+
+        default:
+            for (idx = 0; idx < kbds.size(); idx++)
+                if (pfds[idx].fd == fd)
+                    return idx;
+
+            throw SystemError("Unable to find file descriptor returned by poll()");
     }
 }

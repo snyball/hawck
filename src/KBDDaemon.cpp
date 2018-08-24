@@ -30,6 +30,10 @@
 #include <iostream>
 #include <string>
 
+extern "C" {
+    #include <syslog.h>
+}
+
 #include "KBDDaemon.hpp"
 #include "CSV.hpp"
 #include "utils.hpp"
@@ -45,21 +49,14 @@
 
 using namespace std;
 
-KBDDaemon::KBDDaemon(const char *device) :
-    kbd_com("/var/lib/hawck-input/kbd.sock"),
-    kbd(device)
-{
-    initPassthrough();
-}
-
 KBDDaemon::KBDDaemon() :
     kbd_com("/var/lib/hawck-input/kbd.sock")
 {
     initPassthrough();
 }
 
-void KBDDaemon::addDevice(const char *device) {
-    kbds.push_back(Keyboard(device));
+void KBDDaemon::addDevice(const std::string& device) {
+    kbds.push_back(Keyboard(device.c_str()));
 }
 
 KBDDaemon::~KBDDaemon() {
@@ -112,7 +109,7 @@ void KBDDaemon::loadPassthrough(std::string rel_path) {
             }
         }
         key_sources[path] = cells_i.release();
-        fsw.add(path);
+        keys_fsw.add(path);
         printf("LOADED: %s\n", path.c_str());
     } catch (const CSV::CSVError &e) {
         cout << "loadPassthrough error: " << e.what() << endl;
@@ -137,49 +134,86 @@ void KBDDaemon::loadPassthrough(FSEvent *ev) {
 }
 
 void KBDDaemon::initPassthrough() {
-    auto files = mkuniq(fsw.addFrom(data_dirs["keys"]));
+    auto files = mkuniq(keys_fsw.addFrom(data_dirs["keys"]));
     cout << "Added data_dir" << endl;
     for (auto &file : *files)
         loadPassthrough(&file);
 }
 
-void KBDDaemon::run() {
+void KBDDaemon::updateAvailableKBDs() {
+    available_kbds.clear();
+    for (auto &kbd : kbds)
+        if (!kbd.isDisabled())
+            available_kbds.push_back(&kbd);
+}
 
+void KBDDaemon::run() {
     KBDAction action;
 
-    kbd.lock();
+    for (auto& kbd : kbds) {
+        cout << "Locking on to: " << kbd.getName() << endl;
+        kbd.lock();
+    }
 
-    // 10 consecutive socket errors will lead to the keyboard daemon
+    // 30 consecutive socket errors will lead to the keyboard daemon
     // aborting.
-    static const int MAX_ERRORS = 10;
+    static const int MAX_ERRORS = 30;
     int errors = 0;
 
-    fsw.begin([&](FSEvent &ev) {
-                  lock_guard<mutex> lock(passthrough_keys_mtx);
-                  if (ev.mask & IN_DELETE_SELF)
-                      unloadPassthrough(ev.path);
-                  else if (ev.mask & (IN_CREATE | IN_MODIFY))
-                      loadPassthrough(&ev);
-                  return true;
-              });
+    keys_fsw.begin([&](FSEvent &ev) {
+                       lock_guard<mutex> lock(passthrough_keys_mtx);
+                       if (ev.mask & IN_DELETE_SELF)
+                           unloadPassthrough(ev.path);
+                       else if (ev.mask & (IN_CREATE | IN_MODIFY))
+                           loadPassthrough(&ev);
+                       return true;
+                   });
 
+    input_fsw.begin([&](FSEvent &ev) {
+                        lock_guard<mutex> lock(pulled_kbds_mtx);
+                        for (auto it = pulled_kbds.begin(); it != pulled_kbds.end(); it++) {
+                            auto kbd = *it;
+                            if (kbd->isMe(ev.path.c_str())) {
+                                lock_guard<mutex> lock(available_kbds_mtx);
+                                syslog(LOG_INFO,
+                                       "Keyboard was plugged in: %s",
+                                       kbd->getName().c_str());
+                                available_kbds.push_back(kbd);
+                                pulled_kbds.erase(it);
+                            }
+                        }
+                        return true;
+                    });
+
+    Keyboard *kbd = nullptr;
     for (;;) {
         action.done = 0;
+        updateAvailableKBDs();
         try {
-            kbd.get(&action.ev);
+            vector<Keyboard*> kbds;
+            {
+                lock_guard<mutex> lock(available_kbds_mtx);
+                kbds = available_kbds;
+            }
+            kbd = available_kbds[kbdMultiplex(kbds)];
+            kbd->get(&action.ev);
         } catch (KeyboardError &e) {
-            // Close connection to let the macro daemon know it should
-            // terminate.
-            kbd_com.close();
-            abort();
+            // Disable the keyboard,
+            syslog(LOG_ERR,
+                   "Read error on keyboard, assumed to be removed: %s",
+                   kbd->getName().c_str());
+            kbd->disable();
+            {
+                lock_guard<mutex> lock(available_kbds_mtx);
+                auto pos_it = find(available_kbds.begin(),
+                                   available_kbds.end(),
+                                   kbd);
+                available_kbds.erase(pos_it);
+            }
+            lock_guard<mutex> lock(pulled_kbds_mtx);
+            pulled_kbds.push_back(kbd);
         }
 
-#if DANGER_DANGER_LOG_KEYS
-        cout << "Received keyboard action ." << endl;
-        fflush(stdout);
-        fprintf(stderr, "GOT EVENT %d WITH KEY %d\n", action.ev.value, (int)action.ev.code);
-        fflush(stderr);
-#endif
         bool is_passthrough; {
             lock_guard<mutex> lock(passthrough_keys_mtx);
             is_passthrough = passthrough_keys.count(action.ev.code);
@@ -213,20 +247,15 @@ void KBDDaemon::run() {
                 // or run into an error.
                 if (errors++ > MAX_ERRORS) {
                     kbd_com.close();
+                    syslog(LOG_CRIT, "Unable to communicate with MacroD");
                     abort();
                 }
                 // On error control flow continues on to udev.emit()
             }
         }
 
-#if DANGER_DANGER_LOG_KEYS
-        fprintf(stderr, "RE-EMIT KEY\n");
-#endif
-
         udev.emit(&action.ev);
         udev.flush();
     }
-
-    fprintf(stderr, "QUIT LOOP\n"); fflush(stderr);
 }
 

@@ -30,6 +30,7 @@
 
 #include <unordered_map>
 #include <set>
+#include <mutex>
 #include <thread>
 
 #include "KBDConnection.hpp"
@@ -61,9 +62,19 @@ private:
     std::unordered_map<std::string, std::vector<int>*> key_sources;
     UNIXSocket<KBDAction> kbd_com;
     UDevice udev;
-    Keyboard kbd;
+    /** All keyboards. */
     std::vector<Keyboard> kbds;
-    FSWatcher fsw;
+    std::mutex kbds_mtx;
+    /** Keyboards available for listening. */
+    std::vector<Keyboard *> available_kbds;
+    std::mutex available_kbds_mtx;
+    /** Keyboards that were removed. */
+    std::vector<Keyboard *> pulled_kbds;
+    std::mutex pulled_kbds_mtx;
+    /** Watcher for /var/lib/hawck/keys */
+    FSWatcher keys_fsw;
+    /** Watcher for /dev/input/ hotplug */
+    FSWatcher input_fsw;
 
 public:
     explicit KBDDaemon(const char *device);
@@ -76,7 +87,7 @@ public:
      *
      * @param device Full path to the device in /dev/input/
      */
-    void addDevice(const char *device);
+    void addDevice(const std::string& device);
 
     /**
      * Load passthrough keys from a file at `path`.
@@ -102,4 +113,9 @@ public:
      * Start running the daemon.
      */
     void run();
+
+    /**
+     * Check which keyboards have become unavailable/available again.
+     */
+    void updateAvailableKBDs();
 };
