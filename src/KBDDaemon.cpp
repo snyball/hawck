@@ -32,6 +32,7 @@
 
 extern "C" {
     #include <syslog.h>
+    #include <grp.h>
 }
 
 #include "KBDDaemon.hpp"
@@ -48,6 +49,8 @@ extern "C" {
 #endif
 
 using namespace std;
+
+constexpr int FSW_MAX_WAIT_PERMISSIONS_US = 5 * 1000000;
 
 KBDDaemon::KBDDaemon() :
     kbd_com("/var/lib/hawck-input/kbd.sock")
@@ -177,13 +180,68 @@ void KBDDaemon::run() {
     input_fsw.setWatchDirs(true);
     input_fsw.setAutoAdd(false);
 
+    struct group grpbuf;
+    struct group *grp_ptr;
+    char namebuf[200];
+
+    // TODO: Write a getgroup function that either takes gid_t or string,
+    //       it should return a struct Group by using either getgrnam_r or getgrgid_r.
+    //       This function is ridiculous.
+    //       Wrap grpbuf like this:
+    //       struct Group {
+    //           struct group grpbuf;
+    //           char buf[200];
+    //       }
+    if (getgrnam_r("input", &grpbuf, namebuf, sizeof(namebuf), &grp_ptr) != 0)
+        throw SystemError("Failure in getgrnam_r(): ", errno);
+    gid_t input_gid = grp_ptr->gr_gid;
+
     #if 1
     input_fsw.begin([&](FSEvent &ev) {
+                        // Don't react to the directory itself.
+                        if (ev.path == "/dev/input")
+                            return true;
+
                         cout << "Input event on: " << ev.path << endl;
-                        return true;
+
                         lock_guard<mutex> lock(pulled_kbds_mtx);
+
                         for (auto it = pulled_kbds.begin(); it != pulled_kbds.end(); it++) {
                             auto kbd = *it;
+
+                            int wait_inc_us = 100;
+                            int wait_time = 0;
+                            // Loop until the file has the correct permissions,
+                            // when immediately added /dev/input/* files seem
+                            // to be owned by root:root or by root:input with
+                            // restrictive permissions.
+                            // We expect it to be root:input with the input group
+                            // being able to read and write.
+                            struct stat stbuf;
+                            unsigned grp_perm;
+                            int ret;
+                            do {
+                                usleep(wait_inc_us);
+                                ret = stat(ev.path.c_str(), &stbuf);
+                                grp_perm = stbuf.st_mode & S_IRWXG;
+
+                                // Check if it is a character device, test is done here because
+                                // permissions might not allow for even stat()ing the file.
+                                if (ret != -1 && !S_ISCHR(ev.stbuf.st_mode)) {
+                                    // Not a character device, return
+                                    cout << "Not a character device" << endl;
+                                    return true;
+                                }
+
+                                if ((wait_time += wait_inc_us) > FSW_MAX_WAIT_PERMISSIONS_US) {
+                                    syslog(LOG_ERR,
+                                           "Could not aquire permissions rw with group input on '%s'",
+                                           ev.path.c_str());
+                                    // Skip this file
+                                    return true;
+                                }
+                            } while (ret != -1 && !(4 & grp_perm && grp_perm & 2) && stbuf.st_gid != input_gid);
+
                             if (kbd->isMe(ev.path.c_str())) {
                                 syslog(LOG_INFO,
                                        "Keyboard was plugged in: %s",
@@ -203,14 +261,23 @@ void KBDDaemon::run() {
     #endif
 
     Keyboard *kbd = nullptr;
+    bool had_key;
     for (;;) {
+        had_key = false;
         action.done = 0;
         try {
             available_kbds_mtx.lock();
             vector<Keyboard*> kbds(available_kbds);
             available_kbds_mtx.unlock();
-            kbd = kbds[kbdMultiplex(kbds)];
-            kbd->get(&action.ev);
+            int idx = kbdMultiplex(kbds, 64);
+            if (idx != -1) {
+                kbd = kbds[idx];
+                kbd->get(&action.ev);
+
+                // Throw away the key if the keyboard isn't locked yet.
+                if (kbd->getState() == KBDState::LOCKED)
+                    had_key = true;
+            }
         } catch (const KeyboardError &e) {
             // Disable the keyboard,
             syslog(LOG_ERR,
@@ -227,6 +294,9 @@ void KBDDaemon::run() {
             lock_guard<mutex> lock(pulled_kbds_mtx);
             pulled_kbds.push_back(kbd);
         }
+
+        if (!had_key)
+            continue;
 
         bool is_passthrough; {
             lock_guard<mutex> lock(passthrough_keys_mtx);

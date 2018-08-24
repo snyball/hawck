@@ -26,12 +26,12 @@ using namespace std;
 static int getDevice(const string &by_name) {
     char buf[256];
     string devdir = "/dev/input";
-    DIR *dir = opendir(devdir.c_str());
+    auto dir = shared_ptr<DIR>(opendir(devdir.c_str()), &closedir);
     if (dir == nullptr)
         throw SystemError("Unable to open directory: ", errno);
 
     struct dirent *entry;
-    while ((entry = readdir(dir))) {
+    while ((entry = readdir(dir.get()))) {
         int fd, ret;
         sstream ss;
         ss << devdir << "/" << entry->d_name;

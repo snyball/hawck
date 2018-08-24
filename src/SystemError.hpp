@@ -28,7 +28,7 @@ public:
     SystemError(const std::string &expl, int errnum) : expl(expl) {
         char errbuf[8192];
         memset(errbuf, 0, sizeof(errbuf));
-        if (strerror_r(errnum, errbuf, sizeof(errbuf))) {
+        if (strerror_r(errnum, errbuf, sizeof(errbuf)) != 0) {
             switch (errno) {
                 case ERANGE: strncpy(errbuf, "[strerror_r:ERANGE]", sizeof(errbuf)); break;
                 case EINVAL: strncpy(errbuf, "[strerror_r:EINVAL]", sizeof(errbuf)); break;

@@ -54,6 +54,12 @@ public:
     explicit inline KeyboardError(std::string&& msg) : std::runtime_error(msg) {}
 };
 
+enum KBDState {
+    LOCKED,
+    LOCKING,
+    OPEN,
+};
+
 /**
  * Read directly from a keyboard input device.
  */
@@ -64,20 +70,22 @@ private:
     /** Human-readable name of the device. */
     std::string name = "";
     /** Name of the device in /dev/input/by-id/ */
-    std::string id = "";
+    // std::string id = "";
     /** Name of the device in /dev/input/by-path/ */
-    std::string path = "";
+    // std::string path = "";
     /** This path is volatile, if the device is unplugged it will
      *  cease to exist. */
     std::string ev_path = "";
     /** Physical location of device. */
     std::string phys = "";
     /** Numeric id of the device. */
-    int num_id = -1;
+    struct input_id dev_id;
     /** Unique id of the device. */
     std::string uniq_id = "";
+    /** Filed descriptor for keyboard device. */
     int fd = -1;
-    int event_n = 0;
+    /** State of the keyboard, used in locking. */
+    KBDState state = KBDState::OPEN;
 
 public:
     explicit Keyboard(const char *path);
@@ -85,6 +93,10 @@ public:
 
     /** Acquire an exclusive lock to the keyboard. */
     void lock();
+
+    /** Acquire a lock immediately, this function will block until
+     *  a lock has been acquired. */
+    void lockSync();
 
     /** Release the exclusive lock to the keyboard. */
     void unlock();
@@ -121,6 +133,12 @@ public:
     inline int getfd() const noexcept {
         return fd;
     }
+
+    inline KBDState getState() const noexcept {
+        return state;
+    }
+
+    int numDown() const;
 };
 
 /**

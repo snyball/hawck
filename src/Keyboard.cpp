@@ -65,21 +65,6 @@ static inline string _ioctlGetString(int fd, int what) {
     return string(buf);
 }
 
-/**
- * Retrieve an integer value from a device using ioctl.
- *
- * @param fd File descriptor for the device.
- * @param what What information to retrieve, should be one of the
- *             EVIOCG* non-function macros from <linux/input.h>.
- * @return The integer received.
- */
-static inline int ioctlGetInt(int fd, int what) {
-    int ret;
-    if (ioctl(fd, what, &ret) == -1)
-        return -1;
-    return ret;
-}
-
 Keyboard::Keyboard(const char *path) {
     fd = open(path, O_RDONLY);
 
@@ -93,6 +78,9 @@ Keyboard::Keyboard(const char *path) {
     name = ioctlGetString(fd, EVIOCGNAME);
     uniq_id = ioctlGetString(fd, EVIOCGUNIQ);
     phys = ioctlGetString(fd, EVIOCGPHYS);
+    if (ioctl(fd, EVIOCGID, &dev_id) == -1) {
+        memset(&dev_id, 0, sizeof(dev_id));
+    }
     // Not a 32-bit integer actually is input_id, a 64 bit struct.
     // num_id = ioctlGetInt(fd, EVIOCGID);
 }
@@ -104,36 +92,57 @@ Keyboard::~Keyboard() {
 }
 
 bool Keyboard::isMe(const char *path) const {
-    auto ext = mkuniq(fopen(path, "r"), &fclose);
-    if (ext == nullptr)
-        throw SystemError("Error in fopen(): ", errno);
-    int fd = ext->_fileno;
+    errno = 0;
+    int new_fd = open(path, O_RDONLY);
+    if (new_fd == -1) {
+        cout << strerror(errno) << endl;
+        throw SystemError("Error in open(" + string(path) + "): ", errno);
+    }
+    struct input_id dev_id;
+    if (ioctl(new_fd, EVIOCGID, &dev_id) == -1)
+        memset(&dev_id, 0, sizeof(dev_id));
 
-    return (name == ioctlGetString(fd, EVIOCGNAME) &&
-            uniq_id == ioctlGetString(fd, EVIOCGUNIQ) &&
-            phys == ioctlGetString(fd, EVIOCGPHYS) &&
-            num_id == ioctlGetInt(fd, EVIOCGID));
+    cout << "This keyboard:" << endl;
+    cout << "  name: '" << name << "'" << endl;
+    cout << "  uniq: '" << uniq_id << "'" << endl;
+    cout << "  phys: '" << phys << "'" << endl;
+    cout << "  dev_id.bustype: " << this->dev_id.bustype << endl;
+	cout << "  dev_id.vendor: " << this->dev_id.vendor << endl;
+	cout << "  dev_id.product: " << this->dev_id.product << endl;
+	cout << "  dev_id.version: " << this->dev_id.version << endl;
+
+    cout << "Other keyboard:" << endl;
+    cout << "  name: '" << ioctlGetString(new_fd, EVIOCGNAME) << "'" << endl;
+    cout << "  uniq: '" << ioctlGetString(new_fd, EVIOCGUNIQ) << "'" << endl;
+    cout << "  phys: '" << ioctlGetString(new_fd, EVIOCGPHYS) << "'" << endl;
+    cout << "  dev_id.bustype: " << dev_id.bustype << endl;
+	cout << "  dev_id.vendor: " << dev_id.vendor << endl;
+	cout << "  dev_id.product: " << dev_id.product << endl;
+	cout << "  dev_id.version: " << dev_id.version << endl;
+
+    return (name == ioctlGetString(new_fd, EVIOCGNAME) &&
+            uniq_id == ioctlGetString(new_fd, EVIOCGUNIQ) &&
+            phys == ioctlGetString(new_fd, EVIOCGPHYS) &&
+            !memcmp(&this->dev_id, &dev_id, sizeof(dev_id)));
 }
 
-void Keyboard::lock() {
-    locked = true;
-    int grab = 1;
-    struct input_event ev;
-    int down = 0, up = 0;
-
-    // TODO: Figure out initial key downs from this:
-    #if 0
+int Keyboard::numDown() const {
     unsigned char key_states[KEY_MAX/8 + 1];
     memset(key_states, 0, sizeof(key_states));
-    ioctl(fd, EVIOCGKEY(sizeof(key_states)), key_states);
+    if (ioctl(fd, EVIOCGKEY(sizeof(key_states)), key_states) == -1)
+        throw SystemError("Unable to get key states: ", errno);
     int was_down = 0;
     for (size_t i = 0; i < sizeof(key_states); i++)
         // Shift bits to count downed keys.
         for (unsigned int bs = 1; bs <= 128; bs <<= 1)
-            was_down += bs & key_states[i];
-    syslog(LOG_INFO, "Keys held: %d", was_down);
-    cout << "Keys held: " << was_down << endl;
-    #endif
+            was_down += !!(bs & key_states[i]);
+    return was_down;
+}
+
+void Keyboard::lockSync() {
+    int grab = 1;
+    struct input_event ev;
+    int down = numDown(), up = 0;
 
     cout << "\033[32;1;4mKBD READY\033[0m" << endl;
 
@@ -152,9 +161,17 @@ void Keyboard::lock() {
             fprintf(stderr, "\r");
     } while (ev.type != EV_KEY || ev.value != 0 || down > up);
 
-    ioctl(fd, EVIOCGRAB, &grab);
+    if (ioctl(fd, EVIOCGRAB, &grab) == -1)
+        throw SystemError("Unable to lock keyboard: ", errno);
+
+    state = KBDState::LOCKED;
 
     cout << "\033[31;1;4mKBD LOCKED\033[0m" << endl;
+}
+
+void Keyboard::lock() {
+    syslog(LOG_INFO, "Locking keyboard: %s ...", name.c_str());
+    state = KBDState::LOCKING;
 }
 
 void Keyboard::unlock() {
@@ -170,9 +187,19 @@ void Keyboard::get(struct input_event *ev) {
         err << n << ": " << strerror(errno);
         throw KeyboardError(err.str());
     }
+
+    // Wait until key down events have been eliminated.
+    if (state == KBDState::LOCKING && numDown() == 0) {
+        int grab = 1;
+        if (ioctl(fd, EVIOCGRAB, &grab) == -1)
+            throw SystemError("Unable to lock keyboard: ", errno);
+        state = KBDState::LOCKED;
+        syslog(LOG_INFO, "Acquired lock on keyboard: %s", name.c_str());
+    }
 }
 
 void Keyboard::disable() noexcept {
+    unlock();
     if (close(fd) == -1) {
         auto exc = SystemError("Unable to close(): ", fd);
         syslog(LOG_ERR, "%s", exc.what());
