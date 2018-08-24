@@ -30,7 +30,7 @@ static int no_fork;
 int main(int argc, char *argv[]) {
     signal(SIGPIPE, handleSigPipe);
 
-    #if 0
+    #if 1
     string HELP =
         "Usage:\n"
         "    hawck-inputd [--udev-event-delay <µs>]\n"
@@ -156,11 +156,8 @@ int main(int argc, char *argv[]) {
 
     try {
         KBDDaemon daemon;
-        #if 0
         for (const auto& dev : kbd_devices)
             daemon.addDevice(dev);
-        #endif
-        daemon.addDevice("/dev/input/event9");
         daemon.run();
     } catch (exception &e) {
         syslog(LOG_CRIT, "Abort due to exception: %s", e.what());

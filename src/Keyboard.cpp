@@ -159,7 +159,8 @@ void Keyboard::lock() {
 
 void Keyboard::unlock() {
     locked = false;
-    ioctl(fd, EVIOCGRAB, NULL);
+    int grab = 0;
+    ioctl(fd, EVIOCGRAB, &grab);
 }
 
 void Keyboard::get(struct input_event *ev) {
@@ -187,16 +188,17 @@ void Keyboard::reset(const char *path) {
 }
 
 int kbdMultiplex(const std::vector<Keyboard*>& kbds, int timeout) {
-    struct pollfd pfds[kbds.size()];
-    size_t idx = 0;
+    size_t idx = 0,
+           len = kbds.size();
+    struct pollfd pfds[len];
     for (const auto& kbd : kbds) {
-        pfds[idx].revents = POLLIN;
+        pfds[idx].events = POLLIN;
         pfds[idx++].fd = kbd->getfd();
     }
 
-    int fd;
+    int num_fds;
     errno = 0;
-    switch (fd = poll(pfds, kbds.size(), timeout)) {
+    switch (num_fds = poll(pfds, len, timeout)) {
         case -1:
             throw SystemError("Error in poll(): ", errno);
 
@@ -206,6 +208,12 @@ int kbdMultiplex(const std::vector<Keyboard*>& kbds, int timeout) {
             return -1;
 
         default:
+            int fd = -1;
+            for (auto pfd : pfds)
+                if (pfd.revents & (POLLNVAL | POLLERR | POLLHUP | POLLNVAL | POLLIN)) {
+                    fd = pfd.fd;
+                    break;
+                }
             for (idx = 0; idx < kbds.size(); idx++)
                 if (pfds[idx].fd == fd)
                     return idx;

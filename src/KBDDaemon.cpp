@@ -56,10 +56,12 @@ KBDDaemon::KBDDaemon() :
 }
 
 void KBDDaemon::addDevice(const std::string& device) {
-    kbds.push_back(Keyboard(device.c_str()));
+    kbds.push_back(new Keyboard(device.c_str()));
 }
 
 KBDDaemon::~KBDDaemon() {
+    for (Keyboard *kbd : kbds)
+        delete kbd;
 }
 
 void KBDDaemon::unloadPassthrough(std::string path) {
@@ -143,17 +145,19 @@ void KBDDaemon::initPassthrough() {
 void KBDDaemon::updateAvailableKBDs() {
     available_kbds.clear();
     for (auto &kbd : kbds)
-        if (!kbd.isDisabled())
-            available_kbds.push_back(&kbd);
+        if (!kbd->isDisabled())
+            available_kbds.push_back(kbd);
 }
 
 void KBDDaemon::run() {
     KBDAction action;
 
     for (auto& kbd : kbds) {
-        cout << "Locking on to: " << kbd.getName() << endl;
-        kbd.lock();
+        cout << "Locking on to: " << kbd->getName() << endl;
+        kbd->lock();
     }
+
+    updateAvailableKBDs();
 
     // 30 consecutive socket errors will lead to the keyboard daemon
     // aborting.
@@ -169,35 +173,45 @@ void KBDDaemon::run() {
                        return true;
                    });
 
+    input_fsw.add("/dev/input/");
+    input_fsw.setWatchDirs(true);
+    input_fsw.setAutoAdd(false);
+
+    #if 1
     input_fsw.begin([&](FSEvent &ev) {
+                        cout << "Input event on: " << ev.path << endl;
+                        return true;
                         lock_guard<mutex> lock(pulled_kbds_mtx);
                         for (auto it = pulled_kbds.begin(); it != pulled_kbds.end(); it++) {
                             auto kbd = *it;
                             if (kbd->isMe(ev.path.c_str())) {
-                                lock_guard<mutex> lock(available_kbds_mtx);
                                 syslog(LOG_INFO,
                                        "Keyboard was plugged in: %s",
                                        kbd->getName().c_str());
-                                available_kbds.push_back(kbd);
+                                kbd->reset(ev.path.c_str());
+                                kbd->lock();
+                                {
+                                    lock_guard<mutex> lock(available_kbds_mtx);
+                                    available_kbds.push_back(kbd);
+                                }
                                 pulled_kbds.erase(it);
+                                break;
                             }
                         }
                         return true;
                     });
+    #endif
 
     Keyboard *kbd = nullptr;
     for (;;) {
         action.done = 0;
-        updateAvailableKBDs();
         try {
-            vector<Keyboard*> kbds;
-            {
-                lock_guard<mutex> lock(available_kbds_mtx);
-                kbds = available_kbds;
-            }
-            kbd = available_kbds[kbdMultiplex(kbds)];
+            available_kbds_mtx.lock();
+            vector<Keyboard*> kbds(available_kbds);
+            available_kbds_mtx.unlock();
+            kbd = kbds[kbdMultiplex(kbds)];
             kbd->get(&action.ev);
-        } catch (KeyboardError &e) {
+        } catch (const KeyboardError &e) {
             // Disable the keyboard,
             syslog(LOG_ERR,
                    "Read error on keyboard, assumed to be removed: %s",

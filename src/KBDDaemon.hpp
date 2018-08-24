@@ -63,7 +63,7 @@ private:
     UNIXSocket<KBDAction> kbd_com;
     UDevice udev;
     /** All keyboards. */
-    std::vector<Keyboard> kbds;
+    std::vector<Keyboard *> kbds;
     std::mutex kbds_mtx;
     /** Keyboards available for listening. */
     std::vector<Keyboard *> available_kbds;
