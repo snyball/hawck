@@ -39,6 +39,7 @@ extern "C" {
 #include "CSV.hpp"
 #include "utils.hpp"
 #include "Daemon.hpp"
+#include "Permissions.hpp"
 
 // #undef DANGER_DANGER_LOG_KEYS
 // #define DANGER_DANGER_LOG_KEYS 1
@@ -180,23 +181,11 @@ void KBDDaemon::run() {
     input_fsw.setWatchDirs(true);
     input_fsw.setAutoAdd(false);
 
-    struct group grpbuf;
-    struct group *grp_ptr;
-    char namebuf[200];
+    gid_t input_gid; {
+        auto [grp, grpbuf] = getgroup("input");
+        input_gid = grp->gr_gid;
+    }
 
-    // TODO: Write a getgroup function that either takes gid_t or string,
-    //       it should return a struct Group by using either getgrnam_r or getgrgid_r.
-    //       This function is ridiculous.
-    //       Wrap grpbuf like this:
-    //       struct Group {
-    //           struct group grpbuf;
-    //           char buf[200];
-    //       }
-    if (getgrnam_r("input", &grpbuf, namebuf, sizeof(namebuf), &grp_ptr) != 0)
-        throw SystemError("Failure in getgrnam_r(): ", errno);
-    gid_t input_gid = grp_ptr->gr_gid;
-
-    #if 1
     input_fsw.begin([&](FSEvent &ev) {
                         // Don't react to the directory itself.
                         if (ev.path == "/dev/input")
@@ -258,7 +247,6 @@ void KBDDaemon::run() {
                         }
                         return true;
                     });
-    #endif
 
     Keyboard *kbd = nullptr;
     bool had_key;
@@ -341,5 +329,9 @@ void KBDDaemon::run() {
         udev.emit(&action.ev);
         udev.flush();
     }
+}
+
+void KBDDaemon::setEventDelay(int delay) {
+    udev.setEventDelay(delay);
 }
 

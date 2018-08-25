@@ -54,6 +54,7 @@ public:
     explicit inline KeyboardError(std::string&& msg) : std::runtime_error(msg) {}
 };
 
+/** Keyboard state, used in the locking process */
 enum KBDState {
     LOCKED,
     LOCKING,
@@ -70,9 +71,9 @@ private:
     /** Human-readable name of the device. */
     std::string name = "";
     /** Name of the device in /dev/input/by-id/ */
-    // std::string id = "";
+    std::string by_id = ""; // TODO: Initialize this
     /** Name of the device in /dev/input/by-path/ */
-    // std::string path = "";
+    std::string by_path = ""; // TODO: Initialize this
     /** This path is volatile, if the device is unplugged it will
      *  cease to exist. */
     std::string ev_path = "";
@@ -88,7 +89,20 @@ private:
     KBDState state = KBDState::OPEN;
 
 public:
+    /** Keyboard constructor.
+     *
+     * Tip: If you don't know which path you want, try using or looking
+     *      into the lsinput program (part of Hawck.)
+     *
+     * @param path Path to the character device file of the device,
+     *             this should be in /dev/input/.
+     */
     explicit Keyboard(const char *path);
+
+    /** Keyboard destructor.
+     * 
+     * Will also unlock the keyboard if it is locked.
+     */
     ~Keyboard();
 
     /** Acquire an exclusive lock to the keyboard. */
@@ -104,6 +118,12 @@ public:
     /** Disable the keyboard. */
     void disable() noexcept;
 
+    /** Check whether or not the keyboard has been disabled,
+     * this happens if disable() is called, usually as a result
+     * of the get() function throwing a KeyboardException.
+     *
+     * @return Disabled status.
+     */
     inline bool isDisabled() const noexcept {
         return fd < 0;
     }
@@ -126,18 +146,36 @@ public:
      */
     void get(struct input_event *ev);
 
+    /** Get human-readable name of the keyboard device.
+     *
+     * @return Human-readable name of device.
+     */
     inline const std::string& getName() const noexcept {
         return name;
     }
 
+    /** Get file descriptor of the keyboard device.
+     * 
+     * @return System file descriptor.
+     */
     inline int getfd() const noexcept {
         return fd;
     }
 
+    /**
+     * Get the current state of the keyboard locking process.
+     *
+     * @return Current state, @see KBDState
+     */
     inline KBDState getState() const noexcept {
         return state;
     }
 
+    /**
+     * Get the number of keys current held down on the keyboard.
+     *
+     * @return Number of keys held down.
+     */
     int numDown() const;
 };
 

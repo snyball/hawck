@@ -26,6 +26,12 @@
  * =====================================================================================
  */
 
+/** @file IUDevice.hpp
+ * 
+ * Virtual device interface, and no,
+ * the virtual methods are not some sort of pun.
+ */
+
 #pragma once
 
 extern "C" {
@@ -43,13 +49,32 @@ extern "C" {
 
 class IUDevice {
 public:
+    /** Destroy virtual device. */
     virtual ~IUDevice() {}
 
+    /**
+     * Send an input event struct, this is useful for when
+     * you want to re-emit a cought event.
+     *
+     * @param send_event Event to emit.
+     */
     virtual void emit(const input_event *send_event) = 0;
 
+    /**
+     * Emit an input event on the virtual device.
+     *
+     * @param type What kind of event it is, i.e EV_KEY or EV_SYN
+     * @param code Key code, i.e which key got pressed.
+     * @param val Supplementary information for the event, for
+     *            keys, 0 means key up and 1 means key down, and
+     *            2 means key repeat.
+     */
     virtual void emit(int type, int code, int val) = 0;
 
     virtual void done() = 0;
 
+    /**
+     * Flush buffered events to the virtual device.
+     */
     virtual void flush() = 0;
 };

@@ -118,4 +118,10 @@ public:
      * Check which keyboards have become unavailable/available again.
      */
     void updateAvailableKBDs();
+
+    /** Set delay between outputted events in µs
+     *
+     * @param delay Delay in µs.
+     */
+    void setEventDelay(int delay);
 };

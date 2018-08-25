@@ -24,13 +24,11 @@ static void handleSigPipe(int) {
     abort();
 }
 
-static int verbose_flag;
 static int no_fork;
 
 int main(int argc, char *argv[]) {
     signal(SIGPIPE, handleSigPipe);
 
-    #if 1
     string HELP =
         "Usage:\n"
         "    hawck-inputd [--udev-event-delay <µs>]\n"
@@ -50,8 +48,6 @@ int main(int argc, char *argv[]) {
         "    -k,--kbd-device     : Add a keyboard to listen to.\n"
         "    --udev-event-delay  : Delay between events sent on the udevice in µs.\n"
     ;
-
-    const char *dev = argv[1];
 
     //daemonize("/var/log/hawck-input/log");
     static struct option long_options[] =
@@ -152,12 +148,12 @@ int main(int argc, char *argv[]) {
     } catch (const exception &e) {
         throw SystemError("Unable to write pid: ", errno);
     }
-    #endif
 
     try {
         KBDDaemon daemon;
         for (const auto& dev : kbd_devices)
             daemon.addDevice(dev);
+        daemon.setEventDelay(ev_delay);
         daemon.run();
     } catch (exception &e) {
         syslog(LOG_CRIT, "Abort due to exception: %s", e.what());

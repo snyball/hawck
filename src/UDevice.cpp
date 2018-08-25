@@ -150,9 +150,7 @@ void UDevice::flush() {
         //         the clients need to handle SYN_DROPPED events and
         //         they don't seem to be doing that properly.
 
-        // usleep(500);
-        usleep(3800);
-        // usleep(13600);
+        usleep(ev_delay);
     }
 
 
@@ -195,4 +193,8 @@ void UDevice::flush() {
 
 void UDevice::done() {
     flush();
+}
+
+void UDevice::setEventDelay(int delay) {
+    ev_delay = delay;
 }

@@ -21,6 +21,7 @@ private:
     static const size_t evbuf_start_len = 128;
     int fd;
     int dfd;
+    int ev_delay = 3800;
     uinput_setup usetup;
     size_t evbuf_len;
     size_t evbuf_top;
@@ -38,4 +39,13 @@ public:
     virtual void flush() override;
 
     virtual void done() override;
+
+    /** Set delay between outputted events in µs
+     *
+     * This is a workaround for a bug in GNOME Wayland where keys
+     * are being dropped if they are sent too fast.
+     *
+     * @param delay Delay in µs.
+     */
+    void setEventDelay(int delay);
 };
