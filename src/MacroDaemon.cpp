@@ -43,6 +43,7 @@ extern "C" {
 #include "MacroDaemon.hpp"
 #include "LuaUtils.hpp"
 #include "utils.hpp"
+#include "Permissions.hpp"
 
 using namespace Lua;
 using namespace std;
@@ -77,7 +78,12 @@ static inline void initEventStrs()
     event_str[EV_MAX      ] = "MAX"       ;
 }
 
-MacroDaemon::MacroDaemon() : kbd_srv("/var/lib/hawck-input/kbd.sock") {
+MacroDaemon::MacroDaemon()
+    : kbd_srv("/var/lib/hawck-input/kbd.sock")
+{
+    auto [grp, grpbuf] = getgroup("hawck-input-share");
+    chown("/var/lib/hawck-input/kbd.sock", getuid(), grp->gr_gid);
+    chmod("/var/lib/hawck-input/kbd.sock", 0660);
     initEventStrs();
     notify_init("Hawck");
     string HOME(getenv("HOME"));

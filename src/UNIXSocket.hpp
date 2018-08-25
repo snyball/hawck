@@ -41,6 +41,7 @@ extern "C" {
 }
 
 #include <string>
+#include <iostream>
 #include <sstream>
 #include <exception>
 #include <system_error>
@@ -67,15 +68,10 @@ public:
  * @param dst The buffer to insert received data into.
  * @param sz The amount of bytes to be read.
  */
-static inline void recvAll(int fd, char *dst, ssize_t sz) {
-    ssize_t n;
-    while ((sz -= (n = ::recv(fd, dst, sz, 0))) > 0) {
-        if (n < 0) {
-            std::string err(strerror(errno));
-            throw SocketError("Unable to receive packet: " + err);
-        }
-        dst += n;
-    }
+inline void recvAll(int fd, char *dst, ssize_t sz) {
+    for (size_t n; (sz -= (n = ::recv(fd, dst, sz, 0))) > 0; dst += n)
+        if (n <= 0)
+            throw SocketError("Unable to receive packet: " + std::string(strerror(errno)));
 }
 
 /**
@@ -98,6 +94,33 @@ template <class Packet>
 class UNIXSocket {
 private:
     int fd;
+    std::string addr = "";
+
+    int connectTo(const std::string& addr) {
+        int fd;
+        struct sockaddr_un saun;
+        if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+            throw SocketError("Unable to create socket");
+        }
+        memset(&saun, 0, sizeof(saun));
+        saun.sun_family = AF_UNIX;
+        strncpy(saun.sun_path, addr.c_str(), sizeof(saun.sun_path) - 1);
+        const size_t len = sizeof(saun.sun_family) + strlen(saun.sun_path);
+        errno = 0;
+        int last_errno = 0;
+        while (::connect(fd, (sockaddr*)&saun, len) != 0) {
+            auto exc = SystemError("", errno);
+            // Only print the error if it changed.
+            if (errno != last_errno) {
+                fprintf(stderr, "Could not connect to '%s': %s\n", addr.c_str(), exc.what());
+                last_errno = errno;
+            }
+            usleep(250000);
+            errno = 0;
+        }
+        fprintf(stderr, "Connection established!\n");
+        return fd;
+    }
 
 public:
     /**
@@ -114,23 +137,16 @@ public:
      *
      * @param addr The address to connect to.
      */
-    explicit UNIXSocket(std::string addr) {
-        struct sockaddr_un saun;
-        if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-            throw SocketError("Unable to create socket");
-        }
-        memset(&saun, 0, sizeof(saun));
-        saun.sun_family = AF_UNIX;
-        strncpy(saun.sun_path, addr.c_str(), sizeof(saun.sun_path) - 1);
-        const size_t len = sizeof(saun.sun_family) + strlen(saun.sun_path);
-        errno = 0;
-        while (::connect(fd, (sockaddr*)&saun, len) != 0) {
-            auto exc = SystemError("", errno);
-            fprintf(stderr, "Connection failed: '%s' trying again ...\n", exc.what());
-            usleep(500000);
-            errno = 0;
-        }
-        fprintf(stderr, "Connection established!\n");
+    explicit UNIXSocket(const std::string& addr) {
+        fd = connectTo(addr);
+        this->addr = addr;
+    }
+
+    /** Reconnect to the server, this only works for UNIXSockets
+     *  that have addr set. */
+    void recon() {
+        close();
+        fd = connectTo(addr);
     }
 
     /**

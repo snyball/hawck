@@ -48,4 +48,8 @@ public:
      * @param delay Delay in µs.
      */
     void setEventDelay(int delay);
+
+    /** Generate key up events for all held keys.
+     */
+    void upAll();
 };

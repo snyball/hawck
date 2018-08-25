@@ -20,8 +20,8 @@ extern "C" {
 using namespace std;
 
 static void handleSigPipe(int) {
-    cout << "KBDDaemon aborting due to SIGPIPE" << endl;
-    abort();
+    // cout << "KBDDaemon aborting due to SIGPIPE" << endl;
+    // abort();
 }
 
 static int no_fork;
@@ -136,7 +136,7 @@ int main(int argc, char *argv[]) {
 
     cout << "Starting Hawck InputD v" INPUTD_VERSION " on:" << endl;
     for (const auto& dev : kbd_devices)
-        cout << "  - " << dev << endl;
+        cout << "  - <" << dev << ">" << endl;
 
     if (!no_fork) {
         cout << "forking ..." << endl;
@@ -152,12 +152,16 @@ int main(int argc, char *argv[]) {
     }
 
     try {
+        cout << "Settin up daemon ..." << endl;
         KBDDaemon daemon;
+        cout << "Adding devices ..." << endl;
         for (const auto& dev : kbd_devices)
             daemon.addDevice(dev);
         daemon.setEventDelay(ev_delay);
+        syslog(LOG_INFO, "Running Hawck InputD ...");
+        cout << "Running ..." << endl;
         daemon.run();
-    } catch (exception &e) {
+    } catch (const exception &e) {
         syslog(LOG_CRIT, "Abort due to exception: %s", e.what());
         cout << "Error: " << e.what() << endl;
         remove("/var/lib/hawck-input/pid");

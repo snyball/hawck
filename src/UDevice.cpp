@@ -53,13 +53,11 @@ static int getDevice(const string &by_name) {
 UDevice::UDevice() {
     fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
 
-    if (fd < 0) {
-        fprintf(stderr, "Unable to open /dev/uinput: %s\n", strerror(errno));
-        throw std::exception();
-    }
+    if (fd < 0)
+        throw SystemError("Unable to open /dev/uinput: ", errno);
 
     ioctl(fd, UI_SET_EVBIT, EV_KEY);
-    for (int key = KEY_ESC; key <= KEY_MICMUTE; key++)
+    for (int key = KEY_ESC; key < KEY_MAX; key++)
         ioctl(fd, UI_SET_KEYBIT, key);
 
     memset(&usetup, 0, sizeof(usetup));
@@ -83,7 +81,6 @@ UDevice::UDevice() {
     while ((dfd = getDevice(usetup.name)) < 0) {
         if (errors++ > 10)
             throw SystemError("Unable to get file descriptor of udevice.");
-        cout << "Unable to get file descriptor of udevice, retrying ..." << endl;
         usleep(10000);
     }
 }    
@@ -197,4 +194,22 @@ void UDevice::done() {
 
 void UDevice::setEventDelay(int delay) {
     ev_delay = delay;
+}
+
+void UDevice::upAll() {
+    unsigned char key_states[KEY_MAX/8 + 1];
+    memset(key_states, 0, sizeof(key_states));
+    if (ioctl(dfd, EVIOCGKEY(sizeof(key_states)), key_states) == -1)
+        throw SystemError("Unable to get key states: ", errno);
+    int key = 0;
+    for (size_t i = 0; i < sizeof(key_states); i++)
+        // Shift bits to count downed keys.
+        for (unsigned int bs = 1; bs <= 128; bs <<= 1) {
+            if (bs & key_states[i]) {
+                emit(EV_KEY, key, 0);
+                emit(EV_SYN, 0, 0);
+            }
+            key++;
+        }
+    flush();
 }

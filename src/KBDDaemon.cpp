@@ -76,7 +76,7 @@ void KBDDaemon::unloadPassthrough(std::string path) {
         delete vec;
         key_sources.erase(path);
 
-        printf("RM: %s\n", path.c_str());
+        syslog(LOG_INFO, "Removing passthrough keys from: %s", path.c_str());
 
         // Re-add keys
         for (const auto &[_, vec] : key_sources)
@@ -86,7 +86,6 @@ void KBDDaemon::unloadPassthrough(std::string path) {
 }
 
 void KBDDaemon::loadPassthrough(std::string rel_path) {
-    // FIXME: Actually handle these errors.
     try {
         // The CSV file is being reloaded after a change,
         // remove the old keys.
@@ -116,11 +115,13 @@ void KBDDaemon::loadPassthrough(std::string rel_path) {
         }
         key_sources[path] = cells_i.release();
         keys_fsw.add(path);
-        printf("LOADED: %s\n", path.c_str());
+        syslog(LOG_INFO, "Loaded passthrough keys from: %s", path.c_str());
     } catch (const CSV::CSVError &e) {
-        cout << "loadPassthrough error: " << e.what() << endl;
+        syslog(LOG_ERR, "CSV parse error in '%s': %s",
+               rel_path.c_str(), e.what());
     } catch (const SystemError &e) {
-        cout << "loadPassthrough error: " << e.what() << endl;
+        syslog(LOG_ERR, "Unable to load csv data from '%s': %s",
+               rel_path.c_str(), e.what());
     }
 }
 
@@ -130,18 +131,15 @@ void KBDDaemon::loadPassthrough(FSEvent *ev) {
     // Require that the file permission mode is 644 and that the file is
     // owned by the daemon user.
     if (perm == 0644 && ev->stbuf.st_uid == getuid()) {
-        printf("OK: %s\n", ev->path.c_str());
-        printf("LOG: perm=%X; uid=%d\n", perm, getuid());
         loadPassthrough(ev->path);
     } else {
-        printf("ERROR: Invalid permissions for '%s', require 0644\n", ev->path.c_str());
-        printf("LOG: perm=%X; uid=%d\n", perm, getuid());
+        syslog(LOG_ERR, "Invalid permissions for '%s', require 0644 and group input\n", ev->path.c_str());
+        syslog(LOG_DEBUG, "perm=%X; uid=%d\n", perm, ev->stbuf.st_uid);
     }
 }
 
 void KBDDaemon::initPassthrough() {
     auto files = mkuniq(keys_fsw.addFrom(data_dirs["keys"]));
-    cout << "Added data_dir" << endl;
     for (auto &file : *files)
         loadPassthrough(&file);
 }
@@ -157,16 +155,12 @@ void KBDDaemon::run() {
     KBDAction action;
 
     for (auto& kbd : kbds) {
-        cout << "Locking on to: " << kbd->getName() << endl;
+        syslog(LOG_INFO, "Attempting to get lock on device: %s @ %s",
+               kbd->getName().c_str(), kbd->getPhys().c_str());
         kbd->lock();
     }
 
     updateAvailableKBDs();
-
-    // 30 consecutive socket errors will lead to the keyboard daemon
-    // aborting.
-    static const int MAX_ERRORS = 30;
-    int errors = 0;
 
     keys_fsw.begin([&](FSEvent &ev) {
                        lock_guard<mutex> lock(passthrough_keys_mtx);
@@ -191,7 +185,8 @@ void KBDDaemon::run() {
                         if (ev.path == "/dev/input")
                             return true;
 
-                        cout << "Input event on: " << ev.path << endl;
+                        syslog(LOG_INFO, "Input device hotplug event on: %s",
+                               ev.path.c_str());
 
                         lock_guard<mutex> lock(pulled_kbds_mtx);
 
@@ -218,7 +213,8 @@ void KBDDaemon::run() {
                                 // permissions might not allow for even stat()ing the file.
                                 if (ret != -1 && !S_ISCHR(ev.stbuf.st_mode)) {
                                     // Not a character device, return
-                                    cout << "Not a character device" << endl;
+                                    syslog(LOG_WARNING, "File %s is not a character device",
+                                           ev.path.c_str());
                                     return true;
                                 }
 
@@ -264,6 +260,9 @@ void KBDDaemon::run() {
                 // Throw away the key if the keyboard isn't locked yet.
                 if (kbd->getState() == KBDState::LOCKED)
                     had_key = true;
+                // Always lock unlocked keyboards.
+                else if (kbd->getState() == KBDState::OPEN)
+                    kbd->lock();
             }
         } catch (const KeyboardError &e) {
             // Disable the keyboard,
@@ -292,6 +291,8 @@ void KBDDaemon::run() {
 
         // Check if the key is listed in the passthrough set.
         if (is_passthrough) {
+            input_event orig_ev = action.ev;
+
             // Pass key to Lua executor
             try {
                 // TODO: Use select() and a time-out of about 1s here, in case the
@@ -302,26 +303,50 @@ void KBDDaemon::run() {
                 // Receive keys to emit from the macro daemon.
                 for (;;) {
                     kbd_com.recv(&action);
-                    if (action.done)
+                    if (action.done) {
                         break;
+                    }
                     udev.emit(&action.ev);
                 }
                 // Flush received keys and continue on.
                 udev.flush();
-                errors = 0;
-                // Skip emmision of the key if everything went OK
+                // Skip emmision of the original key if everything went OK
                 continue;
             } catch (SocketError &e) {
-                cout << e.what() << endl;
-                // If we're getting constant errors then the daemon needs
-                // to be stopped, as the macro daemon might have crashed
-                // or run into an error.
-                if (errors++ > MAX_ERRORS) {
-                    kbd_com.close();
-                    syslog(LOG_CRIT, "Unable to communicate with MacroD");
-                    abort();
-                }
-                // On error control flow continues on to udev.emit()
+                lock_guard<mutex> lock(available_kbds_mtx);
+
+                udev.emit(&orig_ev);
+                udev.upAll();
+                udev.flush();
+
+                // Unlock all keyboards so that the user can actually type.
+                for (auto& kbd : available_kbds)
+                    try {
+                        syslog(LOG_INFO, "Unlocking keyboard due to error: \"%s\" @ %s",
+                               kbd->getName().c_str(), kbd->getPhys().c_str());
+                        kbd->unlock();
+                    } catch (const KeyboardError &e) {
+                        syslog(LOG_ERR, "Unable to unlock keyboard: %s", kbd->getName().c_str());
+                        kbd->disable();
+                    }
+
+                syslog(LOG_CRIT, "Unable to communicate with MacroD, reconnecting ...");
+
+                // Reconnect.
+                kbd_com.recon();
+
+                // Lock keyboards
+                for (auto& kbd : available_kbds)
+                    try {
+                        kbd->lock();
+                    } catch (const KeyboardError &e) {
+                        // Report the error and continue, further keyboard errors will be caught in kbd->get()
+                        // later on.
+                        syslog(LOG_ERR, "Unable to lock keyboard: %s", kbd->getName().c_str());
+                    }
+
+                // Skip the received event
+                continue;
             }
         }
 

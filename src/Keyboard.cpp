@@ -66,6 +66,7 @@ static inline string _ioctlGetString(int fd, int what) {
 }
 
 Keyboard::Keyboard(const char *path) {
+    syslog(LOG_INFO, "Opening device: '%s' ...", path);
     fd = open(path, O_RDONLY);
 
     if (fd == -1) {
@@ -75,6 +76,7 @@ Keyboard::Keyboard(const char *path) {
         throw KeyboardError(err.str());
     }
 
+    syslog(LOG_INFO, "ioctl get on device: '%s' ...", path);
     name = ioctlGetString(fd, EVIOCGNAME);
     uniq_id = ioctlGetString(fd, EVIOCGUNIQ);
     phys = ioctlGetString(fd, EVIOCGPHYS);
@@ -95,13 +97,13 @@ bool Keyboard::isMe(const char *path) const {
     errno = 0;
     int new_fd = open(path, O_RDONLY);
     if (new_fd == -1) {
-        cout << strerror(errno) << endl;
         throw SystemError("Error in open(" + string(path) + "): ", errno);
     }
     struct input_id dev_id;
     if (ioctl(new_fd, EVIOCGID, &dev_id) == -1)
         memset(&dev_id, 0, sizeof(dev_id));
 
+    #if 0
     cout << "This keyboard:" << endl;
     cout << "  name: '" << name << "'" << endl;
     cout << "  uniq: '" << uniq_id << "'" << endl;
@@ -119,10 +121,11 @@ bool Keyboard::isMe(const char *path) const {
 	cout << "  dev_id.vendor: " << dev_id.vendor << endl;
 	cout << "  dev_id.product: " << dev_id.product << endl;
 	cout << "  dev_id.version: " << dev_id.version << endl;
+    #endif
 
     return (name == ioctlGetString(new_fd, EVIOCGNAME) &&
             uniq_id == ioctlGetString(new_fd, EVIOCGUNIQ) &&
-            phys == ioctlGetString(new_fd, EVIOCGPHYS) &&
+            // phys == ioctlGetString(new_fd, EVIOCGPHYS) &&
             !memcmp(&this->dev_id, &dev_id, sizeof(dev_id)));
 }
 
@@ -175,9 +178,11 @@ void Keyboard::lock() {
 }
 
 void Keyboard::unlock() {
-    locked = false;
-    int grab = 0;
-    ioctl(fd, EVIOCGRAB, &grab);
+    if (state == KBDState::LOCKED)
+        if (ioctl(fd, EVIOCGRAB, NULL) == -1)
+            throw KeyboardError("Failure in ioctl(EVIOCGRAB)");
+
+    state = KBDState::OPEN;
 }
 
 void Keyboard::get(struct input_event *ev) {
@@ -189,7 +194,7 @@ void Keyboard::get(struct input_event *ev) {
     }
 
     // Wait until key down events have been eliminated.
-    if (state == KBDState::LOCKING && numDown() == 0) {
+    if (state == KBDState::LOCKING && !numDown()) {
         int grab = 1;
         if (ioctl(fd, EVIOCGRAB, &grab) == -1)
             throw SystemError("Unable to lock keyboard: ", errno);

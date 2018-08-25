@@ -177,6 +177,10 @@ public:
      * @return Number of keys held down.
      */
     int numDown() const;
+
+    inline const std::string& getPhys() const noexcept {
+        return phys;
+    }
 };
 
 /**

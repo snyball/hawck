@@ -15,6 +15,6 @@ rx=$(cat /var/lib/hawck-input/keyboards.txt | sed '/^ *$/d' | sed '/^#/d' | tr '
 
 ## Filter lsinput output
 for device in $(lsinput -s | awk -vFS='\t' -vRX="$rx" '$2 ~ RX && $4 !~ /if0/ && $2 !~ "Hawck virtual keyboard" {print $1}'); do
-    echo "--kbd-device '$device'"
+    echo "--kbd-device $device"
 done | sort | uniq | tr '\n' ' '
 
