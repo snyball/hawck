@@ -174,7 +174,16 @@ void Keyboard::lockSync() {
 
 void Keyboard::lock() {
     syslog(LOG_INFO, "Locking keyboard: %s ...", name.c_str());
-    state = KBDState::LOCKING;
+    if (numDown() == 0) {
+        int grab = 1;
+        if (ioctl(fd, EVIOCGRAB, &grab) == -1)
+            throw SystemError("Unable to lock keyboard: ", errno);
+        syslog(LOG_INFO, "Immediate lock on: %s @ %s", name.c_str(), phys.c_str());
+        state = KBDState::LOCKED;
+    } else {
+        syslog(LOG_INFO, "Preparing async lock on: %s @ %s", name.c_str(), phys.c_str());
+        state = KBDState::LOCKING;
+    }
 }
 
 void Keyboard::unlock() {
@@ -204,7 +213,13 @@ void Keyboard::get(struct input_event *ev) {
 }
 
 void Keyboard::disable() noexcept {
-    unlock();
+    try {
+        unlock();
+    } catch (const KeyboardError& e) {
+        // Swallow the error.
+        syslog(LOG_ERR, "Error in unlock: %s", e.what());
+    }
+
     if (close(fd) == -1) {
         auto exc = SystemError("Unable to close(): ", fd);
         syslog(LOG_ERR, "%s", exc.what());

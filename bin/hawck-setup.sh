@@ -39,7 +39,7 @@ pushd "${MESON_SOURCE_ROOT}" &>/dev/null
 
 HAWCK_BIN=/usr/share/hawck/bin
 mkdir -p "$HAWCK_BIN"
-for src in src/scripts/*.sh; do
+for src in src/scripts/*.sh src/scripts/*.awk; do
     name=$(basename $src)
     echo "\$ install -m 755 '$src' '$HAWCK_BIN/$name'"
     install -m 755 "$src" "$HAWCK_BIN/$name"
@@ -47,6 +47,8 @@ done
 chown -R root:root "$HAWCK_BIN"
 
 ok "Installed scripts to hawck/bin"
+
+cp bin/start-hawck-inputd.sh /usr/local/bin/start-hawck-inputd
 
 HAWCK_LLIB=/usr/share/hawck/LLib
 mkdir -p "$HAWCK_LLIB"
