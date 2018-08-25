@@ -177,7 +177,7 @@ void KBDDaemon::run() {
                        return true;
                    });
 
-    input_fsw.add("/dev/input/");
+    input_fsw.add("/dev/input");
     input_fsw.setWatchDirs(true);
     input_fsw.setAutoAdd(false);
 
@@ -249,9 +249,8 @@ void KBDDaemon::run() {
                     });
 
     Keyboard *kbd = nullptr;
-    bool had_key;
     for (;;) {
-        had_key = false;
+        bool had_key = false;
         action.done = 0;
         try {
             available_kbds_mtx.lock();

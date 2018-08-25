@@ -2,14 +2,19 @@
 
 #include <string>
 #include <exception>
+#include <mutex>
 
 extern "C" {
+    #undef _GNU_SOURCE
     #include <string.h>
+    #define _GNU_SOURCE
     #include <execinfo.h>
     #include <stdio.h>
 }
 
 #include <iostream>
+
+static std::mutex strerror_mtx;
 
 class SystemError : public std::exception {
 private:
@@ -26,7 +31,10 @@ public:
     explicit SystemError(const std::string &expl) : expl(expl) {}
 
     SystemError(const std::string &expl, int errnum) : expl(expl) {
-        char errbuf[8192];
+        // FIXME: This always results in strerror_r:UNKNOWN, while
+        //        the strerror function works just fine.
+        #if 0
+        char errbuf[512];
         memset(errbuf, 0, sizeof(errbuf));
         if (strerror_r(errnum, errbuf, sizeof(errbuf)) != 0) {
             switch (errno) {
@@ -35,8 +43,12 @@ public:
                 default:     strncpy(errbuf, "[strerror_r:UNKNOWN]", sizeof(errbuf)); break;
             }
         }
-        printBacktrace();
         this->expl += errbuf;
+        #else
+        // Workaround using static mutex
+        std::lock_guard<std::mutex> lock(strerror_mtx);
+        this->expl += strerror(errnum);
+        #endif
     }
 
     virtual const char *what() const noexcept {

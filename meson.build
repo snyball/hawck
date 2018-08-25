@@ -19,6 +19,11 @@ add_global_arguments('-Wno-parentheses',
 add_global_arguments('-Wno-reorder',
                      language : 'cpp')
 
+add_global_arguments('-Wall',
+                     language : 'cpp')
+add_global_arguments('-Wextra',
+                     language : 'cpp')
+
 ## Force includes of lua5.3, fails to be included on some systems.
 add_global_arguments('-I/usr/include/lua5.3',
                      language : 'cpp')

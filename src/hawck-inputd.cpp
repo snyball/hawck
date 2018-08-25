@@ -132,6 +132,8 @@ int main(int argc, char *argv[]) {
         exit(0);
     }
 
+    remove("/var/lib/hawck-input/pid");
+
     cout << "Starting Hawck InputD v" INPUTD_VERSION " on:" << endl;
     for (const auto& dev : kbd_devices)
         cout << "  - " << dev << endl;
@@ -158,6 +160,7 @@ int main(int argc, char *argv[]) {
     } catch (exception &e) {
         syslog(LOG_CRIT, "Abort due to exception: %s", e.what());
         cout << "Error: " << e.what() << endl;
+        remove("/var/lib/hawck-input/pid");
         throw;
     }
 }

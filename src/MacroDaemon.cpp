@@ -240,7 +240,7 @@ void MacroDaemon::notify(string title, string msg, const Script *, const lua_Deb
 }
 
 static void handleSigPipe(int) {
-    fprintf(stderr, "KBDDaemon aborting due to SIGPIPE\n");
+    fprintf(stderr, "MacroD aborting due to SIGPIPE\n");
     abort();
 }
 

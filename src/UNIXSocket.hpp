@@ -47,6 +47,8 @@ extern "C" {
 #include <cstring>
 #include <vector>
 
+#include "SystemError.hpp"
+
 class SocketError : public std::exception {
 private:
     std::string expl;
@@ -121,9 +123,12 @@ public:
         saun.sun_family = AF_UNIX;
         strncpy(saun.sun_path, addr.c_str(), sizeof(saun.sun_path) - 1);
         const size_t len = sizeof(saun.sun_family) + strlen(saun.sun_path);
+        errno = 0;
         while (::connect(fd, (sockaddr*)&saun, len) != 0) {
-            fprintf(stderr, "Connection failed, trying again ...\n");
+            auto exc = SystemError("", errno);
+            fprintf(stderr, "Connection failed: '%s' trying again ...\n", exc.what());
             usleep(500000);
+            errno = 0;
         }
         fprintf(stderr, "Connection established!\n");
     }
