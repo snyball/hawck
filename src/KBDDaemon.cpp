@@ -50,6 +50,7 @@ extern "C" {
 #endif
 
 using namespace std;
+using namespace Permissions;
 
 constexpr int FSW_MAX_WAIT_PERMISSIONS_US = 5 * 1000000;
 
@@ -133,8 +134,11 @@ void KBDDaemon::loadPassthrough(FSEvent *ev) {
     if (perm == 0644 && ev->stbuf.st_uid == getuid()) {
         loadPassthrough(ev->path);
     } else {
-        syslog(LOG_ERR, "Invalid permissions for '%s', require 0644 and group input\n", ev->path.c_str());
-        syslog(LOG_DEBUG, "perm=%X; uid=%d\n", perm, ev->stbuf.st_uid);
+        auto [grp, grpbuf] = getgroup(ev->stbuf.st_uid);
+        auto perm_str = fmtPermissions(ev->stbuf);
+        syslog(LOG_ERR, "Invalid permissions for '%s', require rw-r--r-- hawck-input:*, "
+                        "but was: %s",
+               ev->path.c_str(), perm_str.c_str());
     }
 }
 
@@ -164,6 +168,7 @@ void KBDDaemon::run() {
 
     keys_fsw.begin([&](FSEvent &ev) {
                        lock_guard<mutex> lock(passthrough_keys_mtx);
+                       syslog(LOG_INFO, "kbd file change on: %s", ev.path.c_str());
                        if (ev.mask & IN_DELETE_SELF)
                            unloadPassthrough(ev.path);
                        else if (ev.mask & (IN_CREATE | IN_MODIFY))

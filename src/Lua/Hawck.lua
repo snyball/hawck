@@ -176,11 +176,12 @@ prepare = Cond.new(function ()
 end)
 
 notify = LazyF.new(function (title, message)
-    io.popen(("zenity --notification --title='%s' --text='%s'"):format(title, message))
+    local p = io.popen(("notify-send -a '%s' -u normal -i hawck -t 3000 '%s'"):format(title, message))
+    p:close()
 end)
 
 say = LazyF.new(function (message)
-    notify("Hawck:", message)()
+    notify("Hawck", message)()
 end)
 
 function mode(name, cond)
@@ -192,7 +193,7 @@ function mode(name, cond)
   return Cond.new(function ()
       if cond() then
         state = not state
-        notify("Hawck:", messages[state]:format(name))()
+        notify("Hawck", messages[state]:format(name))()
       end
       return state
   end)

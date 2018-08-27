@@ -34,27 +34,27 @@ SCRIPTS_DIR="$HOME/.local/share/hawck/scripts/"
 
 script_path="$1"
 name=$(basename "$script_path" | sed -r 's/\.[^.]+$//')
-keys_filename="$name - keys.csv"
+keys_filename="$name.csv"
 real_keys="/var/lib/hawck-input/keys/$keys_filename"
 
 ## Transpile hwk script to Lua
 hwk_out=$(hwk2lua "$script_path")
 if [ $? != 0 ]; then
-    echo "!ERROR: $hwk_out"
+    echo "!ERROR: $hwk_out" >&2
     exit 1
 fi
 
 ## Move script into the script directory
 script_path=$(realpath "$SCRIPTS_DIR/$name.lua")
-echo "Installing script to: $script_path"
+echo "Installing script to: $script_path" >&2
 echo "$hwk_out" > "$script_path"
 chmod 744 "$script_path"
 
-pushd "$SCRIPTS_DIR"
+cd "$SCRIPTS_DIR"
 
 ## Check the script for correctness
-if ! lua5.3 "$script_path"; then
-    echo "!ERROR: Lua"
+if ! lua5.3 "$script_path" >&2; then
+    echo "!ERROR: Lua" >&2
     exit 1
 fi
 
@@ -78,20 +78,16 @@ for name, _ in pairs(__keys) do
 end
 ' | sort >> "$tmp_keys"
 
-popd
-
 ## Either the files are different or the $real_keys file does not exist.
-if ! cmp "$real_keys" "$tmp_keys" &>/dev/null; then
+if ! cmp "$real_keys" "$tmp_keys" >&2; then
     ## Check if we can execute the copy command:
     if [ "$(whoami)" = "$HAWCKD_INPUT_USER" ]; then
-        cp "$tmp_keys" "$real_keys"
-        chmod 644 "$real_keys"
+       cp "$tmp_keys" "$real_keys"
+       chmod 644 "$real_keys"
     else
         ## Send key requests to the input daemon.
-        which notify-send && notify-send -a "Hawck install" "Hawck install: Require authentication"
-	chmod o+r "$tmp_keys"
-	echo "Running pkexec ..."
-        pkexec --user "$HAWCKD_INPUT_USER" sh -c "cp '$tmp_keys' '$real_keys'" > /tmp/LOG
-	rm "$tmp_keys"
+        notify-send -a "Hawck install" "Require authentication as hawck-input" &>/dev/null
+        echo -n "$tmp_keys"
+        exit 123
     fi
 fi

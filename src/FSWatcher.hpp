@@ -173,15 +173,10 @@ private:
      *       FSW instance hanging around for too long. */
     size_t backup_num_read = 0;
 
+    static std::atomic<int> num_instances;
+
     /** Handle an event. */
     FSEvent *handleEvent(struct inotify_event *ev);
-
-    /** Watch the added files using a given callback.
-     *
-     * @param callback Callback for handling file system events, returning
-     *                 false from the handler stops watch().
-     */
-    void watch(const FSWatchFn &callback);
 
 public:
     /**
@@ -267,11 +262,16 @@ public:
             throw std::runtime_error("Have already begun watching.");
 
         running = RunState::RUNNING;
-        std::thread t0([&]() {
-                            watch(callback);
-                       });
+        std::thread t0([callback, this]() {this->watch(callback);});
         t0.detach();
     }
+
+    /** Watch the added files using a given callback.
+     *
+     * @param callback Callback for handling file system events, returning
+     *                 false from the handler stops watch().
+     */
+    void watch(const FSWatchFn &callback);
 
     /** Stop watching.
      *
@@ -299,6 +299,8 @@ public:
     inline void setAutoAdd(bool auto_add) {
         this->auto_add = auto_add;
     }
+
+    int getMaxWatchers() const;
 };
 
 

@@ -41,9 +41,11 @@ from gi.repository import GObject
 gi.require_version('GtkSource', '3.0')
 from gi.repository import GtkSource
 
+import hawck_ui.priv_actions as priv_actions
 from hawck_ui.template_manager import TemplateManager
 from hawck_ui.log_retriever import LogRetriever
 from hawck_ui.locations import HAWCK_HOME, LOCATIONS, resourcePath
+from hawck_ui.privesc import SudoException
 
 pprint = PrettyPrinter(indent = 4).pprint
 
@@ -305,12 +307,24 @@ class HawckMainWindow(Gtk.ApplicationWindow):
                 os.path.join(LOCATIONS["hawck_bin"],
                              "install-hwk-script.sh"),
                 path
-            ], stdout=PIPE, stderr=STDOUT_REDIR)
+            ], stdout=PIPE, stderr=PIPE)
         out = p.stdout.read()
         ret = p.wait()
+        print("")
+        print(f"ret {ret!r}")
+        print("")
 
+        ## Need to install the new keys required by the script
+        if ret == 123:
+            print("")
+            print(f"command: {out}")
+            print("")
+            try:
+                priv_actions.copyKeys(out.strip(), self.getCurrentScriptName())
+            except SudoException as e:
+                print(f"Unable to copy keys: {e}")
         ## Handle error
-        if ret != 0:
+        elif ret != 0:
             lines = out.splitlines()
             _ = lines.pop()
             raise HawckInstallException("\n".join(l.decode("utf-8") for l in lines))
@@ -325,7 +339,7 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         name, _ = os.path.splitext(os.path.basename(hwk_path))
         return name
 
-    def onPopdown(self, p):
+    def onPopdown(self, p, *_):
         p.popdown()
 
     def useScript(self, *_):

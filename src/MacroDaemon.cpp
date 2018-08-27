@@ -46,6 +46,7 @@ extern "C" {
 #include "Permissions.hpp"
 
 using namespace Lua;
+using namespace Permissions;
 using namespace std;
 
 static const char *const evval[] = {

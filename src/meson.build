@@ -28,6 +28,7 @@ macrod_src = [
   'Keyboard.cpp',
   'FSWatcher.cpp',
   'hawck-macrod.cpp',
+  'Permissions.cpp',
   #'Dir.cpp',
 ]
 executable('hawck-macrod',
@@ -49,6 +50,7 @@ inputd_src = [
   'FSWatcher.cpp',
   'CSV.cpp',
   'hawck-inputd.cpp',
+  'Permissions.cpp',
   #'Dir.cpp',
 ]
 executable('hawck-inputd',

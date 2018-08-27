@@ -27,6 +27,7 @@
 
 #include <sstream>
 #include <functional>
+#include <fstream>
 
 extern "C" {
     #include <sys/stat.h>
@@ -43,10 +44,14 @@ extern "C" {
 
 using namespace std;
 
+std::atomic<int> FSWatcher::num_instances = 0;
+
 FSWatcher::FSWatcher() {
     if ((this->fd = inotify_init()) < 0) {
         throw SystemError("Error in inotify_init()");
     }
+    syslog(LOG_INFO, "Registered inotify instance %d/%d with fd: %d",
+           ++num_instances, getMaxWatchers(), this->fd);
 }
 
 FSWatcher::~FSWatcher() noexcept(false) {
@@ -58,6 +63,13 @@ FSWatcher::~FSWatcher() noexcept(false) {
 
     if (close(fd) == -1)
         syslog(LOG_ERR, "Unable to close inotify file descriptor");
+}
+
+int FSWatcher::getMaxWatchers() const {
+    ifstream max_inst_stream("/proc/sys/fs/inotify/max_user_instances");
+    int max = 0;
+    max_inst_stream >> max;
+    return max;
 }
 
 void FSWatcher::stop() noexcept(false) {
