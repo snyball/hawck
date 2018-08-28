@@ -221,7 +221,7 @@ void Keyboard::disable() noexcept {
     }
 
     if (close(fd) == -1) {
-        auto exc = SystemError("Unable to close(): ", fd);
+        auto exc = SystemError("Unable to close(): ", errno);
         syslog(LOG_ERR, "%s", exc.what());
     }
     fd = -1;

@@ -46,19 +46,23 @@ void RemoteUDevice::emit(int type, int code, int val) {
 
 void RemoteUDevice::emit(const input_event *send_event) {
     KBDAction ac;
+    memset(&ac, 0, sizeof(ac));
     memcpy(&ac.ev, send_event, sizeof(*send_event));
     ac.done = 0;
     evbuf.push_back(ac);
 }
 
 void RemoteUDevice::flush() {
-    conn->send(evbuf);
-    evbuf.clear();
+    if (evbuf.size()) {
+        conn->send(evbuf);
+        evbuf.clear();
+    }
 }
 
 void RemoteUDevice::done() {
     flush();
     KBDAction ac;
+    memset(&ac, 0, sizeof(ac));
     ac.done = 1;
     conn->send(&ac);
 }

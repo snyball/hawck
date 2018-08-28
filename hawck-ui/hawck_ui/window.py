@@ -51,17 +51,6 @@ pprint = PrettyPrinter(indent = 4).pprint
 
 SCRIPT_DEFAULT = """
 require "init"
-
--- Sample mappings:
-down => {
-  ctrl  + alt + key "h" => say "Hello world"
-  shift + alt + key "w" => app("firefox"):new_window("https://github.com/snyball/Hawck")
-  ctrl  + alt + key "k" => function ()
-    p = io.popen("fortune")
-    say(p:read("*a"))()
-    p:close()
-  end
-}
 """[1:]
 
 MODIFIER_NAMES = {

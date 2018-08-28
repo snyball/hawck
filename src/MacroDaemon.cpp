@@ -49,6 +49,8 @@ using namespace Lua;
 using namespace Permissions;
 using namespace std;
 
+constexpr bool ALWAYS_REPEAT_KEYS = false;
+
 static const char *const evval[] = {
     "UP",
     "DOWN",
@@ -112,9 +114,9 @@ MacroDaemon::~MacroDaemon() {
 }
 
 void MacroDaemon::initScriptDir(const std::string &dir_path) {
-    DIR *dir = opendir(dir_path.c_str());
+    auto dir = shared_ptr<DIR>(opendir(dir_path.c_str()), &closedir);
     struct dirent *entry;
-    while ((entry = readdir(dir))) {
+    while ((entry = readdir(dir.get()))) {
         stringstream path_ss;
         path_ss << dir_path << "/" << entry->d_name;
         string path = path_ss.str();
@@ -126,9 +128,7 @@ void MacroDaemon::initScriptDir(const std::string &dir_path) {
             cout << "Error: " << e.what() << endl;
         }
     }
-
-    auto files = fsw.addFrom(dir_path);
-    delete files;
+    auto files = mkuniq(fsw.addFrom(dir_path));
 }
 
 void MacroDaemon::loadScript(const std::string &rel_path) {
@@ -165,7 +165,7 @@ void MacroDaemon::loadScript(const std::string &rel_path) {
     Script *sc = new Script(path);
     sc->open(remote_udev, "udev");
 
-    string name(basename(rel_path.c_str()));
+    string name = pathBasename(rel_path);
 
     if (scripts.find(name) != scripts.end()) {
         // Script already loaded, reload it
@@ -178,7 +178,7 @@ void MacroDaemon::loadScript(const std::string &rel_path) {
 }
 
 void MacroDaemon::unloadScript(const std::string &rel_path) {
-    string name(basename(rel_path.c_str()));
+    string name = pathBasename(rel_path);
     if (scripts.find(name) != scripts.end()) {
         cout << "delete scripts[" << name << "]" << endl;
         delete scripts[name];
@@ -208,16 +208,15 @@ void f(void *) {
     fprintf(stderr, "GOT EM\n"); fflush(stderr);
 }
 
-void MacroDaemon::notify(string title, string msg, const Script *, const lua_Debug *) {
+void MacroDaemon::notify(string title, string msg) {
     NotifyNotification *n;
-    string ntitle = "Hawck: " + title;
     char cwd[PATH_MAX];
     getcwd(cwd, sizeof(cwd));
     string fire_icon_path(cwd);
     fire_icon_path += "/icons/fire.svg";
-    n = notify_notification_new(ntitle.c_str(), msg.c_str(), fire_icon_path.c_str());
-    notify_notification_set_timeout(n, 5000);
-    notify_notification_set_urgency(n, NOTIFY_URGENCY_NORMAL);
+    n = notify_notification_new(title.c_str(), msg.c_str(), fire_icon_path.c_str());
+    notify_notification_set_timeout(n, 12000);
+    notify_notification_set_urgency(n, NOTIFY_URGENCY_CRITICAL);
     notify_notification_set_app_name(n, "Hawck");
 
     // FIXME: The viewSource callback is not executed.
@@ -243,7 +242,6 @@ void MacroDaemon::notify(string title, string msg, const Script *, const lua_Deb
     if (!notify_notification_show(n, nullptr)) {
         fprintf(stderr, "Failed to show notification: %s\n", msg.c_str());
     }
-    fprintf(stderr, "%s: %s\n", ntitle.c_str(), msg.c_str());
 }
 
 static void handleSigPipe(int) {
@@ -251,10 +249,8 @@ static void handleSigPipe(int) {
     abort();
 }
 
-bool MacroDaemon::runScript(Lua::Script *sc, struct input_event &ev) {
+bool MacroDaemon::runScript(Lua::Script *sc, const struct input_event &ev) {
     bool repeat = true;
-
-    lua_State *L = sc->getL();
 
     const char *ev_val = (ev.value <= 2) ? evval[ev.value] : "?";
     const char *ev_type = event_str[ev.type];
@@ -265,21 +261,17 @@ bool MacroDaemon::runScript(Lua::Script *sc, struct input_event &ev) {
     sc->set("__event_value",           ev_val);
     sc->set("__event_value_num", (int) ev.value);
 
-    lua_getglobal(L, "__match");
-    if (!Lua::isCallable(L, -1)) {
-        fprintf(stderr, "Lua error: Unable to retrieve __match function from Lua state\n");
-    } else if (lua_pcall(L, 0, 1, 0) != LUA_OK) {
-        string err(lua_tostring(L, -1));
-        lua_Debug ar;
-        lua_getstack(L, 1, &ar);
-        // lua_getinfo(L, "l", &ar);
-        notify("Lua error", err, sc, &ar);
-        syslog(LOG_ERR, "LUA:%s", err.c_str());
-    } else {
-        repeat = !lua_toboolean(L, -1);
+    try {
+        auto [succ] = sc->call<bool>("__match");
+        repeat = !succ;
+    } catch (const LuaError &e) {
+        std::string report = e.fmtReport();
+        notify("Lua error", report);
+        syslog(LOG_ERR, "LUA:%s", report.c_str());
+        repeat = true;
     }
 
-    lua_pop(L, 1);
+    // lua_pop(L, lua_gettop(L));
 
     return repeat;
 }
@@ -328,7 +320,7 @@ void MacroDaemon::run() {
                     break;
         }
         
-        if (repeat)
+        if (repeat || ALWAYS_REPEAT_KEYS)
             remote_udev->emit(&ev);
 
         remote_udev->done();

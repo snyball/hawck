@@ -74,9 +74,7 @@ private:
 
     /** Display freedesktop DBus notification. */
     void notify(std::string title,
-                std::string msg,
-                const Lua::Script *script,
-                const lua_Debug *ar);
+                std::string msg);
 
     /** Run a script match on an input event.
      *
@@ -84,7 +82,7 @@ private:
      * @param ev Event to pass on to the script.
      * @return True if the key event should be repeated.
      */
-    bool runScript(Lua::Script *sc, struct input_event &ev);
+    bool runScript(Lua::Script *sc, const struct input_event &ev);
 
     /** Load a Lua script. */
     void loadScript(const std::string &path);

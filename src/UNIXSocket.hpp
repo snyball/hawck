@@ -192,6 +192,8 @@ public:
      * @param packets Vector holding all the packages.
      */
     void send(const std::vector<Packet> &packets) {
+        if (packets.size() == 0)
+            return;
         ssize_t len = sizeof(packets[0])*packets.size();
         if (::send(fd, &packets[0], len, 0) != len) {
             throw SocketError("Unable to send packet");

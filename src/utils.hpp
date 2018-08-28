@@ -91,7 +91,11 @@ public:
 };
 
 inline std::string pathBasename(const std::string& path) {
-    const char *bn = basename(path.c_str());
+    const char *full = path.c_str();
+    // Basename will return a pointer to somewhere inside `full`
+    // We can safely cast it to (char *) as long as we make the
+    // return value const.
+    const char *bn = basename((char *) full);
     if (bn == nullptr)
         return std::string("");
     return std::string(bn);

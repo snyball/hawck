@@ -26,27 +26,19 @@
  * =====================================================================================
  */
 
-#include "LuaUtils.hpp"
+#include <memory>
+
 extern "C" {
     #include <unistd.h>
 }
 
+#include "LuaUtils.hpp"
+
 using namespace std;
 
 namespace Lua {
-    /** Figure out if a Lua value is callable.
-     *
-     * It is not sufficient to just use lua_isfunction in certain cases,
-     * as that won't handle the cases where the value is actually a
-     * callable table. I.e a table that has a __call meta-method, will also
-     * handle nested __call metamethods, i.e cases where a __call metamethod
-     * is pointing to another table with a __call metamethod and so on.
-     *
-     * Warning: In case of deeply nested __call metamethods the function
-     *          will throw an error. A soft maximum depth of 32 is used,
-     *          but in case of low memory it can also fail due to the Lua
-     *          stack no longer being resizeable (on most systems this will
-     *          cause a segfault due to virtual memory overcommiting.)
+    /**
+     * Implementation of isCallable
      */
     static bool isCallableHelper(lua_State *L, int idx, int depth) {
         static const int soft_max_depth = 32;
@@ -75,8 +67,12 @@ namespace Lua {
         return is_callable;
     }
 
-    /** Expose isCallableHelper with an implicit depth as it is an
-     *  implementation detail, see isCallableHelper for implementation.
+    /** Figure out if a Lua value is callable, will detect tables
+     *  with __call metamethods as callable with a maximum nesting
+     *  depth of 32.
+     *
+     * @param L Lua state.
+     * @param idx Index on Lua stack.
      */
     bool isCallable(lua_State *L, int idx) {
         return isCallableHelper(L, idx, 0);
@@ -87,21 +83,16 @@ namespace Lua {
             throw Lua::LuaError("No path given");
         }
 
-        L = luaL_newstate();
-        luaL_openlibs(L);
+        auto L = unique_ptr<lua_State, decltype(&lua_close)>(luaL_newstate(), &lua_close);
+        luaL_openlibs(L.get());
 
-        try {
-            if (luaL_loadfile(L, path.c_str()) != LUA_OK) {
-                string err(lua_tostring(L, -1));
-                throw Lua::LuaError("Lua error: " + err);
-            }
-            if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
-                string err(lua_tostring(L, -1));
-                throw Lua::LuaError("Lua error: " + err);
-            }
-        } catch (Lua::LuaError &e) {
-            lua_close(L);
-            throw e;
+        if (luaL_loadfile(L.get(), path.c_str()) != LUA_OK) {
+            string err(lua_tostring(L.get(), -1));
+            throw Lua::LuaError("Lua error: " + err);
+        }
+        if (lua_pcall(L.get(), 0, 0, 0) != LUA_OK) {
+            string err(lua_tostring(L.get(), -1));
+            throw Lua::LuaError("Lua error: " + err);
         }
 
         if (src.at(0) != '/') {
@@ -112,6 +103,8 @@ namespace Lua {
         } else {
             abs_src = src;
         }
+
+        this->L = L.release();
     }
 
     Script::~Script() noexcept {
@@ -124,5 +117,21 @@ namespace Lua {
 
     lua_State *Script::getL() noexcept {
         return L;
+    }
+
+    extern "C" int hwk_lua_error_handler_callback(lua_State *L) noexcept
+    {
+        lua_Debug ar;
+        size_t errmsg_sz = 0;
+        const char *errmsg_c = lua_tolstring(L, -1, &errmsg_sz);
+        string errmsg(errmsg_c, errmsg_sz);
+        vector<lua_Debug> traceback;
+        for (int lv = 0; lua_getstack(L, lv, &ar); lv++) {
+            lua_getinfo(L, "Sunl", &ar);
+            traceback.push_back(ar);
+        }
+        cout << "traceback size: " << traceback.size() << endl;
+        lua_pushlightuserdata(L, new LuaError(errmsg, traceback));
+        return 1;
     }
 }

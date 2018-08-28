@@ -33,14 +33,20 @@
 
 #pragma once
 
-extern "C" {
-#include <lua.h>
-#include <lauxlib.h>
-#include <lualib.h>
-}
 #include <functional> 
 #include <unordered_map>
 #include <atomic>
+#include <iostream>
+#include <sstream>
+#include <memory>
+#include <cstring>
+
+extern "C" {
+    #include <lua.h>
+    #include <lauxlib.h>
+    #include <lualib.h>
+    #include <libgen.h>
+}
 
 /** FIXME: This library is NOT THREAD SAFE!!!
  *
@@ -161,17 +167,116 @@ extern "C" {
             {NULL, NULL}                                        \
         }
 
+
 namespace Lua {
     class LuaError : public std::exception {
     private:
         std::string expl;
+
     public:
-        LuaError(std::string expl) : expl(expl) {}
+        std::vector<lua_Debug> trace;
+
+        explicit LuaError(const std::string& expl,
+                          const std::vector<lua_Debug>& trace)
+            : expl(expl),
+              trace(trace)
+        {
+            fmtError();
+            std::cout << "trace size: " << this->trace.size() << std::endl;
+        }
+
+        explicit LuaError(const std::string& expl)
+            : expl(expl),
+              trace{}
+        {
+            fmtError();
+        }
+
+        /** Lua errors are reported like this:
+         *  /long/winding/path/file.lua:<line>: <error message>
+         *  We are only interested in this part:
+         *  file.lua:<line>: <error message>
+         *  
+         * If your paths have the ':' symbol in them this function will
+         * break, but so will many other things, like environment variables
+         * that expect ':' to be a safe separator. The script may contain
+         * one or more ':' characters without causing any problems.
+         */ 
+        inline const char *fmtError() const noexcept {
+            const char *ptr = expl.c_str();
+            const char *start = ptr;
+            for (size_t i = 0; i < expl.size(); i++)
+                if (ptr[i] == '/')
+                    start = &ptr[i+1];
+                else if (ptr[i] == ':')
+                    break;
+            return start;
+        }
 
         virtual const char *what() const noexcept {
-            return expl.c_str();
+            return fmtError();
+        }
+
+        std::string fmtTraceback() const noexcept {
+            std::stringstream err_ss;
+            int lv = 0;
+            bool in_c;
+            for (const auto& ar : trace) {
+                if (!strcmp(ar.what, "C")) {
+                    in_c = true;
+                    continue;
+                } else if (in_c) {
+                    err_ss << "  [.]: ... C++ ...";
+                    err_ss << std::endl;
+                    in_c = false;
+                }
+                err_ss << "  [" << lv++ << "]:";
+                err_ss << " func '" << ((ar.name) ? ar.name : "unknown") << "'";
+                err_ss << " @ " << basename((char*)ar.short_src);
+                err_ss << ":" << ar.linedefined;
+                err_ss << std::endl;
+            }
+            return err_ss.str();
+        }
+
+        std::string fmtReport() const noexcept {
+            std::stringstream err_ss;
+            err_ss << fmtError() << std::endl;
+            err_ss << fmtTraceback();
+            return err_ss.str();
         }
     };
+
+    template <class T> struct LuaValue {
+        void get(lua_State *, int) {}
+    };
+
+    template <> struct LuaValue<int> {
+        int get(lua_State *L, int idx) { return lua_tointeger(L, idx); }
+    };
+
+    template <> struct LuaValue<double> {
+        int get(lua_State *L, int idx) { return lua_tonumber(L, idx); }
+    };
+
+    template <> struct LuaValue<std::string> {
+        std::string get(lua_State *L, int idx) {
+            size_t sz;
+            const char *s = lua_tolstring(L, idx, &sz);
+            return std::string(s, sz);
+        }
+    };
+
+    template <> struct LuaValue<bool> {
+        bool get(lua_State *L, int idx) { return lua_toboolean(L, idx); }
+    };
+
+    template <> struct LuaValue<void> {
+        void get(lua_State*, int) { }
+    };
+
+    extern "C" int hwk_lua_error_handler_callback(lua_State *L) noexcept;
+
 
     static const std::string lua_type_names[LUA_NUMTAGS] = {
         "nil",           // Lua type: nil
@@ -393,7 +498,7 @@ namespace Lua {
          * See LUA_METHOD_BIND for a usage example of this function.
          */
         template <class Fn, class... Atoms>
-        inline auto wrap(std::string fn_name, Fn f, Atoms... atoms) noexcept {
+        inline auto wrap(const std::string& fn_name, Fn f, Atoms... atoms) noexcept {
             std::string   errstr  = fn_name + " : expected (" + formatArgs(atoms...) + ")";
             constexpr int idx     = -varargLength(atoms...);
             auto          wrapped = callFromLuaFunction<decltype(f(atoms...))>(idx, f, atoms...);
@@ -422,7 +527,7 @@ namespace Lua {
         T *ptr;
         uint64_t type_id;
 
-        LuaPtr(T *ptr) {
+        explicit LuaPtr(T *ptr) {
             type_id   = id_incr++;
             this->ptr = ptr;
         }
@@ -474,6 +579,16 @@ namespace Lua {
 
     bool isCallable(lua_State *L, int idx);
 
+    template <int num> constexpr int countT() {
+        return num;
+    }
+    template <int num, class, class... T> constexpr int countT() {
+        return countT<num+1, T...>();
+    }
+    template <class... T> constexpr int countT() {
+        return countT<0, T...>();
+    }
+
     class Script {
     private:
         lua_State *L;
@@ -509,24 +624,41 @@ namespace Lua {
             return call_r(n+1, args...);
         }
 
-        template <class T, class... Arg>
-        T call(std::string name, Arg... args) {
+        template <int idx>
+        std::tuple<> ret_r() noexcept {
+            return std::make_tuple();
+        }
+
+        template <int idx, class A, class... Arg>
+        std::tuple<A, Arg...> ret_r() noexcept {
+            return std::tuple_cat(
+                std::tuple<A>(LuaValue<A>().get(L, idx)),
+                ret_r<idx-1, Arg...>()
+            );
+        }
+
+        template <class... T, class... Arg>
+        std::tuple<T...> call(std::string name, Arg... args) {
+            lua_pushcfunction(L, hwk_lua_error_handler_callback);
             int nargs = call_r(0, args...);
+            constexpr int nres = countT<T...>();
             lua_getglobal(L, name.c_str());
-            int nres = 1;
-            if constexpr (std::is_void<T>::value) {
-                nres = 0;
+            if (!isCallable(L, -1))
+                throw LuaError("Unable to retrieve " + name + " function from Lua state");
+
+            // -n-nargs is the position of hwk_lua_error_handler_callback
+            // on the Lua stack.
+            if (lua_pcall(L, nargs, nres, -2-nargs) != LUA_OK) {
+                // Here be dragons
+                auto exc = std::unique_ptr<LuaError>(static_cast<LuaError*>(
+                    lua_touserdata(L, -1)
+                ));
+                if (!exc)
+                    throw LuaError("Unknown error");
+                LuaError err = *exc;
+                throw err;
             }
-            if (lua_pcall(L, nargs, nres, 0) != LUA_OK) {
-                std::string err(lua_tostring(L, -1));
-                lua_pop(L, 1);
-                throw LuaError("Lua Error: " + err);
-            }
-            if constexpr (!std::is_void<T>::value) {
-                T ret = luaGet(L, T(), -1);
-                lua_pop(L, 1);
-                return ret;
-            }
+            return ret_r<-nres, T...>();
         }
 
         template <class T>
