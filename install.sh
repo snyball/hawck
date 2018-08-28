@@ -46,12 +46,19 @@ function run() {
     ## Set up user directories
     
     LOCAL_SHARE="$HOME/.local/share"
+    ## Very unlikely, but ya never know
     if ! [ -d "$LOCAL_SHARE" ]; then
         mkdir -p "$LOCAL_SHARE"
     fi
     
     mkdir -p "$LOCAL_SHARE/hawck/scripts"
     mkdir -p "$LOCAL_SHARE/hawck/scripts-enabled"
+    ## Install example script if it does not exist.
+    ## The user may rewrite this script without renaming it, so the check
+    ## is critical.
+    if ! [ -f "$LOCAL_SHARE/hawck/scripts/example.hwk" ]; then
+        cp src/macro-scripts/example.hwk "$LOCAL_SHARE/hawck/scripts/example.hwk"
+    fi
     ln -s /usr/share/hawck/LLib "$LOCAL_SHARE/hawck/scripts/LLib" &>/dev/null
     ln -s /usr/share/hawck/keymaps "$LOCAL_SHARE/hawck/scripts/keymaps" &>/dev/null
     ln -s /usr/share/hawck/LLib/init.lua "$LOCAL_SHARE/hawck/scripts/init.lua" &>/dev/null

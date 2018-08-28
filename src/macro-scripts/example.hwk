@@ -1,0 +1,23 @@
+--
+-- Hawck example script
+--
+
+require "init"
+
+-- All keys of this block only activate when keys are pressed down.
+down => {
+  -- Display a notication saying "Hello World" when ctrl, alt, and h are pressed
+  ctrl  + alt + key "h" => say "Hello world"
+
+  -- Retrieve the app "firefox" and run the action new_window to open the Hawck github page
+  shift + alt + key "w" => app("firefox"):new_window("https://github.com/snyball/Hawck")
+
+  -- Run a Lua function
+  ctrl  + alt + key "k" => function ()
+    -- Launch a "fortune" process
+    local p = io.popen("fortune")
+    -- Read it's output and display it in a notification.
+    say(p:read("*a"))()
+    p:close()
+  end
+}

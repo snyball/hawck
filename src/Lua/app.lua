@@ -116,7 +116,7 @@ function AppMetaMethods.__index(t, key)
       if not exec:find("%%u") and arg then
         cmd = exec .. " " .. escape(arg)
       else
-        cmd = exec:gsub("%%u", escape(arg) or "")
+        cmd = exec:gsub("%%u", escape(arg or ""))
       end
       io.popen(cmd)
   end)
