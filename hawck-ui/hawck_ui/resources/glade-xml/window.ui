@@ -1036,7 +1036,7 @@ stack traceback:
                               <object class="GtkLabel">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
-                                <property name="label" translatable="yes">Input daemon</property>
+                                <property name="label" translatable="yes">InputD status:</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -1044,30 +1044,10 @@ stack traceback:
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkSwitch" id="inputd_switch">
-                                <property name="visible">True</property>
-                                <property name="can_focus">True</property>
-                              </object>
-                              <packing>
-                                <property name="left_attach">1</property>
-                                <property name="top_attach">0</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkSwitch" id="macrod_switch">
-                                <property name="visible">True</property>
-                                <property name="can_focus">True</property>
-                              </object>
-                              <packing>
-                                <property name="left_attach">1</property>
-                                <property name="top_attach">1</property>
-                              </packing>
-                            </child>
-                            <child>
                               <object class="GtkLabel">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
-                                <property name="label" translatable="yes">User macro daemon</property>
+                                <property name="label" translatable="yes">MacroD status:</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -1091,13 +1071,64 @@ stack traceback:
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">True</property>
-                                <property name="image">image15</property>
                                 <property name="always_show_image">True</property>
                                 <signal name="clicked" handler="onPanicBtn" swapped="no"/>
                               </object>
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="top_attach">2</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkBox" id="inputd_status_box">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="spacing">10</property>
+                                <child>
+                                  <object class="GtkLabel" id="inputd_status">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">False</property>
+                                    <property name="label" translatable="yes">Running</property>
+                                  </object>
+                                  <packing>
+                                    <property name="expand">False</property>
+                                    <property name="fill">True</property>
+                                    <property name="position">0</property>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <placeholder/>
+                                </child>
+                              </object>
+                              <packing>
+                                <property name="left_attach">1</property>
+                                <property name="top_attach">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkBox" id="macrod_status_box">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="spacing">10</property>
+                                <child>
+                                  <object class="GtkLabel" id="macrod_status">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">False</property>
+                                    <property name="label" translatable="yes">Stopped</property>
+                                  </object>
+                                  <packing>
+                                    <property name="expand">False</property>
+                                    <property name="fill">True</property>
+                                    <property name="position">0</property>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <placeholder/>
+                                </child>
+                              </object>
+                              <packing>
+                                <property name="left_attach">1</property>
+                                <property name="top_attach">1</property>
                               </packing>
                             </child>
                           </object>
@@ -1163,14 +1194,37 @@ stack traceback:
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
+                      <object class="GtkSwitch" id="script_enabled_switch">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                      </object>
+                      <packing>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
                       <object class="GtkButton">
-                        <property name="label" translatable="yes">Key</property>
+                        <property name="label" translatable="yes">Save as</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
-                        <property name="image">img_icon_key</property>
+                        <property name="image">image7</property>
                         <property name="always_show_image">True</property>
-                        <signal name="clicked" handler="onInsertKey" swapped="no"/>
+                        <signal name="clicked" handler="saveScript" swapped="no"/>
+                      </object>
+                      <packing>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="use_script_btn">
+                        <property name="label" translatable="yes">Use</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="image">image8</property>
+                        <property name="always_show_image">True</property>
+                        <signal name="clicked" handler="useScript" swapped="no"/>
                       </object>
                       <packing>
                         <property name="position">0</property>
@@ -1181,7 +1235,7 @@ stack traceback:
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
-                        <property name="popover">delete_script_popover</property>
+                        <property name="popover">popover4</property>
                         <child>
                           <object class="GtkGrid">
                             <property name="visible">True</property>
@@ -1192,7 +1246,7 @@ stack traceback:
                               <object class="GtkLabel">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
-                                <property name="label" translatable="yes">Delete</property>
+                                <property name="label" translatable="yes">Import</property>
                               </object>
                               <packing>
                                 <property name="left_attach">1</property>
@@ -1203,7 +1257,7 @@ stack traceback:
                               <object class="GtkImage">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
-                                <property name="icon_name">edit-delete</property>
+                                <property name="icon_name">document-open</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -1263,7 +1317,7 @@ stack traceback:
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
-                        <property name="popover">popover4</property>
+                        <property name="popover">delete_script_popover</property>
                         <child>
                           <object class="GtkGrid">
                             <property name="visible">True</property>
@@ -1274,7 +1328,7 @@ stack traceback:
                               <object class="GtkLabel">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
-                                <property name="label" translatable="yes">Import</property>
+                                <property name="label" translatable="yes">Delete</property>
                               </object>
                               <packing>
                                 <property name="left_attach">1</property>
@@ -1285,7 +1339,7 @@ stack traceback:
                               <object class="GtkImage">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
-                                <property name="icon_name">document-open</property>
+                                <property name="icon_name">edit-delete</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -1300,37 +1354,14 @@ stack traceback:
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkButton" id="use_script_btn">
-                        <property name="label" translatable="yes">Use</property>
-                        <property name="visible">True</property>
-                        <property name="can_focus">True</property>
-                        <property name="receives_default">True</property>
-                        <property name="image">image8</property>
-                        <property name="always_show_image">True</property>
-                        <signal name="clicked" handler="useScript" swapped="no"/>
-                      </object>
-                      <packing>
-                        <property name="position">0</property>
-                      </packing>
-                    </child>
-                    <child>
                       <object class="GtkButton">
-                        <property name="label" translatable="yes">Save as</property>
+                        <property name="label" translatable="yes">Key</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
-                        <property name="image">image7</property>
+                        <property name="image">img_icon_key</property>
                         <property name="always_show_image">True</property>
-                        <signal name="clicked" handler="saveScript" swapped="no"/>
-                      </object>
-                      <packing>
-                        <property name="position">0</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkSwitch" id="script_enabled_switch">
-                        <property name="visible">True</property>
-                        <property name="can_focus">True</property>
+                        <signal name="clicked" handler="onInsertKey" swapped="no"/>
                       </object>
                       <packing>
                         <property name="position">0</property>
@@ -1433,7 +1464,7 @@ stack traceback:
                     <property name="spacing">10</property>
                     <property name="layout_style">start</property>
                     <child>
-                      <object class="GtkButton">
+                      <object class="GtkButton" id="script_log_update_btn">
                         <property name="label" translatable="yes">Update</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
@@ -1448,7 +1479,7 @@ stack traceback:
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkToggleButton">
+                      <object class="GtkToggleButton" id="script_log_auto_update_btn">
                         <property name="label" translatable="yes">Automatically update</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
@@ -2083,6 +2114,7 @@ stack traceback:
             <property name="hexpand">False</property>
             <property name="vexpand">True</property>
             <property name="stack">main_stack</property>
+            <signal name="set-focus-child" handler="onNewFocus" swapped="no"/>
           </object>
           <packing>
             <property name="left_attach">0</property>

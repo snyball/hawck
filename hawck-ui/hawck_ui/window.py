@@ -38,6 +38,7 @@ import gi
 from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import GObject
+from gi.repository import GLib
 gi.require_version('GtkSource', '3.0')
 from gi.repository import GtkSource
 
@@ -123,9 +124,12 @@ class HawckMainWindow(Gtk.ApplicationWindow):
 
         self.templates = TemplateManager("resources/glade-xml/")
         self.templates.load("error_log.ui")
-        self.logs = LogRetriever()
+        self.logs = LogRetriever(self.updateLogs)
+        self.logs.daemon = True
+        GObject.threads_init()
+        self.logs.start()
         self.log_rows = []
-        self.updateLogs()
+        # self.updateLogs()
 
         hawck_status_version = self.builder.get_object("hawck_status_version")
         hawck_status_version.set_text(f"Hawck v{self.version}")
@@ -143,18 +147,13 @@ class HawckMainWindow(Gtk.ApplicationWindow):
             with open(LOCATIONS["first_use"], "w") as f:
                 f.write("The user has been warned about potential risks of using the software.\n")
 
-    def updateLogs(self):
-        added, removed = self.logs.update()
+    def updateLogs(self, added):
         loglist = self.builder.get_object("script_error_list")
 
-        rm = []
-        if removed >= len(self.log_rows):
-            rm = self.log_rows
-            self.log_rows = []
-        elif removed:
-            self.log_rows, rm = self.log_rows[:removed], self.log_rows[removed:]
-        for row in rm:
+        Gdk.threads_enter()
+        for row in self.log_rows:
             loglist.remove(row)
+        self.log_rows = []
 
         for log in (l for l in added if l["TYPE"] == "LUA"):
             ## Create new row and prepend it
@@ -195,12 +194,18 @@ class HawckMainWindow(Gtk.ApplicationWindow):
             self.log_rows.append(row)
             row.show_all()
 
+        Gdk.threads_leave()
+
+        return False
+
     def onClickUpdateLogs(self, *_):
-        self.updateLogs()
+        ret = self.logs.update()
+        if ret:
+            self.updateLogs(*ret)
 
     ## TODO: Write this
-    def onToggleAutoUpdateLog(self, *_):
-        pass
+    def onToggleAutoUpdateLog(self, btn):
+        active = btn.get_active()
 
     def addEditPage(self, path: str):
         scrolled_window = Gtk.ScrolledWindow()
@@ -439,17 +444,22 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         self.captureKey()
 
     def checkHawckDRunning(self):
-        inputd_sw = self.builder.get_object("inputd_switch")
-        macrod_sw = self.builder.get_object("macrod_switch")
+        inputd_label = self.builder.get_object("inputd_status")
+        macrod_label = self.builder.get_object("macrod_status")
         pgrep_loc = "/usr/bin/pgrep"
 
+        run_str = "<tt><span fgcolor=\"#4CB940\" font_weight=\"bold\">Running</span></tt>" 
+        stop_str = "<tt><span fgcolor=\"#BF4040\" font_weight=\"bold\">Stopped</span></tt>"
+
         ret = Popen([pgrep_loc, "hawck-inputd"]).wait()
-        inputd_sw.set_state(not ret)
-        inputd_sw.set_active(not ret)
+        inputd_label.set_markup(run_str if not ret else stop_str)
 
         ret = Popen([pgrep_loc, "hawck-macrod"]).wait()
-        macrod_sw.set_state(not ret)
-        macrod_sw.set_active(not ret)
+        macrod_label.set_markup(run_str if not ret else stop_str)
+
+    def onNewFocus(self, *_):
+        stack = self.builder.get_object("main_stack")
+        print(f"Focus change: {stack.get_visible_child_name()}")
 
     def onPanicBtn(self, *_):
         p = Popen([os.path.join(LOCATIONS["hawck_bin"], "kill-9-hawck.sh")])

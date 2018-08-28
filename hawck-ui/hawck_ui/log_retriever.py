@@ -30,31 +30,49 @@
 import re
 import json
 from subprocess import Popen, PIPE, STDOUT as STDOUT_REDIR
+from collections import defaultdict
 import os
+import threading
+import time
+from typing import Callable
+from gi.repository import GLib
 
 from hawck_ui.locations import HAWCK_HOME, LOCATIONS
 
-class LogRetriever:
-    def __init__(self):
-        self.logs = []
-        self.max_logs = 5 
-        self.last_log_text = ""
-        self.last_monotonic_time = 0
+class LogRetriever(threading.Thread):
+    def __init__(self, gdk_callback: Callable[[list, int], bool]):
+        super().__init__()
+        self.gdk_callback = gdk_callback
+        self.logs = {}
+        self.max_logs = 200
+        self.last_time = 0
         self.dismissed = set()
+        self.running = True
 
-    def append(self, log):
-        """
-        Return 1 if any logs needed to be popped, 0 otherwise.
-        """
-        num_removed = 0
-        if len(self.logs) >= self.max_logs:
-            self.logs = self.logs[1:]
-            num_removed = 1
-        self.logs.append(log)
-        return num_removed
+    def run(self):
+        GLib.threads_init()
+        while True:
+            if self.update():
+                GLib.idle_add(self.gdk_callback, [v for k,v in self.logs.items()])
+
+            ## Just stop calling the gdk_callback
+            while not self.running:
+                time.sleep(1)
+
+            time.sleep(0.5)
+
+    def stop(self):
+        self.running = False
+
+    def resume(self):
+        self.running = True
 
     def mklog(log):
-        lua_err_rx = re.compile(r"^(.+):(\d)+: (.*)")
+        """
+        Warning: This function modifies the log passed to it,
+                 the same log object is then returned for convenience.
+        """
+        lua_err_rx = re.compile(r"^(.+):(\d)+: (.*)", re.MULTILINE | re.DOTALL)
         log["TYPE"], _, log["MESSAGE"] = log["MESSAGE"].partition(":")
         if log["TYPE"].upper() == "LUA":
             m = lua_err_rx.match(log["MESSAGE"])
@@ -64,6 +82,7 @@ class LogRetriever:
         for (k, v) in items:
             if type(v) == str and v.isdigit():
                 log[k] = int(v)
+        log["UTIME"] = log["__MONOTONIC_TIMESTAMP"]
         return log
 
     def dismiss(self, log_message):
@@ -71,52 +90,38 @@ class LogRetriever:
         Filter out logs with log["MESSAGE"] == log_message.
         """
         print(f"Filtering of {log_message!r} is not implemented")
-        pass
 
     def update(self):
         """
-        Update logs, return new logs as well as the number of logs that
-        were removed.
+        Update logs then return the ones that were read.
+        Returns None if nothing changed.
         """
-        p = Popen(
-            [os.path.join(LOCATIONS["hawck_bin"],
-                            "get-lua-errors.sh"),
-            ], stdout=PIPE, stderr=STDOUT_REDIR)
-        ret = p.wait()
-        if ret != 0:
-            return [], 0
-        out = p.stdout.read().decode("utf-8")
-        self.last_log_text = out
-        added = []
-        objs = []
-        for line in out.splitlines():
-            obj = json.loads(line.strip())
-            objs.append(LogRetriever.mklog(obj))
-        objs = sorted(objs, key=lambda o: o["__MONOTONIC_TIMESTAMP"])
-        truncated_objs = []
-        last_log = None
-        if self.logs:
-            last_log = self.logs[-1]
-        skips = 0
-        for obj in objs:
-            ## Skip same messages
-            if last_log and obj["MESSAGE"] == last_log["MESSAGE"]:
-                skips += 1
-            else: ## New log
-                if last_log:
-                    last_log["DUP"] = last_log.get("DUP", 1) + skips
-                    truncated_objs.append(last_log)
-                skips = 0
-                last_log = obj
-        if last_log:
-            last_log["DUP"] = last_log.get("DUP", 1) + skips
-            truncated_objs.append(last_log)
-        added = list(o for o in truncated_objs if o["__MONOTONIC_TIMESTAMP"] > self.last_monotonic_time)
-        if added:
-            self.last_monotonic_time = added[-1]["__MONOTONIC_TIMESTAMP"]
-        if len(added) > self.max_logs:
-            added = added[self.max_logs:]
-        num_removed = 0
-        for obj in added:
-            num_removed += self.append(obj)
-        return added, num_removed
+        p = Popen(["journalctl", "-n", "10000", "-o", "json"], stdout=PIPE)
+
+        logs = []
+        for i, line in enumerate(reversed(p.stdout.readlines())):
+            obj = json.loads(line.decode("utf-8").strip())
+            if os.path.basename(obj.get("_EXE", "")) != "hawck-macrod":
+                continue
+            obj = LogRetriever.mklog(obj)
+            ## Log has been read, stop
+            if obj["UTIME"] <= self.last_time or len(logs) > self.max_logs:
+                break
+            logs.append(obj)
+
+        p.kill()
+
+        if not logs:
+            return
+
+        log = None
+        for log in reversed(logs):
+            msg = log["MESSAGE"]
+            if msg not in self.logs:
+                log["DUP"] = 1
+                self.logs[msg] = log
+            else:
+                self.logs[msg]["DUP"] += 1
+        self.last_time = log["UTIME"]
+
+        return logs
