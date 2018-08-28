@@ -91,13 +91,11 @@ function getEntryFunction(sym)
 
   succ, code = pcall(u.curry(getKeysym, sym))
   if succ then
-    print("Got simple key")
     return press(code)
   end
 
   succ, code = pcall(u.curry(getCombo, sym))
   if succ then
-    print("Got complex key")
     return function ()
       kbd:pressMod(unpack(code))
     end

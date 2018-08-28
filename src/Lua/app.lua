@@ -85,6 +85,13 @@ end
 
 AppMetaMethods = {}
 
+local function escape(str)
+  assert(str)
+  str = str:gsub("\"", "\\\"")
+  str = str:gsub("%$", "\\$")
+  return str
+end
+
 function AppMetaMethods.__index(t, key)
   assert(key)
 
@@ -105,7 +112,12 @@ function AppMetaMethods.__index(t, key)
 
   return LazyF.new(function (self, arg)
       print(arg)
-      local cmd = exec:gsub("%%u", arg or "")
+      local cmd
+      if not exec:find("%%u") and arg then
+        cmd = exec .. " " .. escape(arg)
+      else
+        cmd = exec:gsub("%%u", escape(arg) or "")
+      end
       io.popen(cmd)
   end)
 end

@@ -358,6 +358,7 @@ function u.expandEnv(path)
   for m in path:gmatch("%$([a-zA-Z_]+)") do
     path = path:gsub("%$" .. m, os.getenv(m) or "")
   end
+
   return path
 end
 
