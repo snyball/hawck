@@ -252,7 +252,6 @@ void KBDDaemon::run() {
                     });
 
     Keyboard *kbd = nullptr;
-    Milliseconds timeout(512);
     for (;;) {
         bool had_key = false;
         action.done = 0;
@@ -322,6 +321,8 @@ void KBDDaemon::run() {
                 cout << "Resetting connection ..." << endl;
 
                 udev.emit(&orig_ev);
+                udev.upAll();
+                udev.flush();
                 udev.upAll();
                 udev.flush();
 

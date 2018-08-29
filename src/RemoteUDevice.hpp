@@ -68,7 +68,7 @@ LUA_DECLARE(RemoteUDevice_lua_methods)
 class RemoteUDevice : public IUDevice,
                       public Lua::LuaIface<RemoteUDevice> {
 private:
-    UNIXSocket<KBDAction> *conn;
+    UNIXSocket<KBDAction> *conn = nullptr;
     std::vector<KBDAction> evbuf;
 
     // Collect methods into an array
@@ -76,6 +76,8 @@ private:
 
 public:
     explicit RemoteUDevice(UNIXSocket<KBDAction> *conn);
+
+    RemoteUDevice();
 
     virtual ~RemoteUDevice();
 
@@ -86,6 +88,10 @@ public:
     virtual void done() override;
 
     virtual void flush() override;
+
+    inline void setConnection(UNIXSocket<KBDAction> *conn) {
+        this->conn = conn;
+    }
 
     // Extract methods as static members taking `this` as
     // the first argument for binding with Lua

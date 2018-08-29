@@ -26,6 +26,33 @@ static void handleSigPipe(int) {
 
 static int no_fork;
 
+auto varToOption(string opt) {
+    replace(opt.begin(), opt.end(), '_', '-');
+    return "--" + opt;
+}
+
+#define VAR_TO_OPTION(_var) varToOption(#_var)
+
+auto numOption(const string& name, int *num) {
+    return [num, name](const string& opt) {
+               try {
+                   *num = stoi(opt);
+               } catch (const exception &e) {
+                   cout << name << ": Require an integer" << endl;
+                   exit(0);
+               }
+           };
+}
+
+auto strOption(const string&, string *str) {
+    return [str](const string& opt) {
+               *str = opt;
+           };
+}
+
+#define NUM_OPTION(_name) {VAR_TO_OPTION(_name), numOption(VAR_TO_OPTION(_name), &(_name))},
+#define STR_OPTION(_name) {VAR_TO_OPTION(_name), strOption(VAR_TO_OPTION(_name), &(_name))}
+
 int main(int argc, char *argv[]) {
     signal(SIGPIPE, handleSigPipe);
 
@@ -33,6 +60,7 @@ int main(int argc, char *argv[]) {
         "Usage:\n"
         "    hawck-inputd [--udev-event-delay <µs>]\n"
         "                 [--no-fork]\n"
+        "                 [--socket-timeout]\n"
         "                 -k <device>\n"
         "    hawck-inputd [-hv]\n"
         "\n"
@@ -47,6 +75,7 @@ int main(int argc, char *argv[]) {
         "    -v,--version        : Display version and exit.\n"
         "    -k,--kbd-device     : Add a keyboard to listen to.\n"
         "    --udev-event-delay  : Delay between events sent on the udevice in µs.\n"
+        "    --socket-timeout    : Time in milliseconds until timeout on sockets.\n"
     ;
 
     //daemonize("/var/log/hawck-input/log");
@@ -55,6 +84,7 @@ int main(int argc, char *argv[]) {
             /* These options set a flag. */
             {"no-fork", no_argument,       &no_fork, 1},
             {"udev-event-delay", required_argument,       0, 0},
+            {"socket-timeout", required_argument,       0, 0},
             {"version", no_argument, 0, 0},
             /* These options don’t set a flag.
                We distinguish them by their indices. */
@@ -66,7 +96,8 @@ int main(int argc, char *argv[]) {
     /* getopt_long stores the option index here. */
     int option_index = 0;
 
-    int ev_delay = 3800;
+    int udev_event_delay = 3800;
+    int socket_timeout = 1024;
     vector<string> kbd_names;
     vector<string> kbd_devices;
     unordered_map<string, function<void(const string& opt)>> long_handlers = {
@@ -74,14 +105,8 @@ int main(int argc, char *argv[]) {
                         cout << "Hawck InputD v" INPUTD_VERSION << endl;
                         exit(0);
                     }},
-        {"udev-event-delay", [&](const string& opt) {
-                                 try {
-                                     ev_delay = stoi(opt);
-                                 } catch (const exception &e) {
-                                     cout << "--udev-event-delay: Require an integer" << endl;
-                                     exit(0);
-                                 }
-                             }}
+        NUM_OPTION(udev_event_delay)
+        NUM_OPTION(socket_timeout)
     };
 
     do {
@@ -157,7 +182,8 @@ int main(int argc, char *argv[]) {
         cout << "Adding devices ..." << endl;
         for (const auto& dev : kbd_devices)
             daemon.addDevice(dev);
-        daemon.setEventDelay(ev_delay);
+        daemon.setEventDelay(udev_event_delay);
+        daemon.setSocketTimeout(socket_timeout);
         syslog(LOG_INFO, "Running Hawck InputD ...");
         cout << "Running ..." << endl;
         daemon.run();

@@ -33,6 +33,9 @@ RemoteUDevice::RemoteUDevice(UNIXSocket<KBDAction> *conn)
     this->conn = conn;
 }
 
+RemoteUDevice::RemoteUDevice()
+    : LuaIface(this, RemoteUDevice_lua_methods) {}
+
 RemoteUDevice::~RemoteUDevice() {}
 
 void RemoteUDevice::emit(int type, int code, int val) {
@@ -53,6 +56,8 @@ void RemoteUDevice::emit(const input_event *send_event) {
 }
 
 void RemoteUDevice::flush() {
+    if (!conn)
+        return;
     if (evbuf.size()) {
         conn->send(evbuf);
         evbuf.clear();
@@ -60,6 +65,8 @@ void RemoteUDevice::flush() {
 }
 
 void RemoteUDevice::done() {
+    if (!conn)
+        return;
     flush();
     KBDAction ac;
     memset(&ac, 0, sizeof(ac));

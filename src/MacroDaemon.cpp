@@ -91,26 +91,34 @@ MacroDaemon::MacroDaemon()
     notify_init("Hawck");
     string HOME(getenv("HOME"));
     home_dir = HOME + "/.local/share/hawck";
-    
+    initScriptDir(home_dir + "/scripts-enabled");
+}
+
+void MacroDaemon::getConnection() {
+    if (kbd_com)
+        delete kbd_com;
+    syslog(LOG_INFO, "Listening for a connection ...");
+
     // Keep looping around until we get a connection.
     for (;;) {
         try {
             int fd = kbd_srv.accept();
             kbd_com = new UNIXSocket<KBDAction>(fd);
+            syslog(LOG_INFO, "Got a connection");
             break;
         } catch (SocketError &e) {
             cout << "MacroDaemon accept() error: " << e.what() << endl;
         }
-        usleep(100);
+        // Wait for 0.1 seconds
+        usleep(100000);
     }
-    remote_udev = new RemoteUDevice(kbd_com);
-    initScriptDir(home_dir + "/scripts-enabled");
+
+    remote_udev.setConnection(kbd_com);
 }
 
 MacroDaemon::~MacroDaemon() {
     for (auto &[_, s] : scripts)
         delete s;
-    delete remote_udev;
 }
 
 void MacroDaemon::initScriptDir(const std::string &dir_path) {
@@ -163,7 +171,7 @@ void MacroDaemon::loadScript(const std::string &rel_path) {
     }
 
     Script *sc = new Script(path);
-    sc->open(remote_udev, "udev");
+    sc->open(&remote_udev, "udev");
 
     string name = pathBasename(rel_path);
 
@@ -245,8 +253,8 @@ void MacroDaemon::notify(string title, string msg) {
 }
 
 static void handleSigPipe(int) {
-    fprintf(stderr, "MacroD aborting due to SIGPIPE\n");
-    abort();
+    // fprintf(stderr, "MacroD aborting due to SIGPIPE\n");
+    // abort();
 }
 
 bool MacroDaemon::runScript(Lua::Script *sc, const struct input_event &ev) {
@@ -307,23 +315,32 @@ void MacroDaemon::run() {
                   return true;
               });
 
+    getConnection();
+
     for (;;) {
-        bool repeat = true;
+        try {
+            bool repeat = true;
 
-        kbd_com->recv(&action);
+            kbd_com->recv(&action);
 
-        {
-            lock_guard<mutex> lock(scripts_mtx);
-            // Look for a script match.
-            for (auto &[_, sc] : scripts)
-                if (sc->isEnabled() && !(repeat = runScript(sc, ev)))
-                    break;
-        }
+            {
+                lock_guard<mutex> lock(scripts_mtx);
+                // Look for a script match.
+                for (auto &[_, sc] : scripts)
+                    if (sc->isEnabled() && !(repeat = runScript(sc, ev)))
+                        break;
+            }
         
-        if (repeat || ALWAYS_REPEAT_KEYS)
-            remote_udev->emit(&ev);
+            if (repeat || ALWAYS_REPEAT_KEYS)
+                remote_udev.emit(&ev);
 
-        remote_udev->done();
+            remote_udev.done();
+        } catch (const SocketError& e) {
+            // Reset connection
+            syslog(LOG_ERR, "Socket error: %s", e.what());
+            notify("Socket error", "Connection to InputD timed out, reconnecting ...");
+            getConnection();
+        }
     }
 }
 

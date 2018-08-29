@@ -52,7 +52,9 @@ extern "C" {
 #define DANGER_DANGER_LOG_KEYS 0
 
 class KBDDaemon {
+    using Milliseconds = std::chrono::milliseconds;
 private:
+    Milliseconds timeout = Milliseconds(1024);
     std::set<int> passthrough_keys;
     std::mutex passthrough_keys_mtx;
     std::string home_path = "/var/lib/hawck-input";
@@ -124,4 +126,9 @@ public:
      * @param delay Delay in µs.
      */
     void setEventDelay(int delay);
+
+    /** Set timeout for read() on sockets. */
+    inline void setSocketTimeout(int time) {
+        timeout = Milliseconds(time);
+    }
 };

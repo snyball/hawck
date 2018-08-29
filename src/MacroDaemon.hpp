@@ -36,6 +36,7 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include <chrono>
 
 extern "C" {
     #include <unistd.h>
@@ -62,15 +63,17 @@ extern "C" {
  * macros on them.
  */
 class MacroDaemon {
+    using Milliseconds = std::chrono::milliseconds;
 private:
     UNIXServer kbd_srv;
-    UNIXSocket<KBDAction> *kbd_com;
+    UNIXSocket<KBDAction> *kbd_com = nullptr;
     // std::vector<Lua::Script *> scripts;
     std::mutex scripts_mtx;
     std::unordered_map<std::string, Lua::Script *> scripts;
-    RemoteUDevice *remote_udev;
+    RemoteUDevice remote_udev;
     FSWatcher fsw;
     std::string home_dir;
+    Milliseconds timeout = Milliseconds(1024);
 
     /** Display freedesktop DBus notification. */
     void notify(std::string title,
@@ -92,6 +95,9 @@ private:
 
     /** Initialize a script directory. */
     void initScriptDir(const std::string &dir_path);
+
+    /** Get a connection to listen for keys on. */
+    void getConnection();
 
 public:
     MacroDaemon();
