@@ -170,8 +170,10 @@ void MacroDaemon::loadScript(const std::string &rel_path) {
         return;
     }
 
-    Script *sc = new Script(path);
+    Script *sc = new Script();
+    sc->call("require", "init");
     sc->open(&remote_udev, "udev");
+    sc->from(path);
 
     string name = pathBasename(rel_path);
 

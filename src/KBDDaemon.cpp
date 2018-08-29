@@ -52,7 +52,6 @@ extern "C" {
 
 using namespace std;
 using namespace Permissions;
-using Milliseconds = std::chrono::milliseconds;
 
 constexpr int FSW_MAX_WAIT_PERMISSIONS_US = 5 * 1000000;
 

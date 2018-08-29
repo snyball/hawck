@@ -79,32 +79,35 @@ namespace Lua {
     }
 
     Script::Script(string path) : src(path) {
-        if (src.size() == 0) {
+        if (src.size() == 0)
             throw Lua::LuaError("No path given");
-        }
 
         auto L = unique_ptr<lua_State, decltype(&lua_close)>(luaL_newstate(), &lua_close);
+        this->L = L.get();
         luaL_openlibs(L.get());
 
-        if (luaL_loadfile(L.get(), path.c_str()) != LUA_OK) {
-            string err(lua_tostring(L.get(), -1));
+        from(path);
+
+        L.release();
+    }
+
+    Script::Script() {
+        L = luaL_newstate();
+        luaL_openlibs(L);
+    }
+
+    void Script::from(const std::string& path) {
+        if (luaL_loadfile(L, path.c_str()) != LUA_OK) {
+            string err(lua_tostring(L, -1));
             throw Lua::LuaError("Lua error: " + err);
         }
-        if (lua_pcall(L.get(), 0, 0, 0) != LUA_OK) {
-            string err(lua_tostring(L.get(), -1));
+        if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
+            string err(lua_tostring(L, -1));
             throw Lua::LuaError("Lua error: " + err);
         }
 
-        if (src.at(0) != '/') {
-            char cwd_s[PATH_MAX];
-            getcwd(cwd_s, sizeof(cwd_s));
-            string cwd(cwd_s);
-            abs_src = cwd + "/" + src;
-        } else {
-            abs_src = src;
-        }
-
-        this->L = L.release();
+        auto rpath = unique_ptr<char, decltype(&free)>(realpath(path.c_str(), nullptr), &free);
+        abs_src = string(rpath.get());
     }
 
     Script::~Script() noexcept {

@@ -53,7 +53,7 @@ chmod 744 "$script_path"
 cd "$SCRIPTS_DIR"
 
 ## Check the script for correctness
-if ! lua5.3 "$script_path" >&2; then
+if ! lua5.3 -l init "$script_path" >&2; then
     echo "!ERROR: Lua" >&2
     exit 1
 fi
@@ -66,7 +66,7 @@ echo "key_name,key_code" > "$tmp_keys"
 ## Write keys to CSV file.
 ## Output is sorted as the Lua table iteration is
 ## not deterministic.
-lua5.3 -l "$name" -e '
+lua5.3 -l init -l "$name" -e '
 for name, _ in pairs(__keys) do
     local succ, key = pcall(function ()
         return getKeysym(name)

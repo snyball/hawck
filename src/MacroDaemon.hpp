@@ -63,7 +63,6 @@ extern "C" {
  * macros on them.
  */
 class MacroDaemon {
-    using Milliseconds = std::chrono::milliseconds;
 private:
     UNIXServer kbd_srv;
     UNIXSocket<KBDAction> *kbd_com = nullptr;
@@ -73,7 +72,6 @@ private:
     RemoteUDevice remote_udev;
     FSWatcher fsw;
     std::string home_dir;
-    Milliseconds timeout = Milliseconds(1024);
 
     /** Display freedesktop DBus notification. */
     void notify(std::string title,

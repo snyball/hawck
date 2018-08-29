@@ -599,9 +599,12 @@ namespace Lua {
         std::string abs_src;
 
         explicit Script(std::string path);
+        Script();
         ~Script() noexcept;
 
         lua_State *getL() noexcept;
+
+        virtual void from(const std::string& path);
 
         template <class T>
         void open(LuaIface<T> *iface, std::string name) {
@@ -640,11 +643,11 @@ namespace Lua {
         template <class... T, class... Arg>
         std::tuple<T...> call(std::string name, Arg... args) {
             lua_pushcfunction(L, hwk_lua_error_handler_callback);
-            int nargs = call_r(0, args...);
-            constexpr int nres = countT<T...>();
             lua_getglobal(L, name.c_str());
             if (!isCallable(L, -1))
                 throw LuaError("Unable to retrieve " + name + " function from Lua state");
+            int nargs = call_r(0, args...);
+            constexpr int nres = countT<T...>();
 
             // -n-nargs is the position of hwk_lua_error_handler_callback
             // on the Lua stack.
