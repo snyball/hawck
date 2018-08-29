@@ -29,6 +29,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <chrono>
 
 extern "C" {
     #include <syslog.h>
@@ -51,6 +52,7 @@ extern "C" {
 
 using namespace std;
 using namespace Permissions;
+using Milliseconds = std::chrono::milliseconds;
 
 constexpr int FSW_MAX_WAIT_PERMISSIONS_US = 5 * 1000000;
 
@@ -250,6 +252,7 @@ void KBDDaemon::run() {
                     });
 
     Keyboard *kbd = nullptr;
+    Milliseconds timeout(512);
     for (;;) {
         bool had_key = false;
         action.done = 0;
@@ -300,25 +303,23 @@ void KBDDaemon::run() {
 
             // Pass key to Lua executor
             try {
-                // TODO: Use select() and a time-out of about 1s here, in case the
-                // macro daemon is taking way too long.
-
                 kbd_com.send(&action);
 
                 // Receive keys to emit from the macro daemon.
                 for (;;) {
-                    kbd_com.recv(&action);
-                    if (action.done) {
+                    kbd_com.recv(&action, timeout);
+                    if (action.done)
                         break;
-                    }
                     udev.emit(&action.ev);
                 }
                 // Flush received keys and continue on.
                 udev.flush();
                 // Skip emmision of the original key if everything went OK
                 continue;
-            } catch (SocketError &e) {
+            } catch (const SocketError &e) {
                 lock_guard<mutex> lock(available_kbds_mtx);
+
+                cout << "Resetting connection ..." << endl;
 
                 udev.emit(&orig_ev);
                 udev.upAll();

@@ -96,7 +96,7 @@ class LogRetriever(threading.Thread):
         Update logs then return the ones that were read.
         Returns None if nothing changed.
         """
-        p = Popen(["journalctl", "-n", "10000", "-o", "json"], stdout=PIPE)
+        p = Popen(["journalctl", "-n", "1000", "-o", "json"], stdout=PIPE)
 
         logs = []
         for i, line in enumerate(reversed(p.stdout.readlines())):

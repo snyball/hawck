@@ -38,6 +38,7 @@ extern "C" {
     #include <sys/types.h>
     #include <sys/socket.h>
     #include <sys/un.h>
+    #include <poll.h>
 }
 
 #include <string>
@@ -47,6 +48,7 @@ extern "C" {
 #include <system_error>
 #include <cstring>
 #include <vector>
+#include <chrono>
 
 #include "SystemError.hpp"
 
@@ -59,6 +61,11 @@ public:
     virtual const char *what() const noexcept {
         return expl.c_str();
     }
+};
+
+class SocketTimeout : public SocketError {
+public:
+    explicit SocketTimeout(const std::string& expl) noexcept : SocketError(expl) {}
 };
 
 /**
@@ -75,6 +82,47 @@ inline void recvAll(int fd, char *dst, ssize_t sz) {
 }
 
 /**
+ * Receive an exact amount of bytes on a socket, all or nothing, with a timeout.
+ *
+ * @param fd The file descriptor to recieve on.
+ * @param dst The buffer to insert received data into.
+ * @param sz The amount of bytes to be read.
+ * @param timeout The timeout in milliseconds.
+ */
+inline void recvAll(int fd, char *dst, ssize_t sz, std::chrono::milliseconds timeout) {
+    using namespace std::chrono;
+    auto now = []() {
+                   return duration_cast<milliseconds>(system_clock::now().time_since_epoch());
+               };
+
+    struct pollfd pfd;
+    pfd.events = POLLIN;
+    pfd.fd = fd;
+    for (size_t n = 0; sz -= n; dst += n) {
+        auto start_t = now();
+
+        switch (poll(&pfd, 1, timeout.count())) {
+            case -1:
+                throw SystemError("Error in poll(): ", errno);
+
+            case 0:
+                goto end_loop;
+
+            default:
+                if (pfd.revents & POLLIN && (n = ::recv(fd, dst, sz, 0)) <= 0)
+                    throw SocketError("Unable to receive packet: " + std::string(SystemError("", errno).what()));
+        }
+
+        // Check if we ran out of time
+        if ((timeout -= (now() - start_t)) <= milliseconds(0))
+            break;
+    } end_loop:
+
+    if (sz)
+        throw SocketTimeout("Unable to receive packet: timeout");
+}
+
+/**
  * Receive an entire object, all or nothing.
  *
  * @param fd The file descriptor to recieve on.
@@ -85,6 +133,19 @@ inline void recvAll(int fd, char *dst, ssize_t sz) {
 template <class T>
 inline void recvAll(int fd, T *obj) {
     recvAll(fd, (char *) obj, sizeof(*obj));
+}
+
+/**
+ * Receive an entire object, all or nothing, with a timeout.
+ *
+ * @param fd The file descriptor to recieve on.
+ * @param obj The buffer to insert received data into.
+ *
+ * @see recvAll(int fd, char *dst, ssize_t sz)
+ */
+template <class T>
+inline void recvAll(int fd, T *obj, std::chrono::milliseconds timeout) {
+    recvAll(fd, (char *) obj, sizeof(*obj), timeout);
 }
 
 /**
@@ -173,6 +234,18 @@ public:
      */
     void recv(Packet *p) {
         recvAll(fd, p);
+    }
+
+    /**
+     * Receive a packet.
+     *
+     * All or nothing, if the entire packet cannot be received
+     * a SocketError exception will be thrown.
+     *
+     * @param p The buffer to insert the packet into.
+     */
+    void recv(Packet *p, std::chrono::milliseconds timeout) {
+        recvAll(fd, p, timeout);
     }
 
     /**
