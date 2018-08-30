@@ -252,11 +252,19 @@ namespace Lua {
     };
 
     template <> struct LuaValue<int> {
-        int get(lua_State *L, int idx) { return lua_tointeger(L, idx); }
+        int get(lua_State *L, int idx) {
+            if (!lua_isnumber(L, idx))
+                throw LuaError("Expected number");
+            return lua_tointeger(L, idx);
+        }
     };
 
     template <> struct LuaValue<double> {
-        int get(lua_State *L, int idx) { return lua_tonumber(L, idx); }
+        int get(lua_State *L, int idx) {
+            if (!lua_isnumber(L, idx))
+                throw LuaError("Expected number");
+            return lua_tonumber(L, idx);
+        }
     };
 
     template <> struct LuaValue<std::string> {
@@ -268,11 +276,37 @@ namespace Lua {
     };
 
     template <> struct LuaValue<bool> {
-        bool get(lua_State *L, int idx) { return lua_toboolean(L, idx); }
+        bool get(lua_State *L, int idx) {
+            if (!lua_isboolean(L, idx))
+                throw LuaError("Expected boolean");
+            return lua_toboolean(L, idx);
+        }
     };
 
     template <> struct LuaValue<void> {
         void get(lua_State*, int) { }
+    };
+
+    template <class T> struct LuaValue<std::vector<T>> {
+        std::vector<T> get(lua_State *L, int idx) {
+            std::vector<T> vec;
+            lua_pushvalue(L, idx);
+            if (!lua_istable(L, -1))
+                throw LuaError("Expected a table");
+            for (int i = 1;; i++) {
+                lua_pushinteger(L, i);
+                lua_gettable(L, -2);
+                if (lua_isnil(L, -1))
+                    break;
+                vec.push_back(LuaValue<T>().get(L, -1));
+                lua_pop(L, 1);
+            }
+            std::cout << "Got vector: " << std::endl;
+            for (const auto& val : vec) {
+                std::cout << "  - " << val << std::endl;
+            }
+            return vec;
+        }
     };
 
     extern "C" int hwk_lua_error_handler_callback(lua_State *L) noexcept;
@@ -652,8 +686,8 @@ namespace Lua {
             // -n-nargs is the position of hwk_lua_error_handler_callback
             // on the Lua stack.
             if (lua_pcall(L, nargs, nres, -2-nargs) != LUA_OK) {
-                // Here be dragons
                 auto exc = std::unique_ptr<LuaError>(static_cast<LuaError*>(
+                    // Here be dragons
                     lua_touserdata(L, -1)
                 ));
                 if (!exc)
@@ -679,5 +713,11 @@ namespace Lua {
         inline bool isEnabled() noexcept {
             return enabled;
         }
+
+        inline void setEnabled(bool enabled) noexcept {
+            this->enabled = enabled;
+        }
+
+        void exec(const std::string& str);
     };
 }

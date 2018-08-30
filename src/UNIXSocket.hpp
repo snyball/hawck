@@ -69,20 +69,22 @@ public:
 };
 
 /**
- * Receive an exact amount of bytes on a socket, all or nothing.
+ * Receive an exact amount of bytes on a file descriptor,
+ * all or nothing.
  *
  * @param fd The file descriptor to recieve on.
  * @param dst The buffer to insert received data into.
  * @param sz The amount of bytes to be read.
  */
 inline void recvAll(int fd, char *dst, ssize_t sz) {
-    for (size_t n; (sz -= (n = ::recv(fd, dst, sz, 0))) > 0; dst += n)
+    for (size_t n; (sz -= (n = ::read(fd, dst, sz))) > 0; dst += n)
         if (n <= 0)
             throw SocketError("Unable to receive packet: " + std::string(strerror(errno)));
 }
 
 /**
- * Receive an exact amount of bytes on a socket, all or nothing, with a timeout.
+ * Receive an exact amount of bytes on a file descriptor,
+ * all or nothing, with a timeout.
  *
  * @param fd The file descriptor to recieve on.
  * @param dst The buffer to insert received data into.
@@ -109,7 +111,7 @@ inline void recvAll(int fd, char *dst, ssize_t sz, std::chrono::milliseconds tim
                 goto end_loop;
 
             default:
-                if (pfd.revents & POLLIN && (n = ::recv(fd, dst, sz, 0)) <= 0)
+                if (pfd.revents & POLLIN && (n = ::read(fd, dst, sz)) <= 0)
                     throw SocketError("Unable to receive packet: " + std::string(SystemError("", errno).what()));
         }
 

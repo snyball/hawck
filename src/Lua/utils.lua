@@ -61,9 +61,10 @@ end
 ---
 --- Print the string `c` to standard output `n` times
 ---
-local function printN(c, n)
+local function printN(c, n, out)
+  local out = out or io.stdout
   for i = 1, n do
-    io.write(c)
+    out:write(c)
   end
 end
 
@@ -180,84 +181,87 @@ function table.empty(t)
   return true
 end
 
-local function serialize_array(t, indent, path, visited, links)
+local function serialize_array(t, indent, path, visited, links, out)
   local indent = indent or 0
   local visited = visited or {}
   local path = path or {"root"}
   local links = links or {}
+  local out = out or io.stdout
 
   local per_line = 8
-  print "{"
+  out:write "{\n"
   local i = 1
-  printN(indent_str, indent + 1)
+  printN(indent_str, indent + 1, out)
   local len = #t
   for _, v in ipairs(t) do
     if type(v) == "table" and not table.empty(v) and i % per_line ~= 0 then
-      print ""
-      printN(indent_str, indent + 1)
+      out:write "\n"
+      printN(indent_str, indent + 1, out)
       i = 0
     end
-    serialize_recursive(v, indent + 1, path, visited, links)
-    io.write ", "
+    serialize_recursive(v, indent + 1, path, visited, links, out)
+    out:write ", "
     if i % per_line == 0 and i ~= len then
-      print ""
-      printN(indent_str, indent + 1)
+      out:write "\n"
+      printN(indent_str, indent + 1, out)
     end
     i = i + 1
   end
-  print ""
-  printN(indent_str, indent)
-  io.write "}"
+  out:write "\n"
+  printN(indent_str, indent, out)
+  out:write "}"
 end
 
 function isAtomic(x)
   return type(x) ~= "table" or table.empty(x)
 end
 
-function putsAtomic(x)
+function putsAtomic(x, out)
+  local out = out or io.stdout
   if x == nil then
-    io.write("nil")
+    out:write("nil")
   elseif type(x) == "string" then
-    io.write(reprString(x))
+    out:write(reprString(x))
   elseif type(x) == "boolean" or type(x) == "number" then
-    io.write(tostring(x))
+    out:write(tostring(x))
   elseif type(x) == "function" then
     local success, bytecode = pcall(function ()
         return string.dump(x)
     end)
     if success then
-      io.write("load(")
-      io.write(reprString(bytecode))
-      io.write(")")
+      out:write("load(")
+      out:write(reprString(bytecode))
+      out:write(")")
     elseif builtins[x] then
-      io.write(builtins[x] .. " --[[ builtin ]]")
+      out:write(builtins[x] .. " --[[ builtin ]]")
     else
-      io.write(("error(\"Not serializable: %s\")"):format(tostring(x)))
+      out:write(("error(\"Not serializable: %s\")"):format(tostring(x)))
     end
   elseif type(x) == "userdata" or type(x) == "thread" then
     if builtins[x] then
-      io.write(builtins[x] .. " --[[ builtin ]]")
+      out:write(builtins[x] .. " --[[ builtin ]]")
     else
-      io.write(("error(\"Not serializable: %s\")"):format(tostring(x)))
+      out:write(("error(\"Not serializable: %s\")"):format(tostring(x)))
     end
   elseif table.empty(x) then
-    io.write "{}"
+    out:write "{}"
   else
     return false
   end
   return true
 end
 
-function serialize_recursive(t, indent, path, visited, links)
+function serialize_recursive(t, indent, path, visited, links, out)
   local indent = indent or 0
   local visited = visited or {}
   local path = path or {"root"}
   local links = links or {}
+  local out = out or io.stdout
 
-  if putsAtomic(t) then
+  if putsAtomic(t, out) then
   else
     if visited[t] then
-      io.write(("nil --[[ %s ]]"):format(visited[t]))
+      out:write(("nil --[[ %s ]]"):format(visited[t]))
       table.insert(links, {visited[t], concat(path, "")})
       return
     end
@@ -265,26 +269,26 @@ function serialize_recursive(t, indent, path, visited, links)
     visited[t] = concat(path, "")
 
     if u.isArray(t) then
-      serialize_array(t, indent, path, visited, links)
+      serialize_array(t, indent, path, visited, links, out)
     else
-      print "{"
+      out:write "{\n"
 
       for u, v in pairs(t) do
-        printN(indent_str, indent+1)
-        io.write(keyString(u) .. " = ")
+        printN(indent_str, indent+1, out)
+        out:write(keyString(u) .. " = ")
         table.insert(path, keyString(u, false))
-        serialize_recursive(v, indent + 1, path, visited, links)
+        serialize_recursive(v, indent + 1, path, visited, links, out)
         path[#path] = nil
-        print ","
+        out:write ",\n"
       end
 
-      printN(indent_str, indent)
-      io.write "}"
+      printN(indent_str, indent, out)
+      out:write "}"
     end
   end
 
   if indent == 0 then
-    print ""
+    out:write "\n"
   end
 end
 
@@ -302,18 +306,20 @@ end
 ---
 --- Serialize a value `t` with the name `name`
 ---
-function u.serialize(name, t)
-  io.write("local " .. name .. " = ")
+function u.serialize(name, t, out)
+  local out = out or io.stdout
+  out:write("local " .. name .. " = ")
 
   local visited = {}
   local links = {}
-  serialize_recursive(t, 0, {name}, visited, links)
+  serialize_recursive(t, 0, {name}, visited, links, out)
 
   for k, v in ipairs(links) do
     print(formatLink(v, name))
   end
 
-  print("return " .. name)
+  out:write("return " .. name)
+  out:write("\n")
 end
 
 function u.serializeAs(t, name)
@@ -395,8 +401,8 @@ if test then
   end
 
   -- serialize("__puts_test", __puts_test)
-  serialize("globals", _G)
-  puts("string")
-  puts(function() end)
+  u.serialize("globals", _G)
+  u.puts("string")
+  u.puts(function() end)
 end
 

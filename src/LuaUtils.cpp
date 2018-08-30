@@ -122,6 +122,12 @@ namespace Lua {
         return L;
     }
 
+    void Script::exec(const std::string &str) {
+        if (luaL_dostring(L, str.c_str()) != LUA_OK) {
+            throw LuaError("Error in exec of: " + str);
+        }
+    }
+
     extern "C" int hwk_lua_error_handler_callback(lua_State *L) noexcept
     {
         lua_Debug ar;

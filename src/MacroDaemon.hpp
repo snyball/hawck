@@ -56,6 +56,7 @@ extern "C" {
 #include "LuaUtils.hpp"
 #include "RemoteUDevice.hpp"
 #include "FSWatcher.hpp"
+#include "FIFOWatcher.hpp"
 
 /** Macro daemon.
  *
@@ -66,12 +67,18 @@ class MacroDaemon {
 private:
     UNIXServer kbd_srv;
     UNIXSocket<KBDAction> *kbd_com = nullptr;
-    // std::vector<Lua::Script *> scripts;
     std::mutex scripts_mtx;
     std::unordered_map<std::string, Lua::Script *> scripts;
     RemoteUDevice remote_udev;
     FSWatcher fsw;
     std::string home_dir;
+
+    std::atomic<bool> notify_on_err = true;
+    std::atomic<bool> disable_on_err = false;
+    std::atomic<bool> eval_keydown = true;
+    std::atomic<bool> eval_keyup = true;
+    std::atomic<bool> eval_repeat = true;
+    std::atomic<bool> disabled = false;
 
     /** Display freedesktop DBus notification. */
     void notify(std::string title,

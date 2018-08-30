@@ -29,6 +29,8 @@ macrod_src = [
   'FSWatcher.cpp',
   'hawck-macrod.cpp',
   'Permissions.cpp',
+  'FIFOWatcher.cpp',
+  'LuaConfig.cpp',
   #'Dir.cpp',
 ]
 executable('hawck-macrod',

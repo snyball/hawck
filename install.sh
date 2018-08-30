@@ -59,6 +59,9 @@ function run() {
     if ! [ -f "$LOCAL_SHARE/hawck/scripts/example.hwk" ]; then
         cp src/macro-scripts/example.hwk "$LOCAL_SHARE/hawck/scripts/example.hwk"
     fi
+    if ! [ -f "$LOCAL_SHARE/hawck/cfg.lua" ]; then
+        cp bin/cfg.lua "$LOCAL_SHARE/hawck/"
+    fi
     ln -s /usr/share/hawck/LLib "$LOCAL_SHARE/hawck/scripts/LLib" &>/dev/null
     ln -s /usr/share/hawck/keymaps "$LOCAL_SHARE/hawck/scripts/keymaps" &>/dev/null
     ln -s /usr/share/hawck/LLib/init.lua "$LOCAL_SHARE/hawck/scripts/init.lua" &>/dev/null

@@ -24,7 +24,7 @@ fi
 echo "Probing devices ..."
 DEVICES=( "$@" )
 ## Loop over arguments to find a suitable device to listen on.
-input_devices=$(pkexec --user hawck-input lsinput -s)
+input_devices=$(lsinput -s)
 while [ "$#" -ge 1 ]; do
     KBD_MODEL="$1"
     DEVICE_FULL=$(echo "$input_devices" | grep -v if0 | grep "$KBD_MODEL" | head -n1)
@@ -65,8 +65,8 @@ if ! ninja -j8; then
     exit 1
 fi
 
-pkexec --user hawck-input $(realpath './src/hawck-inputd') "$KBD_DEVICE" &
-./src/hawck-macrod &
+sudo --user hawck-input $(realpath './src/hawck-inputd') --kbd-device "$KBD_DEVICE" &
+./src/hawck-macrod --no-fork &
 
 ## Wait for interrupt
 while true; do

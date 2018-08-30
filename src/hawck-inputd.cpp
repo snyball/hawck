@@ -28,7 +28,7 @@ static int no_fork;
 
 auto varToOption(string opt) {
     replace(opt.begin(), opt.end(), '_', '-');
-    return "--" + opt;
+    return opt;
 }
 
 #define VAR_TO_OPTION(_var) varToOption(#_var)
@@ -38,7 +38,7 @@ auto numOption(const string& name, int *num) {
                try {
                    *num = stoi(opt);
                } catch (const exception &e) {
-                   cout << name << ": Require an integer" << endl;
+                   cout << "--" << name << ": Require an integer" << endl;
                    exit(0);
                }
            };

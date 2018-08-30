@@ -44,6 +44,7 @@ extern "C" {
 #include "LuaUtils.hpp"
 #include "utils.hpp"
 #include "Permissions.hpp"
+#include "LuaConfig.hpp"
 
 using namespace Lua;
 using namespace Permissions;
@@ -275,13 +276,14 @@ bool MacroDaemon::runScript(Lua::Script *sc, const struct input_event &ev) {
         auto [succ] = sc->call<bool>("__match");
         repeat = !succ;
     } catch (const LuaError &e) {
+        if (disable_on_err)
+            sc->setEnabled(false);
         std::string report = e.fmtReport();
-        notify("Lua error", report);
+        if (notify_on_err)
+            notify("Lua error", report);
         syslog(LOG_ERR, "LUA:%s", report.c_str());
         repeat = true;
     }
-
-    // lua_pop(L, lua_gettop(L));
 
     return repeat;
 }
@@ -291,6 +293,17 @@ void MacroDaemon::run() {
 
     KBDAction action;
     struct input_event &ev = action.ev;
+
+    LuaConfig conf(home_dir + "/lua-comm.fifo", home_dir + "/cfg.lua");
+    #define ADDOPT(_var) conf.addOption(#_var, &_var)
+    ADDOPT(notify_on_err);
+    ADDOPT(disable_on_err);
+    ADDOPT(eval_keydown);
+    ADDOPT(eval_keyup);
+    ADDOPT(eval_repeat);
+    ADDOPT(disabled);
+    #undef ADDOPT
+    conf.begin();
 
     fsw.setWatchDirs(true);
     fsw.setAutoAdd(false);
@@ -325,7 +338,7 @@ void MacroDaemon::run() {
 
             kbd_com->recv(&action);
 
-            {
+            if (!( (!eval_keydown && ev.value == 1) || (!eval_keyup && ev.value == 0) ) && !disabled) {
                 lock_guard<mutex> lock(scripts_mtx);
                 // Look for a script match.
                 for (auto &[_, sc] : scripts)
@@ -333,7 +346,7 @@ void MacroDaemon::run() {
                         break;
             }
         
-            if (repeat || ALWAYS_REPEAT_KEYS)
+            if (repeat)
                 remote_udev.emit(&ev);
 
             remote_udev.done();

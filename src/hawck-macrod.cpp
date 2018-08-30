@@ -100,7 +100,6 @@ int main(int argc, char *argv[]) {
         MacroDaemon daemon;
         daemon.run();
     } catch (exception &e) {
-        remove("/var/lib/hawck-input/kbd.sock");
         cout << e.what() << endl;
         syslog(LOG_CRIT, "MacroD: %s", e.what());
         throw;
