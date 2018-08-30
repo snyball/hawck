@@ -17,6 +17,8 @@ import re
 import sys
 import time
 import os
+import json
+import base64
 
 import dill
 dill.settings["recurse"] = False
@@ -24,20 +26,31 @@ dill.settings["recurse"] = False
 pprint = PrettyPrinter(indent = 4).pprint
 
 PY_CMD = """
-import dill, sys
-__out = sys.stdout
-sys.stdout = sys.stderr
-try:
-    fn = dill.loads({fn!r})
-    ret = (None, fn())
-except Exception as e:
-    ret = (e, None)
-__out.buffer.write({sep!r})
-__out.buffer.write(dill.dumps(ret))
+import dill, sys, json, base64
+fn={fn!r}
+sys.stdout.buffer.write({sep!r})
+sys.stdout.buffer.write(bytes(dill.loads(base64.b64decode(fn))(), "utf-8"))
 """
 
 class SudoException(Exception):
     pass
+
+class PException(Exception):
+    """
+    This exception is raised when a function decorated with
+    SudoMethod.do raises an exception. The exception name and
+    message are kept intact, but the original exception object
+    cannot be safely reconstructed as this might allow for
+    code execution by i.e raising Popen([...]) inside of
+    the sub process.
+    """
+    def __init__(self, exc_name, msg):
+        self.name = exc_name
+        self.msg = msg
+
+    def __repr__(self):
+        return f"{self.name}({self.msg!r})"
+    __str__ = __repr__
 
 class SudoMethod:
     """
@@ -102,34 +115,36 @@ class SudoMethod:
         This function is used by SudoMethod.do and SudoMethod.do_async, it is not
         meant to be called manually.
         """
-        fn_str = dill.dumps(lambda: fn(*args),
-                            byref=False, fmode=False, recurse=False)
-        sep = bytes(f"BEGIN PYTHON DILL DUMP {os.getpid()}-{time.time()}", "utf-8")
-        py_cmd = [sys.executable, "-c", PY_CMD.format(fn=fn_str, sep=sep)]
+        def wrap():
+            try:
+                ret = json.dumps([None, fn(*args)])
+            except Exception as e:
+                ret = json.dumps([(type(e).__name__, str(e)), None])
+            return ret
+        fn_str = dill.dumps(wrap, byref=False, fmode=False, recurse=False)
+        sep = bytes(f"BEGIN PYTHON RETURN {os.getpid()}-{time.time()}", "utf-8")
+        py_cmd = [sys.executable, "-c", PY_CMD.format(fn=base64.b64encode(fn_str), sep=sep)]
         cmd = self.getcmd(expl, user, py_cmd)
-        print("Running privilege escalation command: ")
-        pprint(cmd)
         p = Popen(cmd, stdout=PIPE)
         def callback_wrap(callback):
             ret = p.wait()
-            # if ret != 0:
-            #     raise SudoException(f"Command returned failure status: {ret}")
+            if ret != 0:
+                raise SudoException(f"Command returned failure status: {ret}")
             out = p.stdout.read()
             print("Output:")
-            pprint(out)
             try:
-                _, dill_str = out.split(sep)
+                _, json_str = out.split(sep)
             except:
                 raise SudoException("Unable to retrieve output of function")
-            exc, obj = dill.loads(dill_str)
+            exc, obj = json.loads(json_str)
             if exc:
-                raise exc
+                raise PException(*exc)
             return callback(exc, obj)
         if callback:
             t = threading.Thread(target=callback_wrap, args=(callback[0],))
             t.start()
         else:
-            return callback_wrap(lambda *_: _)
+            return callback_wrap(lambda exc, obj: obj)
 
     def do(self, user: str, *expl: str):
         """
@@ -194,24 +209,31 @@ def getSudoMethod():
 if __name__ == "__main__":
     su = getSudoMethod()
 
-    @su.do_async("root")
-    def super_greeting(text):
-        import os, getpass
-        with open(os.path.join(os.environ["HOME"], "greeting.txt"), "w") as wf:
-            wf.write(text)
-        return f"Hello non-{getpass.getuser()} world"
-
     @su.do("root")
     def esc(arg):
-        print("Checking for a file")
-        open("/tmp/does-not-exist.exists?")
+        import getpass
+        with open("/tmp/test", "w") as wf:
+            wf.write(f"Test from {getpass.getuser()}\n")
+        if arg:
+            raise FileNotFoundError("E")
+        return getpass.getuser()
+
+    ret = None
+    try:
+        ret = esc(None)
+    except SudoException:
+        print("Unable to acquire root access")
+        sys.exit(0)
+
+    print(f"ret: {ret}")
 
     try:
-        esc("WHY?")
-    except FileNotFoundError as e:
+        ret = esc("WHY?")
+    except PException as e:
         print(str(e))
     except SudoException as e:
         ## This might happen if the user clicks 'Cancel' on the popup.
         print("Unable to acquire root access")
+        sys.exit(0)
 
-    # print(super_greeting("Hello root world!"))
+    print(f"ret: {ret}")

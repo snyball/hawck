@@ -600,7 +600,7 @@ namespace Lua {
 
         explicit Script(std::string path);
         Script();
-        ~Script() noexcept;
+        virtual ~Script() noexcept;
 
         lua_State *getL() noexcept;
 
