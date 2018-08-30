@@ -170,7 +170,7 @@ void MacroDaemon::loadScript(const std::string &rel_path) {
         return;
     }
 
-    Script *sc = new Script();
+    auto sc = mkuniq(new Script());
     sc->call("require", "init");
     sc->open(&remote_udev, "udev");
     sc->from(path);
@@ -184,7 +184,7 @@ void MacroDaemon::loadScript(const std::string &rel_path) {
     }
 
     cout << "Loaded script: " << name << endl;
-    scripts[name] = sc;
+    scripts[name] = sc.release();
 }
 
 void MacroDaemon::unloadScript(const std::string &rel_path) {
