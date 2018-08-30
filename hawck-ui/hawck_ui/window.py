@@ -31,9 +31,12 @@ import os
 import sys
 import shutil
 import signal
+import errno
+import inspect
 import pkg_resources as pkg
 from subprocess import Popen, PIPE, STDOUT as STDOUT_REDIR
 from pprint import PrettyPrinter
+from functools import wraps
 
 import gi
 from gi.repository import Gtk
@@ -74,7 +77,112 @@ MODIFIER_NAMES = {
 class HawckInstallException(Exception):
     pass
 
-class HawckMainWindow(Gtk.ApplicationWindow):
+class MainWindow(GObject.GObject):
+    def __init__(self, **kwargs):
+        super().__init__()
+        self.builder = Gtk.Builder()
+        rs = pkg.resource_string("hawck_ui", kwargs["ui"])
+        self.builder.add_from_string(rs.decode("utf-8"))
+        self.window = self.builder.get_object("MainWindow")
+        self.window.set_application(kwargs["application"])
+        self.window.connect("destroy", lambda *_: sys.exit(0))
+        self.window.present()
+
+    def connectAll(self):
+        self.builder.connect_signals(self)
+
+    def get(self, obj_name: str):
+        return self.builder.get_object(obj_name)
+
+def handle(obj_id, fn):
+    def sub(fn):
+        fn.__for_object__ = obj_id
+        return fn
+    return sub
+
+class Pluggable:
+    def __init__(self, main=None, builder=None):
+        self.builder = builder
+        self.main = main
+
+    def get(self, obj_name: str):
+        return self.builder.get_object(obj_name)
+
+    def setSwitch(self, obj_name: str, state: bool):
+        print(self, obj_name, state)
+        sw = self.get(obj_name)
+        sw.set_state(state)
+        sw.set_active(state)
+        return state
+
+    def getBindings(self):
+        methods = inspect.getmembers(self, predicate=lambda s: inspect.ismethod(s))
+        self.methods = {}
+        self.methods.update(methods)
+        return self.methods
+
+    def block(self, obj, fn):
+        obj.handler_block_by_func(self.methods[fn])
+
+    def unblock(self, obj, fn):
+        obj.handler_unblock_by_func(self.methods[fn])
+
+def switchHandler(fn):
+    @wraps(fn)
+    def sub(self, switch, on):
+        try:
+            return fn(self, on)
+        except Exception as e:
+            print(e)
+            self.block(switch, fn.__name__)
+            switch.set_active(not on)
+            switch.set_state(not on)
+            self.unblock(switch, fn.__name__)
+            return True
+    return sub
+
+class Settings(Pluggable):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        autostart_path = os.path.join(os.getenv("HOME"), ".config", "autostart", "hawck-macrod.desktop")
+        self.autostart = self.setSwitch("autostart_switch", os.path.exists(autostart_path))
+        self.unsafe_mode = self.setSwitch("unsafe_mode_switch", os.path.exists(LOCATIONS["unsafe_mode_dst"]))
+        self.setUnsafeModeText(self.unsafe_mode)
+
+    @switchHandler
+    def on_set_autostart(self, on):
+        dst = os.path.join(os.getenv("HOME"), ".config", "autostart", "hawck-macrod.desktop")
+        dst_dir = os.path.dirname(dst)
+        ## Make sure autostart directory exists
+        if not os.path.exists(dst_dir):
+            try:
+                os.makedirs(dst_dir)
+            except OSError as e:
+                if e.errno != errno.EEXISTS:
+                    raise
+        src = os.path.join(LOCATIONS["hawck_bin"], "hawck-macrod.desktop")
+        priv_actions.setInputDSystemDAutostart(on)
+        if on:
+            shutil.copy(src, dst)
+        else:
+            os.unlink(dst)
+        self.autostart = on
+
+    def setUnsafeModeText(self, on):
+        label = self.get("unsafe_mode_state_label")
+        disabled_mk = "<tt><span fgcolor=\"#4CB940\" font_weight=\"bold\">Disabled</span></tt>" 
+        enabled_mk = "<tt><span fgcolor=\"#BF4040\" font_weight=\"bold\">Enabled</span></tt>"
+        if on:
+            label.set_markup(enabled_mk)
+        else:
+            label.set_markup(disabled_mk)
+
+    @switchHandler
+    def on_set_unsafe_mode(self, on):
+        priv_actions.setUnsafeMode(on)
+        self.setUnsafeModeText(on)
+
+class HawckMainWindow(MainWindow):
     __gtype_name__ = 'HawckMainWindow'
 
     def __init__(self, **kwargs):
@@ -85,21 +193,18 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         self.version = kwargs["version"]
         del kwargs["version"]
 
-        super().__init__(**kwargs)
-        self.internal_call = 0
+        super().__init__(
+            ui="resources/glade-xml/window.ui",
+            **kwargs
+        )
+
+        self.window.set_icon_name("hawck")
+        self.window.set_default_icon_name("hawck")
+
         GObject.type_register(GtkSource.View)
         self.edit_pages = []
         self.scripts = {}
-        self.init_template()
-        ## FIXME: Gtk.Builder() causes the following error:
-        ## (hawck_ui:21372): Gtk-CRITICAL **: 17:10:54.315: gtk_widget_init_template: assertion 'template != NULL' failed
-        self.builder = Gtk.Builder()
-        rs = pkg.resource_string("hawck_ui",
-                                 "resources/glade-xml/window.ui")
-        self.builder.add_from_string(rs.decode("utf-8"))
-        self.window = self.builder.get_object("HawckMainWindow")
-        self.window.set_icon_name("hawck")
-        self.window.set_default_icon_name("hawck")
+
         script_dir = LOCATIONS["scripts"]
         self.src_lang_manager = GtkSource.LanguageManager()
         self.scheme_manager = GtkSource.StyleSchemeManager()
@@ -109,9 +214,6 @@ class HawckMainWindow(Gtk.ApplicationWindow):
                 self.addEditPage(os.path.join(script_dir, fname))
         self.insert_key_handler_id = self.connect("onKeyCaptureDone", self.insertKeyHandler)
         self.handler_block(self.insert_key_handler_id)
-        self.window.connect("destroy", lambda *_: sys.exit(0))
-        self.window.present()
-        self.builder.connect_signals(self)
         script_sw = self.builder.get_object("script_enabled_switch")
         self.script_switch_handler_id = script_sw.connect("state-set", self.setScriptEnabled)
         self.prepareEditForPage(0)
@@ -140,6 +242,13 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         notebook = self.builder.get_object("edit_notebook")
         notebook.set_current_page(0)
 
+        self.settings = Settings(builder = self.builder)
+        signals = {}
+        for obj in (self.settings, self):
+            methods = obj.getBindings()
+            signals.update(methods)
+        self.builder.connect_signals(signals)
+
         ## Check for first use, issue warning if the program has not been launched before.
         if not os.path.exists(LOCATIONS["first_use"]):
             warning = self.builder.get_object("hawck_first_use_warning")
@@ -147,6 +256,22 @@ class HawckMainWindow(Gtk.ApplicationWindow):
             warning.hide()
             with open(LOCATIONS["first_use"], "w") as f:
                 f.write("The user has been warned about potential risks of using the software.\n")
+
+    def getBindings(self):
+        self.methods = inspect.getmembers(self, predicate=lambda s: inspect.ismethod(s))
+        return self.methods
+
+    def initSettings(self):
+        """
+        Set settings
+        """
+        autostart_path = os.path.join(os.getenv("HOME"), ".config", "autostart", "hawck-macrod.desktop")
+        auto_enabled = os.path.exists(autostart_path)
+        auto_sw = self.builder.get_object("autostart_switch")
+        auto_sw.handler_block_by_func(self.onSetAutostart)
+        auto_sw.set_state(auto_enabled)
+        auto_sw.set_active(auto_enabled)
+        auto_sw.handler_unblock_by_func(self.onSetAutostart)
 
     def updateLogs(self, added):
         loglist = self.builder.get_object("script_error_list")
@@ -305,19 +430,15 @@ class HawckMainWindow(Gtk.ApplicationWindow):
             ], stdout=PIPE, stderr=PIPE)
         out = p.stdout.read()
         ret = p.wait()
-        print("")
-        print(f"ret {ret!r}")
-        print("")
 
         ## Need to install the new keys required by the script
         if ret == 123:
-            print("")
-            print(f"command: {out}")
-            print("")
-            try:
-                priv_actions.copyKeys(out.strip(), self.getCurrentScriptName())
-            except SudoException as e:
-                print(f"Unable to copy keys: {e}")
+            ## If unsafe mode is enabled we don't need to install any keys.
+            if not self.settings.unsafe_mode:
+                try:
+                    priv_actions.copyKeys(out.strip(), self.getCurrentScriptName())
+                except SudoException as e:
+                    print(f"Unable to copy keys: {e}")
         ## Handle error
         elif ret != 0:
             lines = out.splitlines()
@@ -383,8 +504,6 @@ class HawckMainWindow(Gtk.ApplicationWindow):
             print("Success!")
         except HawckInstallException as e:
             print("EXCEPTION")
-            # self.internal_call += 2
-            # with switch_obj.handler_block(self.script_switch_handler_id):
             popover = self.builder.get_object("use_script_error")
             popover.popup()
             buf.set_text(str(e))

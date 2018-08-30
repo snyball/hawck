@@ -12,6 +12,7 @@ from subprocess import Popen, PIPE
 from getpass import getuser
 from typing import List, Dict, Callable, Any
 from pprint import PrettyPrinter
+import getpass
 import threading
 import re
 import sys
@@ -115,6 +116,10 @@ class SudoMethod:
         This function is used by SudoMethod.do and SudoMethod.do_async, it is not
         meant to be called manually.
         """
+        ## If we already have appropriate priviliges:
+        if getpass.getuser() == user:
+            return fn(*args)
+
         def wrap():
             try:
                 ret = json.dumps([None, fn(*args)])

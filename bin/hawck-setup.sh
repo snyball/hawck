@@ -35,6 +35,34 @@ fi
 
 ok "Setting up hawck for $USER"
 
+function setup-users() {
+    ## Set up hawck-input home directory
+    mkdir -p /var/lib/hawck-input/keys
+
+    ## Set up users and groups.
+    useradd hawck-input
+    usermod -aG input hawck-input
+    usermod --home /var/lib/hawck-input hawck-input
+    groupadd hawck-input-share
+    usermod -aG hawck-input-share hawck-input
+    groupadd hawck-uinput
+    usermod -aG hawck-uinput hawck-input
+
+    ## Allow for sharing of key inputs via UNIX sockets.
+    usermod -aG hawck-input-share "$USER"
+    chown hawck-input:hawck-input-share /var/lib/hawck-input
+    chmod 770 /var/lib/hawck-input
+
+    ## Make sure the keys are locked down with correct permissions.
+    chown hawck-input:hawck-input-share /var/lib/hawck-input/keys
+    chmod 750 /var/lib/hawck-input/keys
+
+    ## Make sure that hawck-input can create virtual input devices.
+    ## After a reboot this will be done by the 99-hawck-input.rules file.
+    chown root:hawck-uinput /dev/uinput
+    chmod 660 /dev/uinput
+}
+
 pushd "${MESON_SOURCE_ROOT}" &>/dev/null
 
 HAWCK_BIN=/usr/share/hawck/bin
@@ -45,6 +73,13 @@ for src in src/scripts/*.sh src/scripts/*.awk; do
     install -m 755 "$src" "$HAWCK_BIN/$name"
 done
 chown -R root:root "$HAWCK_BIN"
+
+## TODO: Move __UNSAFE_MODE.csv into here:
+mkdir -p "/usr/share/hawck/keys"
+cp bin/__UNSAFE_MODE.csv  "/usr/share/hawck/keys/"
+chmod 644 bin/__UNSAFE_MODE.csv
+
+cp bin/hawck-macrod.desktop /usr/share/hawck/bin/
 
 ok "Installed scripts to hawck/bin"
 
@@ -97,32 +132,8 @@ cp bin/keyboards.txt /var/lib/hawck-input/
 
 popd &>/dev/null ## Done installing files
 
-## Set up hawck-input home directory
-mkdir -p /var/lib/hawck-input/keys
-
-## Set up users and groups.
-useradd hawck-input
-usermod -aG input hawck-input
-usermod --home /var/lib/hawck-input hawck-input
-groupadd hawck-input-share
-usermod -aG hawck-input-share hawck-input
-groupadd hawck-uinput
-usermod -aG hawck-uinput hawck-input
+setup-users
 
 ok "Configured groups"
-
-## Allow for sharing of key inputs via UNIX sockets.
-usermod -aG hawck-input-share "$USER"
-chown hawck-input:hawck-input-share /var/lib/hawck-input
-chmod 770 /var/lib/hawck-input
-
-## Make sure the keys are locked down with correct permissions.
-chown hawck-input:hawck-input-share /var/lib/hawck-input/keys
-chmod 750 /var/lib/hawck-input/keys
-
-## Make sure that hawck-input can create virtual input devices.
-## After a reboot this will be done by the 99-hawck-input.rules file.
-chown root:hawck-uinput /dev/uinput
-chmod 660 /dev/uinput
 
 echo -e "$WHITEB""Installation was succesful$NC"

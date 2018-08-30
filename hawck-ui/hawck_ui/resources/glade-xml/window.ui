@@ -108,6 +108,62 @@ mode("Programming mode", down + key "f7") + -up =&gt; {
 __setup()
 </property>
   </object>
+  <object class="GtkPopover" id="enabled_events_popover">
+    <property name="can_focus">False</property>
+    <child>
+      <object class="GtkButtonBox">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="orientation">vertical</property>
+        <property name="layout_style">start</property>
+        <child>
+          <object class="GtkCheckButton">
+            <property name="label" translatable="yes">Key up</property>
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="receives_default">False</property>
+            <property name="active">True</property>
+            <property name="draw_indicator">True</property>
+          </object>
+          <packing>
+            <property name="expand">True</property>
+            <property name="fill">True</property>
+            <property name="position">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkCheckButton">
+            <property name="label" translatable="yes">Key down</property>
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="receives_default">False</property>
+            <property name="draw_indicator">True</property>
+          </object>
+          <packing>
+            <property name="expand">True</property>
+            <property name="fill">True</property>
+            <property name="position">1</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkCheckButton">
+            <property name="label" translatable="yes">Key repeat</property>
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="receives_default">False</property>
+            <property name="image_position">right</property>
+            <property name="active">True</property>
+            <property name="draw_indicator">True</property>
+          </object>
+          <packing>
+            <property name="expand">True</property>
+            <property name="fill">True</property>
+            <property name="position">2</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+  </object>
   <object class="GtkTextBuffer" id="hawck_system_about_short">
     <property name="text" translatable="yes">Hawck runs in user space and uses kernel-apis to intercept key presses. It can
 run key-presses through Lua scripts in order to modify the behaviour of keys.
@@ -439,14 +495,14 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
         <property name="orientation">vertical</property>
         <property name="layout_style">start</property>
         <child>
-          <object class="GtkCheckButton">
+          <object class="GtkCheckButton" id="on_error_notify_chk">
             <property name="label" translatable="yes">Notification</property>
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="receives_default">False</property>
             <property name="active">True</property>
             <property name="draw_indicator">True</property>
-            <signal name="toggled" handler="onToggleErrorAction" swapped="no"/>
+            <signal name="toggled" handler="on_toggle_error_action" swapped="no"/>
           </object>
           <packing>
             <property name="expand">True</property>
@@ -455,13 +511,13 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
           </packing>
         </child>
         <child>
-          <object class="GtkCheckButton">
+          <object class="GtkCheckButton" id="on_error_open_script_chk">
             <property name="label" translatable="yes">Open script</property>
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="receives_default">False</property>
             <property name="draw_indicator">True</property>
-            <signal name="toggled" handler="onToggleErrorAction" swapped="no"/>
+            <signal name="toggled" handler="on_toggle_error_action" swapped="no"/>
           </object>
           <packing>
             <property name="expand">True</property>
@@ -470,7 +526,7 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
           </packing>
         </child>
         <child>
-          <object class="GtkCheckButton">
+          <object class="GtkCheckButton" id="on_error_stop_script_chk">
             <property name="label" translatable="yes">Stop script</property>
             <property name="visible">True</property>
             <property name="can_focus">True</property>
@@ -478,7 +534,7 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
             <property name="image_position">right</property>
             <property name="active">True</property>
             <property name="draw_indicator">True</property>
-            <signal name="toggled" handler="onToggleErrorAction" swapped="no"/>
+            <signal name="toggled" handler="on_toggle_error_action" swapped="no"/>
           </object>
           <packing>
             <property name="expand">True</property>
@@ -898,10 +954,10 @@ also insecure.</property>
           <placeholder/>
         </child>
         <child>
-          <object class="GtkSwitch">
+          <object class="GtkSwitch" id="unsafe_mode_switch">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
-            <signal name="state-set" handler="onSetUnsafeMode" swapped="no"/>
+            <signal name="state-set" handler="on_set_unsafe_mode" swapped="no"/>
           </object>
           <packing>
             <property name="expand">False</property>
@@ -924,7 +980,7 @@ stack traceback:
 	[C]: in ?</property>
   </object>
   <object class="GtkTextBuffer" id="script_error_buffer"/>
-  <object class="GtkApplicationWindow" id="HawckMainWindow">
+  <object class="GtkApplicationWindow" id="MainWindow">
     <property name="can_focus">False</property>
     <property name="icon_name">hawck</property>
     <child type="titlebar">
@@ -1910,7 +1966,7 @@ stack traceback:
                               <object class="GtkLabel">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
-                                <property name="label" translatable="yes">Ignore key up</property>
+                                <property name="label" translatable="yes">Enabled events</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -1929,11 +1985,11 @@ stack traceback:
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkSwitch">
+                              <object class="GtkSwitch" id="autostart_switch">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="tooltip_text" translatable="yes">Start hawck automatically on boot.</property>
-                                <signal name="state-set" handler="onSetAutostart" swapped="no"/>
+                                <signal name="state-set" handler="on_set_autostart" swapped="no"/>
                               </object>
                               <packing>
                                 <property name="left_attach">1</property>
@@ -1992,10 +2048,10 @@ stack traceback:
                                 <property name="tooltip_text" translatable="yes">Highway to the danger zone.</property>
                                 <property name="popover">popover_toggle_unsafe_mode</property>
                                 <child>
-                                  <object class="GtkImage">
+                                  <object class="GtkLabel" id="unsafe_mode_state_label">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
-                                    <property name="icon_name">security-medium</property>
+                                    <property name="label" translatable="yes">Disabled</property>
                                   </object>
                                 </child>
                               </object>
@@ -2005,11 +2061,15 @@ stack traceback:
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkSwitch">
+                              <object class="GtkMenuButton">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
-                                <property name="tooltip_text" translatable="yes">Ignore key up events, i.e only process key down and repeat keys.</property>
-                                <signal name="state-set" handler="onSetIgnoreKeyup" swapped="no"/>
+                                <property name="receives_default">True</property>
+                                <property name="direction">right</property>
+                                <property name="popover">enabled_events_popover</property>
+                                <child>
+                                  <placeholder/>
+                                </child>
                               </object>
                               <packing>
                                 <property name="left_attach">1</property>
@@ -2024,17 +2084,7 @@ stack traceback:
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkButton">
-                            <property name="label" translatable="yes">Save</property>
-                            <property name="visible">True</property>
-                            <property name="can_focus">True</property>
-                            <property name="receives_default">True</property>
-                          </object>
-                          <packing>
-                            <property name="expand">True</property>
-                            <property name="fill">True</property>
-                            <property name="position">1</property>
-                          </packing>
+                          <placeholder/>
                         </child>
                         <child>
                           <placeholder/>
@@ -2131,7 +2181,7 @@ stack traceback:
     <property name="icon_name">hawck</property>
     <property name="type_hint">dialog</property>
     <property name="urgency_hint">True</property>
-    <property name="transient_for">HawckMainWindow</property>
+    <property name="transient_for">MainWindow</property>
     <property name="attached_to">button1</property>
     <property name="program_name">Hawck</property>
     <property name="copyright" translatable="yes">Copyright (C) Jonas Møller 2018</property>
@@ -2193,7 +2243,7 @@ stack traceback:
     <property name="icon_name">dialog-warning</property>
     <property name="type_hint">dialog</property>
     <property name="urgency_hint">True</property>
-    <property name="transient_for">HawckMainWindow</property>
+    <property name="transient_for">MainWindow</property>
     <property name="message_type">warning</property>
     <property name="buttons">ok</property>
     <property name="text" translatable="yes">Warning</property>
@@ -2233,7 +2283,7 @@ Have fun.</property>
   <object class="GtkWindow" id="key_capture_window">
     <property name="can_focus">False</property>
     <property name="modal">True</property>
-    <property name="transient_for">HawckMainWindow</property>
+    <property name="transient_for">MainWindow</property>
     <signal name="key-press-event" handler="onKeyCaptureKeyPress" swapped="no"/>
     <signal name="key-release-event" handler="onKeyCaptureKeyRelease" swapped="no"/>
     <child type="titlebar">

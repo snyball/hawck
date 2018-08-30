@@ -30,10 +30,12 @@
 
 import sys
 import gi
+import pkg_resources as pkg
 
 gi.require_version('Gtk', '3.0')
 
-from gi.repository import Gtk, Gio
+from gi.repository import Gtk
+from gi.repository import Gio
 
 from hawck_ui.window import HawckMainWindow
 
@@ -43,8 +45,13 @@ class Application(Gtk.Application):
         super().__init__(application_id='org.gnome.Hawck-Ui',
                          flags=Gio.ApplicationFlags.FLAGS_NONE)
 
+    def do_startup(self):
+        Gtk.Application.do_startup(self)
+        ## TODO: Do this: 
+        # self.set_app_menu()
+
     def do_activate(self):
-        win = HawckMainWindow(application=self, version=self.version)
+        self.window = HawckMainWindow(application=self, version=self.version)
 
 def main(version):
     app = Application(version)
