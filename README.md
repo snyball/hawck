@@ -75,14 +75,14 @@ mode("Programming mode", down + key "f7") + -up => {
 This transpiles to the following (without comments):
 
 ```lua
-match[mode("Programming mode", down + key "f7") + -up ] = MatchScope.new(function (match)
-    match[key "caps" ] = insert "escape"
-    match[shift ] = MatchScope.new(function (match)
-        match[key "oslash" ] = insert "bracketleft"
-        match[key "ae"     ] = insert "bracketright"
+__match[mode("Programming mode", down + key "f7") + -up ] = MatchScope.new(function (__match)
+    __match[key "caps" ] = insert "escape"
+    __match[shift ] = MatchScope.new(function (__match)
+        __match[key "oslash" ] = insert "bracketleft"
+        __match[key "ae"     ] = insert "bracketright"
     end)
-    match[key "oslash" ] = insert "braceleft"
-    match[key "ae"     ] = insert "braceright"
+    __match[key "oslash" ] = insert "braceleft"
+    __match[key "ae"     ] = insert "braceright"
 end)
 ```
 
@@ -132,9 +132,15 @@ you know whether or not the installation went smoothly.
 
 <img src="./images/hawck_ui_screenshot_edit_scripts_error.png"/>
 
+## View logs
+
+<!-- <img src="./images/"/> -->
+
+On the log page you can view errors that have been emitted from
+your scripts.
+
 ### Planned features
 - Simplified key rebinding (no need to write a script)
-- Log browser
 - Simplified script controls for imported scripts.
 
 ## Security
@@ -178,10 +184,5 @@ is primarily aimed towards Wayland users.
 ## Known Bugs:
 
 - Outputting keys too quickly:
-  - In macros that result in a lot of keys being outputted in
-    a short amount of time some keys may be skipped, leading
-    to inconsistencies in output.
-  - Workaround: Wait for a few milliseconds between emulated keypresses,
-    this seems to only be noticeable with macros that produce
-    a **lot of output**.
-
+  - GNOME Wayland has a bug where it will drop a lot of keys
+  - Workaround: run hawck-inputd with the --udev-event-delay flag set to 3800 (µs)
