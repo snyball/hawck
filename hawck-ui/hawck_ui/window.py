@@ -30,6 +30,7 @@
 import os
 import sys
 import shutil
+import signal
 import pkg_resources as pkg
 from subprocess import Popen, PIPE, STDOUT as STDOUT_REDIR
 from pprint import PrettyPrinter
@@ -462,8 +463,8 @@ class HawckMainWindow(Gtk.ApplicationWindow):
         print(f"Focus change: {stack.get_visible_child_name()}")
 
     def onPanicBtn(self, *_):
-        p = Popen([os.path.join(LOCATIONS["hawck_bin"], "kill-9-hawck.sh")])
-        p.wait()
+        Popen(["killall", "-9", "hawck-macrod"]).wait()
+        priv_actions.killHawckInputD(signal.SIGKILL)
         self.checkHawckDRunning()
 
     def onKeyCaptureCancel(self, *_):
