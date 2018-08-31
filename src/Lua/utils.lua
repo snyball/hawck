@@ -134,7 +134,7 @@ local string_escapes = {
   [string.byte("\r")] = "r"
 }
 
-local function reprString(v)
+function u.reprString(v)
   local quote = string_byte("\"")
   local bytes = {string_byte(v, 1, #v)}
   local str = ""
@@ -158,7 +158,7 @@ local function keyString(v, nice)
     if not v:match("%s") and not v:match("^%d") and nice then
       return v
     end
-    return "[" .. reprString(v) .. "]"
+    return "[" .. u.reprString(v) .. "]"
   elseif type(v) == "function" then
     if builtins[v] then
       return "[" .. builtins[v] .. "]"
@@ -221,7 +221,7 @@ function putsAtomic(x, out)
   if x == nil then
     out:write("nil")
   elseif type(x) == "string" then
-    out:write(reprString(x))
+    out:write(u.reprString(x))
   elseif type(x) == "boolean" or type(x) == "number" then
     out:write(tostring(x))
   elseif type(x) == "function" then
@@ -230,7 +230,7 @@ function putsAtomic(x, out)
     end)
     if success then
       out:write("load(")
-      out:write(reprString(bytecode))
+      out:write(u.reprString(bytecode))
       out:write(")")
     elseif builtins[x] then
       out:write(builtins[x] .. " --[[ builtin ]]")

@@ -37,7 +37,7 @@ import time
 from typing import Callable
 from gi.repository import GLib
 
-from hawck_ui.locations import HAWCK_HOME, LOCATIONS
+from .locations import HAWCK_HOME, LOCATIONS
 
 class LogRetriever(threading.Thread):
     def __init__(self, gdk_callback: Callable[[list, int], bool]):

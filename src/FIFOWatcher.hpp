@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <memory>
 #include <functional>
 
 class FIFOWatcher {
@@ -18,7 +19,7 @@ public:
 
     virtual ~FIFOWatcher();
 
-    virtual void handleMessage(const char *msg, size_t sz);
+    virtual std::tuple<std::unique_ptr<char[]>, uint32_t> handleMessage(const char *buf, size_t);
 
     /** Start a new thread to watch the fifo, call the callback when
      *  a packet is received. */

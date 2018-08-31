@@ -495,14 +495,14 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
         <property name="orientation">vertical</property>
         <property name="layout_style">start</property>
         <child>
-          <object class="GtkCheckButton" id="on_error_notify_chk">
+          <object class="GtkCheckButton" id="error_notify_chk">
             <property name="label" translatable="yes">Notification</property>
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="receives_default">False</property>
             <property name="active">True</property>
             <property name="draw_indicator">True</property>
-            <signal name="toggled" handler="on_toggle_error_action" swapped="no"/>
+            <signal name="toggled" handler="on_error_notify_chk" swapped="no"/>
           </object>
           <packing>
             <property name="expand">True</property>
@@ -511,22 +511,10 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
           </packing>
         </child>
         <child>
-          <object class="GtkCheckButton" id="on_error_open_script_chk">
-            <property name="label" translatable="yes">Open script</property>
-            <property name="visible">True</property>
-            <property name="can_focus">True</property>
-            <property name="receives_default">False</property>
-            <property name="draw_indicator">True</property>
-            <signal name="toggled" handler="on_toggle_error_action" swapped="no"/>
-          </object>
-          <packing>
-            <property name="expand">True</property>
-            <property name="fill">True</property>
-            <property name="position">1</property>
-          </packing>
+          <placeholder/>
         </child>
         <child>
-          <object class="GtkCheckButton" id="on_error_stop_script_chk">
+          <object class="GtkCheckButton" id="error_stop_chk">
             <property name="label" translatable="yes">Stop script</property>
             <property name="visible">True</property>
             <property name="can_focus">True</property>
@@ -534,7 +522,7 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
             <property name="image_position">right</property>
             <property name="active">True</property>
             <property name="draw_indicator">True</property>
-            <signal name="toggled" handler="on_toggle_error_action" swapped="no"/>
+            <signal name="toggled" handler="on_error_stop_chk" swapped="no"/>
           </object>
           <packing>
             <property name="expand">True</property>
@@ -1236,7 +1224,7 @@ stack traceback:
                 </child>
               </object>
               <packing>
-                <property name="name">Status</property>
+                <property name="name">status</property>
                 <property name="title" translatable="yes">🦅 Status</property>
               </packing>
             </child>
@@ -1482,7 +1470,7 @@ stack traceback:
                 </child>
               </object>
               <packing>
-                <property name="name">Edit scripts</property>
+                <property name="name">edit_scripts</property>
                 <property name="title" translatable="yes">📝 Edit scripts</property>
                 <property name="icon_name">document-open</property>
                 <property name="position">1</property>
@@ -1588,7 +1576,7 @@ stack traceback:
                 </child>
               </object>
               <packing>
-                <property name="name">page0</property>
+                <property name="name">log</property>
                 <property name="title" translatable="yes">📃 Log</property>
                 <property name="position">2</property>
               </packing>
@@ -1825,7 +1813,7 @@ stack traceback:
                 </child>
               </object>
               <packing>
-                <property name="name">page3</property>
+                <property name="name">simple_rebind</property>
                 <property name="title" translatable="yes">⌨ Simple Rebind</property>
                 <property name="position">3</property>
               </packing>
@@ -2108,7 +2096,7 @@ stack traceback:
                 </child>
               </object>
               <packing>
-                <property name="name">page4</property>
+                <property name="name">settings</property>
                 <property name="title" translatable="yes">🛠 Settings</property>
                 <property name="position">4</property>
               </packing>
@@ -2120,7 +2108,7 @@ stack traceback:
                 <property name="label" translatable="yes">Blank</property>
               </object>
               <packing>
-                <property name="name">Help</property>
+                <property name="name">help</property>
                 <property name="title" translatable="yes">🛐 Help</property>
                 <property name="position">5</property>
               </packing>

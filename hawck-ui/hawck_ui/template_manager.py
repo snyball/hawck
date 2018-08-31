@@ -43,6 +43,8 @@ class TemplateManager:
         builder = Gtk.Builder()
         builder.add_from_string(src)
         root = builder.get_object("root")
+        ## Make sure Python keeps the reference
+        root.builder = builder
         root.unparent()
         return root, builder
 

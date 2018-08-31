@@ -30,5 +30,5 @@ public:
     }
 
     /** Handle the raw Lua code */
-    virtual void handleMessage(const char *msg, size_t sz) override;
+    virtual std::tuple<std::unique_ptr<char[]>, uint32_t> handleMessage(const char *msg, size_t sz) override;
 };

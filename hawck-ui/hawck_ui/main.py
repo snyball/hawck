@@ -37,7 +37,7 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
 from gi.repository import Gio
 
-from hawck_ui.window import HawckMainWindow
+from .window import HawckMainWindow
 
 class Application(Gtk.Application):
     def __init__(self, version):

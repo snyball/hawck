@@ -1,4 +1,5 @@
 require "utils"
+local json = require "json"
 
 local reg = debug.getregistry()
 
@@ -70,4 +71,14 @@ function getConfigs(...)
   return table.unpack(configs)
 end
 
+function exec(cmd)
+  local env = {
+    config = config,
+  }
+  local fn = load(cmd, nil, nil, env)
+  local ss = json.sstream.new()
+  local ret = {fn()}
+  json.serialize(ret, ss)
+  return ss:get()
+end
 

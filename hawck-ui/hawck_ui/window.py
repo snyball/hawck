@@ -46,11 +46,12 @@ from gi.repository import GLib
 gi.require_version('GtkSource', '3.0')
 from gi.repository import GtkSource
 
-import hawck_ui.priv_actions as priv_actions
-from hawck_ui.template_manager import TemplateManager
-from hawck_ui.log_retriever import LogRetriever
-from hawck_ui.locations import HAWCK_HOME, LOCATIONS, resourcePath
-from hawck_ui.privesc import SudoException
+from . import priv_actions
+from .cfgmsg import sendcfg
+from .template_manager import TemplateManager
+from .log_retriever import LogRetriever
+from .locations import HAWCK_HOME, LOCATIONS, resourcePath
+from .privesc import SudoException
 
 pprint = PrettyPrinter(indent = 4).pprint
 
@@ -115,6 +116,11 @@ class Pluggable:
         sw.set_active(state)
         return state
 
+    def setCheck(self, obj_name: str, state: bool):
+        chk = self.get(obj_name)
+        chk.set_active(state)
+        return state
+
     def getBindings(self):
         methods = inspect.getmembers(self, predicate=lambda s: inspect.ismethod(s))
         self.methods = {}
@@ -141,6 +147,21 @@ def switchHandler(fn):
             return True
     return sub
 
+def checkHandler(fn):
+    @wraps(fn)
+    def sub(self, chk):
+        on = chk.get_active()
+        try:
+            return fn(self, on)
+        except Exception as e:
+            print(e)
+            self.block(chk, fn.__name__)
+            chk.set_active(not on)
+            self.unblock(chk, fn.__name__)
+            return True
+    return sub
+
+
 class Settings(Pluggable):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -148,6 +169,7 @@ class Settings(Pluggable):
         self.autostart = self.setSwitch("autostart_switch", os.path.exists(autostart_path))
         self.unsafe_mode = self.setSwitch("unsafe_mode_switch", os.path.exists(LOCATIONS["unsafe_mode_dst"]))
         self.setUnsafeModeText(self.unsafe_mode)
+        self.cfg_path = os.path.expandvars("$HOME/.local/share/hawck/lua-comm.fifo")
 
     @switchHandler
     def on_set_autostart(self, on):
@@ -181,6 +203,14 @@ class Settings(Pluggable):
     def on_set_unsafe_mode(self, on):
         priv_actions.setUnsafeMode(on)
         self.setUnsafeModeText(on)
+
+    @checkHandler
+    def on_error_stop_chk(self, on):
+        sendcfg(self.cfg_path, f"config.stop_on_err = {str(on).lower()}")
+
+    @checkHandler
+    def on_error_notify_chk(self, on):
+        sendcfg(self.cfg_path, f"config.notify_on_err = {str(on).lower()}")
 
 class HawckMainWindow(MainWindow):
     __gtype_name__ = 'HawckMainWindow'
@@ -277,6 +307,7 @@ class HawckMainWindow(MainWindow):
         loglist = self.builder.get_object("script_error_list")
 
         Gdk.threads_enter()
+
         for row in self.log_rows:
             loglist.remove(row)
         self.log_rows = []

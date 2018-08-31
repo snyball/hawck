@@ -46,15 +46,20 @@ void FIFOWatcher::watch() {
             auto buf = unique_ptr<char[]>(new char[sz + 1]);
             buf.get()[sz] = 0;
             recvAll(fd, buf.get(), sz);
-            handleMessage(buf.get(), sz);
+            auto [ret, ret_sz] = handleMessage(buf.get(), sz);
+            if (ret != nullptr) {
+                write(fd, &ret_sz, sizeof(ret_sz));
+                write(fd, ret.get(), ret_sz);
+            }
         } catch (const SocketError& e) {
             reset();
         }
     }
 }
 
-void FIFOWatcher::handleMessage(const char *buf, size_t) {
+tuple<unique_ptr<char[]>, uint32_t> FIFOWatcher::handleMessage(const char *buf, size_t) {
     cout << "Got message: " << buf << endl;
+    return make_tuple(nullptr, 0);
 }
 
 void FIFOWatcher::begin() {

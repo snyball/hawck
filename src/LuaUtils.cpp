@@ -123,9 +123,11 @@ namespace Lua {
     }
 
     void Script::exec(const std::string &str) {
+        int top = lua_gettop(L);
         if (luaL_dostring(L, str.c_str()) != LUA_OK) {
             throw LuaError("Error in exec of: " + str);
         }
+        int nret = lua_gettop(L) - top;
     }
 
     extern "C" int hwk_lua_error_handler_callback(lua_State *L) noexcept

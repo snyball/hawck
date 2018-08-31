@@ -17,7 +17,7 @@ LuaConfig::LuaConfig(const std::string& fifo_path, const std::string& luacfg_pat
     lua.call("loadConfig", luacfg_path);
 }
 
-void LuaConfig::handleMessage(const char *msg, size_t sz) {
+tuple<unique_ptr<char[]>, uint32_t> LuaConfig::handleMessage(const char *msg, size_t sz) {
     try {
         lua.exec(msg);
         auto [changes] = lua.call<vector<string>>("getChanged");
@@ -31,4 +31,6 @@ void LuaConfig::handleMessage(const char *msg, size_t sz) {
     } catch (const LuaError& e) {
         syslog(LOG_ERR, "Lua error: %s", e.what());
     }
+
+    return make_tuple(nullptr, 0); 
 }

@@ -1,4 +1,4 @@
-from hawck_ui.privesc import getSudoMethod, SudoException
+from .privesc import getSudoMethod, SudoException
 su = getSudoMethod()
 
 @su.do("hawck-input")
