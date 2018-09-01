@@ -13,7 +13,9 @@ extern "C" {
 #include "SystemError.hpp"
 #include "Daemon.hpp"
 
+#if MESON_COMPILE
 #include <hawck_config.h>
+#endif
 
 using namespace std;
 
@@ -51,7 +53,7 @@ void dup_streams(const string &stdout_path, const string &stderr_path) {
  */
 inline void forkThrough() {
     switch (fork()) {
-        case -1: throw SystemError("Unable to fork()");
+        case -1: throw SystemError("Unable to fork(): ", errno);
         case 0: break;
         default: exit(0);
     }
@@ -69,17 +71,17 @@ void daemonize(const string &logfile_path) {
     forkThrough();
 
     umask(0);
-    chdir("/");
 
-    #if REDIRECT_STD_STREAMS
+    if (chdir("/") == -1)
+        throw SystemError("Unable to chdir(\"/\"): ", errno);
+
     // Close all files
     int maxfd = sysconf(_SC_OPEN_MAX);
     maxfd = (maxfd == -1) ? BD_MAX_CLOSE : maxfd;
-    for (int fd = 3; fd < maxfd; fd++)
+    for (int fd = 0; fd < maxfd; fd++)
         close(fd);
 
     dup_streams(logfile_path, logfile_path);
-    #endif
 }
 
 void daemonize() {

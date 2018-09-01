@@ -3,14 +3,14 @@
 
 // TODO: Test with random data.
 
-const char test01_path[] = "./CSV-tests/test-01.csv";
+// const char test01_path[] = "./CSV-tests/test-01.csv";
 const char test02_path[] = "./CSV-tests/test-02.csv";
 
 using namespace std;
 
 // TEST_CASE("Output csv file to stream", "[csv]") {
 //     CSV csv(test02_path);
-    // csv.write(cout);
+//     csv.write(cout);
 // }
 
 TEST_CASE("Load csv file from disk", "[csv]") {

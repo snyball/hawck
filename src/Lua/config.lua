@@ -74,10 +74,12 @@ end
 function exec(cmd)
   local env = {
     config = config,
+    puts = puts,
   }
   local fn = load(cmd, nil, nil, env)
   local ss = json.sstream.new()
   local ret = {fn()}
+  u.puts(ret)
   json.serialize(ret, ss)
   return ss:get()
 end

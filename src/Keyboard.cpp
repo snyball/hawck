@@ -57,7 +57,7 @@ constexpr size_t ioctl_get_bufsz = 512;
 /**
  * @see ioctlGetString(_fd, _what)
  */
-static inline string _ioctlGetString(int fd, int what) {
+static inline string _ioctlGetString(int fd, unsigned long what) {
     char buf[ioctl_get_bufsz];
     ssize_t sz;
     if ((sz = ioctl(fd, what, buf)) == -1)

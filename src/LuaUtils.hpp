@@ -127,44 +127,44 @@ extern "C" {
 #define LUA_METHOD_NAME(_T, _m) __bind_##_T##_##_m
 #define LUA_METHOD_EXTRACT_NAME(_m) __extracted_method_##_m
 
-#define LUA_METHOD_EXTRACT(_T, _method, ...)                            \
-        template <class... Atoms>                                       \
+#define LUA_METHOD_EXTRACT(_T, _method, ...) \
+        template <class... Atoms> \
         static inline auto LUA_METHOD_EXTRACT_NAME(_method)(Atoms... args) noexcept { \
             return [](_T *self, Atoms... nargs) -> decltype(((_T *) nullptr)->_method(args...)) { \
-                return self->_method(nargs...);                         \
-            };                                                          \
+                return self->_method(nargs...); \
+            }; \
         }
 
-#define LUA_METHOD_DECLARE(_T, _m, ...)             \
+#define LUA_METHOD_DECLARE(_T, _m, ...) \
         int LUA_METHOD_NAME(_T, _m)(lua_State *L)
 
-#define LUA_METHOD_BIND(_T, _m, ...)                                    \
-        int LUA_METHOD_NAME(_T, _m)(lua_State *L) {                            \
+#define LUA_METHOD_BIND(_T, _m, ...) \
+        int LUA_METHOD_NAME(_T, _m)(lua_State *L) { \
             thread_local static const auto ex_fn = _T::LUA_METHOD_EXTRACT_NAME(_m)(__VA_ARGS__); \
-            thread_local static Lua::LuaMethod<_T> bind;                             \
+            thread_local static Lua::LuaMethod<_T> bind; \
             thread_local static const auto fn = bind.wrap(#_T"::"#_m, ex_fn, (_T *)nullptr, ##__VA_ARGS__); \
-            bind.setState(L);                                           \
-            return fn();                                                \
+            bind.setState(L); \
+            return fn(); \
         }
 
-#define LUA_DECLARE(_Mmap)                      \
-        extern "C" {                            \
-            _Mmap(LUA_METHOD_DECLARE, ;);       \
+#define LUA_DECLARE(_Mmap) \
+        extern "C" { \
+            _Mmap(LUA_METHOD_DECLARE, ;); \
         }
 #define LUA_EXTRACT(_Mmap) _Mmap(LUA_METHOD_EXTRACT, )
-#define LUA_CREATE_BINDINGS(_Mmap)              \
-        extern "C" {                            \
-            _Mmap(LUA_METHOD_BIND, )            \
+#define LUA_CREATE_BINDINGS(_Mmap) \
+        extern "C" { \
+            _Mmap(LUA_METHOD_BIND, ) \
         }
 
 #define _lua_utils_comma ,
 
 #define LUA_METHOD_COLLECT_SINGLE(_T, _m, ...) {#_m , LUA_METHOD_NAME(_T, _m)}
 
-#define LUA_METHOD_COLLECT(_Mmap)                               \
-        static constexpr luaL_Reg _Mmap[] = {                   \
+#define LUA_METHOD_COLLECT(_Mmap) \
+        static constexpr luaL_Reg _Mmap[] = { \
             _Mmap(LUA_METHOD_COLLECT_SINGLE, _lua_utils_comma), \
-            {NULL, NULL}                                        \
+            {NULL, NULL} \
         }
 
 
@@ -442,9 +442,8 @@ namespace Lua {
         template <class R, class Fn>
         inline std::function<int()> callFromLuaFunction(int, Fn f) noexcept {
             return [f, this]() -> int {
-                // Most (if not all) C++ compilers will complain about a misuse
-                // of void if this check isn't in place.
                 if constexpr (std::is_void<R>::value) {
+                    (void) (this);
                     f();
                     return 0;
                 } else
@@ -537,7 +536,7 @@ namespace Lua {
             constexpr int idx     = -varargLength(atoms...);
             auto          wrapped = callFromLuaFunction<decltype(f(atoms...))>(idx, f, atoms...);
 
-            return [this, errstr, idx, wrapped, atoms...]() -> int {
+            return [this, errstr, wrapped, atoms...]() -> int {
                 if (!checkArgs(idx, atoms...)) {
                     std::string nerr  = errstr + " got (";
                     nerr             += formatArgsLua(-lua_gettop(L));
