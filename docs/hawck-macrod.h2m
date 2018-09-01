@@ -1,0 +1,49 @@
+[description]
+Listen for keys coming from InputD and run Lua scripts
+to modify the behaviour of these keys.
+
+This daemon is meant to be interacted with by using
+hawck-ui.
+
+[files]
+
+$HOME/.local/share/hawck/scripts
+    Contains user hwk scripts, as well as the Lua files generated from
+    them.
+
+$HOME/.local/share/hawck/scripts-enabled
+    Contains symlinks to Lua scripts, putting Lua files in here with
+    execute permissions will cause them to be loaded instantly by
+    MacroD.
+
+$HOME/.local/share/hawck/lua-comm.fifo
+    FIFO that MacroD listens on, writes to this fifo should be a length (32 bit
+    unsigned int) followed by Lua code. This Lua code can either query or set
+    values in the `config' object.
+
+$HOME/.local/share/hawck/json-comm.fifo
+    FIFO that MacroD writes to, reads to this should be performed
+    after a write to `lua-comm.fifo' and will result in a length
+    (32 bit unsigned int) followed by a JSON object.
+
+$HOME/.local/share/hawck/cfg.lua
+    Contains configuration options that can be set and queried
+    from $HOME/.local/share/hawck/*-comm.fifo.
+
+$HOME/.local/share/hawck/macrod.log
+    Misc. logs from MacroD, not meant for users. Use journalctl(1)
+    or an alternative syslog viewer to view the MacroD logs.
+
+/var/lib/hawck-input/kbd.sock
+    Is the socket that MacroD will listen on for connections from
+    InputD.
+
+[copyright]
+Copyright (C) Jonas Møller 2018
+Provided under the BSD 2-clause license.
+
+[reporting bugs]
+Bugs should be reported to: <https://github.com/snyball/Hawck/issues>
+
+[see also]
+hawck-ui hawck-inputd(1) hwk2lua lsinput(1)

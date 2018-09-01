@@ -57,25 +57,19 @@ int main(int argc, char *argv[]) {
     signal(SIGPIPE, handleSigPipe);
 
     string HELP =
-        "Usage:\n"
-        "    hawck-inputd [--udev-event-delay <µs>]\n"
-        "                 [--no-fork]\n"
-        "                 [--socket-timeout]\n"
-        "                 -k <device>\n"
-        "    hawck-inputd [-hv]\n"
+        "Usage: hawck-inputd [--udev-event-delay <µs>] [--no-fork] [--socket-timeout] -k <device>\n"
         "\n"
         "Examples:\n"
-        "    hawck-inputd --kbd-device /dev/input/event13\n"
-        "    hawck-inputd --udev-event-delay 2500 --no-fork -k{/dev/input/event13,/dev/input/event15}\n"
-        "    hawck-inputd $(/usr/share/hawck/bin/get-kbd-args.sh)\n"
-        "\n"
+        "  hawck-inputd --kbd-device /dev/input/event13            Listen on a single device.\n\n"
+        "  hawck-inputd -k{/dev/input/event13,/dev/input/event15}  Listen on multiple devices.\n\n"
+        "  hawck-inputd $(/usr/share/hawck/bin/get-kbd-args.sh)    Listen on all keyboard devices.\n\n"
         "Options:\n"
-        "    --no-fork           : Don't daemonize/fork.\n"
-        "    -h,--help           : Display this help information.\n"
-        "    -v,--version        : Display version and exit.\n"
-        "    -k,--kbd-device     : Add a keyboard to listen to.\n"
-        "    --udev-event-delay  : Delay between events sent on the udevice in µs.\n"
-        "    --socket-timeout    : Time in milliseconds until timeout on sockets.\n"
+        "  --no-fork           Don't daemonize/fork.\n"
+        "  -h, --help          Display this help information.\n"
+        "  --version           Display version and exit.\n"
+        "  -k, --kbd-device    Add a keyboard to listen to.\n"
+        "  --udev-event-delay  Delay between events sent on the udevice in µs.\n"
+        "  --socket-timeout    Time in milliseconds until timeout on sockets.\n"
     ;
 
     //daemonize("/var/log/hawck-input/log");

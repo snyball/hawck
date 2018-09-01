@@ -10,5 +10,4 @@ build/*
 build
 latex/*
 html/*
-docs/*
 *.out

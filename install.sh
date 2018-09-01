@@ -80,3 +80,5 @@ else
     run
     echo "Installation was successful"
 fi
+
+xdg-open ./changelogs/changelog_0.6.0.md

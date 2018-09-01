@@ -1,5 +1,5 @@
 project('Hawck', 'cpp',
-        version : '0.5',
+        version : '0.6',
         license : 'BSD-2',
         meson_version : '>=0.45.0',
         default_options : ['c_std=c11',
@@ -42,6 +42,7 @@ inc = include_directories('src')
 subdir('src')
 subdir('tests')
 subdir('hawck-ui')
+subdir('docs')
 
 de_user = get_option('desktop_user')
 if de_user == ''

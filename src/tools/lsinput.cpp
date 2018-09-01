@@ -131,17 +131,13 @@ int main(int argc, char *argv[]) {
         switch (c) {
             case 'h':
                 cout <<
-                    "lsinput:" << endl <<
-                    "    List all input devices from /dev/input/event*" << endl <<
-                    "    Display their names, ids, and paths." << endl <<
-                    "Usage:" << endl <<
-                    "    lsinput [-hvs]" << endl <<
-                    "Options:" << endl <<
-                    "    -h    Display this help info." << endl <<
-                    "    -v    Display version." << endl <<
-                    "    -s    Print each input device on a single line, easier for" << endl <<
-                    "          stream editors like awk and sed to deal with."
-                               << endl;
+                    "Usage: lsinput [-hvs]\n"
+                    "\n"
+                    "Options:\n"
+                    "  -h    Display this help info.\n"
+                    "  -v    Display version.\n"
+                    "  -s    Print each input device on a single line, easier for\n"
+                    "        stream editors like awk and sed to deal with.\n";
                 return EXIT_SUCCESS;
             case 'v':
                 printf("lsinput v0.1\n");
