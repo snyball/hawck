@@ -9,17 +9,20 @@ extern "C" {
 using namespace std;
 using namespace Lua;
 
-LuaConfig::LuaConfig(const std::string& fifo_path, const std::string& luacfg_path)
-    : FIFOWatcher(fifo_path)
+LuaConfig::LuaConfig(const std::string& fifo_path,
+                     const std::string& ofifo_path,
+                     const std::string& luacfg_path)
+    : FIFOWatcher(fifo_path, ofifo_path)
 {
     ChDir cd("/usr/share/hawck/LLib/");
     lua.from("./config.lua");
     lua.call("loadConfig", luacfg_path);
 }
 
-tuple<unique_ptr<char[]>, uint32_t> LuaConfig::handleMessage(const char *msg, size_t sz) {
+std::string LuaConfig::handleMessage(const char *msg, size_t) {
     try {
-        lua.exec(msg);
+        cout << "Exec: " << msg << endl;
+        auto [json] = lua.call<string>("exec", msg);
         auto [changes] = lua.call<vector<string>>("getChanged");
         for (const auto& name : changes)
             try {
@@ -28,9 +31,11 @@ tuple<unique_ptr<char[]>, uint32_t> LuaConfig::handleMessage(const char *msg, si
             } catch (const LuaError& e) {
                 syslog(LOG_ERR, "Unable to get option %s: %s", name.c_str(), e.what());
             }
+        cout << "Got json: " << json << endl;
+        return json;
     } catch (const LuaError& e) {
         syslog(LOG_ERR, "Lua error: %s", e.what());
     }
 
-    return make_tuple(nullptr, 0); 
+    return "";
 }

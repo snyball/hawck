@@ -65,6 +65,8 @@ function run() {
     ln -s /usr/share/hawck/LLib "$LOCAL_SHARE/hawck/scripts/LLib" &>/dev/null
     ln -s /usr/share/hawck/keymaps "$LOCAL_SHARE/hawck/scripts/keymaps" &>/dev/null
     ln -s /usr/share/hawck/LLib/init.lua "$LOCAL_SHARE/hawck/scripts/init.lua" &>/dev/null
+    mkfifo -m 600 "$LOCAL_SHARE/hawck/json-comm.fifo"
+    mkfifo -m 600 "$LOCAL_SHARE/hawck/lua-comm.fifo"
     
     echo "100%"
 }

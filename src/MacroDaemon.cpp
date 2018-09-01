@@ -50,8 +50,6 @@ using namespace Lua;
 using namespace Permissions;
 using namespace std;
 
-constexpr bool ALWAYS_REPEAT_KEYS = false;
-
 static const char *const evval[] = {
     "UP",
     "DOWN",
@@ -294,15 +292,17 @@ void MacroDaemon::run() {
     KBDAction action;
     struct input_event &ev = action.ev;
 
-    LuaConfig conf(home_dir + "/lua-comm.fifo", home_dir + "/cfg.lua");
-    #define ADDOPT(_var) conf.addOption(#_var, &_var)
-    ADDOPT(notify_on_err);
-    ADDOPT(disable_on_err);
-    ADDOPT(eval_keydown);
-    ADDOPT(eval_keyup);
-    ADDOPT(eval_repeat);
-    ADDOPT(disabled);
-    #undef ADDOPT
+    // Setup/start LuaConfig
+    LuaConfig conf(home_dir + "/lua-comm.fifo", home_dir + "/json-comm.fifo", home_dir + "/cfg.lua");
+    #define _ADDCFG(_var) conf.addOption(#_var, &(_var))
+    // Add atomic boolean options.
+    _ADDCFG(notify_on_err);
+    _ADDCFG(disable_on_err);
+    _ADDCFG(eval_keydown);
+    _ADDCFG(eval_keyup);
+    _ADDCFG(eval_repeat);
+    _ADDCFG(disabled);
+    #undef _ADDCFG
     conf.begin();
 
     fsw.setWatchDirs(true);
@@ -331,6 +331,8 @@ void MacroDaemon::run() {
               });
 
     getConnection();
+
+    cout << "Running MacroD mainloop ..." << endl;
 
     for (;;) {
         try {

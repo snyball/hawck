@@ -1,10 +1,11 @@
 extern "C" {
-    #include <unistd.h>
-    #include <sys/types.h>
-    #include <sys/stat.h>
-    #include <fcntl.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 }
 
+#include <chrono>
 #include <thread>
 
 #include "FIFOWatcher.hpp"
@@ -13,16 +14,41 @@ extern "C" {
 
 using namespace std;
 
-FIFOWatcher::FIFOWatcher(const std::string& fifo_path)
-    : path(fifo_path)
+FIFOWatcher::FIFOWatcher(const std::string& ififo_path, const std::string& ofifo_path)
+    : path(ififo_path),
+      opath(ofifo_path)
 {}
 
 FIFOWatcher::~FIFOWatcher() {
     if (fd != -1)
         ::close(fd);
+    if (ofd != -1)
+        ::close(ofd);
+}
+
+void FIFOWatcher::reply(std::string buf, Milliseconds timeout) {
+    // Time increment in milliseconds
+    static constexpr int time_inc = 10;
+
+    // Attempt to open the file
+    for (int time = 0, ofd = -1; time < timeout.count(); time++) {
+        if ((ofd = ::open(opath.c_str(), O_WRONLY | O_NONBLOCK)) != -1) {
+            uint32_t bufsz = buf.size();
+            ::write(ofd, &bufsz, sizeof(bufsz));
+            ::write(ofd, buf.c_str(), bufsz);
+            return;
+        }
+
+        // Sleep time_inc milliseconds
+        usleep(1000 * time_inc);
+    }
+
+    throw SystemError("Unable to open out-fifo \"" + opath + "\": ", errno);
 }
 
 void FIFOWatcher::reset() {
+    cout << "Resetting FIFO." << endl;
+
     if (fd != -1)
         close(fd);
 
@@ -38,6 +64,7 @@ void FIFOWatcher::watch() {
 
     for (;;) {
         try {
+            cout << "Waiting for buffer size ..." << endl;
             recvAll(fd, &sz);
             if (sz >= max_recv || sz == 0) {
                 reset();
@@ -45,21 +72,23 @@ void FIFOWatcher::watch() {
             }
             auto buf = unique_ptr<char[]>(new char[sz + 1]);
             buf.get()[sz] = 0;
-            recvAll(fd, buf.get(), sz);
-            auto [ret, ret_sz] = handleMessage(buf.get(), sz);
-            if (ret != nullptr) {
-                write(fd, &ret_sz, sizeof(ret_sz));
-                write(fd, ret.get(), ret_sz);
-            }
+            cout << "Waiting for buffer ..." << endl;
+            recvAll(fd, buf.get(), sz, std::chrono::milliseconds(256));
+            auto ret = handleMessage(buf.get(), sz);
+
+            cout << "Sending back buffer ..." << endl;
+            reply(ret, Milliseconds(256));
         } catch (const SocketError& e) {
+            reset();
+        } catch (const SystemError& e) {
             reset();
         }
     }
 }
 
-tuple<unique_ptr<char[]>, uint32_t> FIFOWatcher::handleMessage(const char *buf, size_t) {
+std::string FIFOWatcher::handleMessage(const char *buf, size_t) {
     cout << "Got message: " << buf << endl;
-    return make_tuple(nullptr, 0);
+    return "";
 }
 
 void FIFOWatcher::begin() {

@@ -34,20 +34,20 @@ import signal
 import errno
 import inspect
 import pkg_resources as pkg
-from subprocess import Popen, PIPE, STDOUT as STDOUT_REDIR
+from subprocess import Popen, PIPE
 from pprint import PrettyPrinter
 from functools import wraps
+from typing import Callable, List, Dict, Any
 
 import gi
 from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import GObject
-from gi.repository import GLib
-gi.require_version('GtkSource', '3.0')
+gi.require_version("GtkSource", "3.0")
 from gi.repository import GtkSource
 
 from . import priv_actions
-from .cfgmsg import sendcfg
+from .cfgmsg import sendMacroD
 from .template_manager import TemplateManager
 from .log_retriever import LogRetriever
 from .locations import HAWCK_HOME, LOCATIONS, resourcePath
@@ -56,7 +56,8 @@ from .privesc import SudoException
 pprint = PrettyPrinter(indent = 4).pprint
 
 SCRIPT_DEFAULT = """
-require "init"
+-- Happy hacking.
+
 """[1:]
 
 MODIFIER_NAMES = {
@@ -133,7 +134,7 @@ class Pluggable:
     def unblock(self, obj, fn):
         obj.handler_unblock_by_func(self.methods[fn])
 
-def switchHandler(fn):
+def switchHandler(fn: Callable[[Any, bool], Any]):
     @wraps(fn)
     def sub(self, switch, on):
         try:
@@ -147,7 +148,7 @@ def switchHandler(fn):
             return True
     return sub
 
-def checkHandler(fn):
+def checkHandler(fn: Callable[[Any, bool], Any]):
     @wraps(fn)
     def sub(self, chk):
         on = chk.get_active()
@@ -161,6 +162,17 @@ def checkHandler(fn):
             return True
     return sub
 
+def setMacroD(name: str):
+    def sub(fn):
+        @wraps(fn)
+        def sub(*args):
+            val = fn(*args)
+            val_str = repr(val)
+            if type(val) == bool:
+                val_str = val_str.lower()
+            sendMacroD(f"config.{name} = {val_str}")
+        return sub
+    return sub
 
 class Settings(Pluggable):
     def __init__(self, **kwargs):
@@ -171,8 +183,19 @@ class Settings(Pluggable):
         self.setUnsafeModeText(self.unsafe_mode)
         self.cfg_path = os.path.expandvars("$HOME/.local/share/hawck/lua-comm.fifo")
 
+        ## Set up checkboxes
+        for chk in ("notify_on_err", "stop_on_err", "eval_keydown", "eval_keyup", "eval_keyrepeat"):
+            self.setCheck(f"{chk}_chk", sendMacroD(f"return config.{chk}"))
+            handler_name = f"on_{chk}_chk_toggled"
+            @checkHandler
+            @setMacroD(chk)
+            def handler(self, on: bool):
+                return on
+            handler.__name__ = handler_name
+            setattr(self.__class__, handler_name, handler)
+
     @switchHandler
-    def on_set_autostart(self, on):
+    def on_set_autostart(self, on: bool):
         dst = os.path.join(os.getenv("HOME"), ".config", "autostart", "hawck-macrod.desktop")
         dst_dir = os.path.dirname(dst)
         ## Make sure autostart directory exists
@@ -190,7 +213,7 @@ class Settings(Pluggable):
             os.unlink(dst)
         self.autostart = on
 
-    def setUnsafeModeText(self, on):
+    def setUnsafeModeText(self, on: bool):
         label = self.get("unsafe_mode_state_label")
         disabled_mk = "<tt><span fgcolor=\"#4CB940\" font_weight=\"bold\">Disabled</span></tt>" 
         enabled_mk = "<tt><span fgcolor=\"#BF4040\" font_weight=\"bold\">Enabled</span></tt>"
@@ -200,18 +223,10 @@ class Settings(Pluggable):
             label.set_markup(disabled_mk)
 
     @switchHandler
-    def on_set_unsafe_mode(self, on):
+    def on_set_unsafe_mode(self, on: bool):
         priv_actions.setUnsafeMode(on)
         self.setUnsafeModeText(on)
-
-    @checkHandler
-    def on_error_stop_chk(self, on):
-        sendcfg(self.cfg_path, f"config.stop_on_err = {str(on).lower()}")
-
-    @checkHandler
-    def on_error_notify_chk(self, on):
-        sendcfg(self.cfg_path, f"config.notify_on_err = {str(on).lower()}")
-
+    
 class HawckMainWindow(MainWindow):
     __gtype_name__ = 'HawckMainWindow'
 

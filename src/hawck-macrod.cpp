@@ -96,8 +96,8 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    MacroDaemon daemon;
     try {
-        MacroDaemon daemon;
         daemon.run();
     } catch (exception &e) {
         cout << e.what() << endl;

@@ -15,7 +15,9 @@ private:
 
 public:
 
-    explicit LuaConfig(const std::string& fifo_path, const std::string& luacfg_path);
+    explicit LuaConfig(const std::string& fifo_path,
+                       const std::string& ofifo_path,
+                       const std::string& luacfg_path);
 
     template <class T>
     void addOption(std::string name, std::atomic<T> *val) {
@@ -24,11 +26,12 @@ public:
                                        auto [new_val] = lua.call<T>("getConfigs", name);
                                        *val = new_val;
                                    } catch (const Lua::LuaError& e) {
-                                       syslog(LOG_ERR, "Unable to set option %s: %s", name.c_str(), e.what());
+                                       syslog(LOG_ERR,
+                                              "Unable to set option %s: %s", name.c_str(), e.what());
                                    }
                                };
     }
 
     /** Handle the raw Lua code */
-    virtual std::tuple<std::unique_ptr<char[]>, uint32_t> handleMessage(const char *msg, size_t sz) override;
+    virtual std::string handleMessage(const char *msg, size_t sz) override;
 };
