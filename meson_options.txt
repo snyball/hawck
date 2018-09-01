@@ -3,3 +3,4 @@ option('redirect_std',
        type : 'boolean',
        value : false,
        description : 'Whether or not to redirect stdout and stderr to log files in the daemons')
+option('debug', type : 'boolean', value : false)

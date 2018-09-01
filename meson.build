@@ -12,17 +12,23 @@ if os != 'linux'
 endif
 
 ## Hide warnings emitted by GTK+
-add_global_arguments('-Wno-parentheses',
-                     language : 'cpp')
+add_global_arguments('-Wno-parentheses', language : 'cpp')
 
 ## This option is on a completely different level of pedantically ridiculous.
-add_global_arguments('-Wno-reorder',
-                     language : 'cpp')
+add_global_arguments('-Wno-reorder', language : 'cpp')
+add_global_arguments('-Wall', language : 'cpp')
+add_global_arguments('-Wextra', language : 'cpp')
 
-add_global_arguments('-Wall',
-                     language : 'cpp')
-add_global_arguments('-Wextra',
-                     language : 'cpp')
+if get_option('debug')
+  # add_global_arguments('-Wshadow', language : 'cpp')
+  add_global_arguments('-Wcomment', language : 'cpp')
+  add_global_arguments('-Wformat', language : 'cpp')
+  add_global_arguments('-Wnonnull', language : 'cpp')
+  add_global_arguments('-Wuninitialized', language : 'cpp')
+  add_global_arguments('-Wswitch', language : 'cpp')
+  add_global_arguments('-Winline', language : 'cpp')
+  add_global_arguments('-Werror', language : 'cpp')
+endif
 
 ## Force includes of lua5.3, fails to be included on some systems.
 add_global_arguments('-I/usr/include/lua5.3',
