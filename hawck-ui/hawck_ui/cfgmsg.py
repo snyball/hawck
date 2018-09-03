@@ -11,13 +11,10 @@ def sendcfg(path, opath, cfg):
     with OSOpen(path, os.O_WRONLY | os.O_NONBLOCK) as fd:
         fd.write(struct.pack("I", len(cfg)))
         fd.write(bytes(cfg, "utf-8"))
-        print(f"Wrote: {cfg}")
-    print(f"Waiting for response ...")
     with OSOpen(opath, os.O_RDONLY) as fd:
         (sz, ) = struct.unpack("I", fd.read(4))
-        print("Got sz")
         json_str = fd.read(sz).decode("utf-8")
-        print(f"json_str: {json_str}")
+        print(f"json_str: {json_str!r}")
         return json.loads(json_str)
 
 sendMacroD = partial(sendcfg,

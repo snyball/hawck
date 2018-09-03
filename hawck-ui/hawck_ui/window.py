@@ -33,6 +33,7 @@ import shutil
 import signal
 import errno
 import inspect
+import re
 import pkg_resources as pkg
 from subprocess import Popen, PIPE, STDOUT
 from pprint import PrettyPrinter
@@ -174,6 +175,38 @@ def setMacroD(name: str):
         return sub
     return sub
 
+def makeListTextRow(text):
+    row = Gtk.ListBoxRow()
+    label = Gtk.Label(text)
+    label.set_xalign(0.0)
+    row.text = text
+    row.add(label)
+    return row
+
+class KeymapsList:
+    def __init__(self):
+        paths = Popen(["find", "/usr/share/kbd/keymaps", "-name", "*.map.gz"],
+                      stdout=PIPE)
+        map_rx = re.compile(r".*/([^/]+)\.map\.gz$")
+        self.lookup = {}
+        for line in paths.stdout.readlines():
+            path = line.strip().decode("utf-8")
+            m = map_rx.match(path)
+            if not m:
+                print(f"no match path: {path!r}")
+                continue
+            (lang,) = m.groups()
+            self.lookup[lang] = line
+
+    def get(self, lang):
+        return self.lookup[lang]
+
+    def candidates(self, text):
+        ## A dumb slow search where we prioritize items that start with `text`.
+        return list(sorted((lang for lang, _ in self.lookup.items()
+                            if text in lang),
+                           key=lambda x: not x.startswith(text)))
+
 class Settings(Pluggable):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -182,11 +215,17 @@ class Settings(Pluggable):
         self.unsafe_mode = self.setSwitch("unsafe_mode_switch", os.path.exists(LOCATIONS["unsafe_mode_dst"]))
         self.setUnsafeModeText(self.unsafe_mode)
         self.cfg_path = os.path.expandvars("$HOME/.local/share/hawck/lua-comm.fifo")
+        self.keymaps = KeymapsList()
+        self.keymap_search_results = []
 
         ## Set up checkboxes
         try:
-            for chk in ("notify_on_err", "stop_on_err", "eval_keydown", "eval_keyup", "eval_keyrepeat"):
-                self.setCheck(f"{chk}_chk", sendMacroD(f"return config.{chk}"))
+            for chk in ("notify_on_err", "stop_on_err", "eval_keydown", "eval_keyup"):
+                try:
+                    self.setCheck(f"{chk}_chk", sendMacroD(f"return config.{chk}")[0])
+                except KeyError:
+                    print(f"Unable to retrieve config.{chk}")
+                    continue
                 handler_name = f"on_{chk}_chk_toggled"
                 @checkHandler
                 @setMacroD(chk)
@@ -196,6 +235,9 @@ class Settings(Pluggable):
                 setattr(self.__class__, handler_name, handler)
         except OSError:
             print("Unable to set up options")
+
+        keymap_label = self.builder.get_object("keymap_name_label")
+        keymap_label.set_text(sendMacroD(f"return config.keymap")[0])
 
     @switchHandler
     def on_set_autostart(self, on: bool):
@@ -229,6 +271,23 @@ class Settings(Pluggable):
     def on_set_unsafe_mode(self, on: bool):
         priv_actions.setUnsafeMode(on)
         self.setUnsafeModeText(on)
+
+    def on_keymap_search_entry_search_changed(self, entry):
+        maplist = self.builder.get_object("keymap_search_list")
+        for km in self.keymap_search_results:
+            maplist.remove(km)
+        self.keymap_search_results = list(map(makeListTextRow, self.keymaps.candidates(entry.get_text())))
+        for km in reversed(self.keymap_search_results):
+            maplist.prepend(km)
+        maplist.show_all()
+
+    def on_keymap_search_list_row_selected(self, listbox, row):
+        popover = self.builder.get_object("set_keymap_popover")
+        listbox.unselect_row(row)
+        popover.popdown()
+        sendMacroD(f"config.keymap = {row.text!r}")
+        label = self.builder.get_object("keymap_name_label")
+        label.set_text(row.text)
     
 class HawckMainWindow(MainWindow):
     __gtype_name__ = 'HawckMainWindow'

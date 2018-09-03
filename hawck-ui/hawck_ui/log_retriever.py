@@ -76,7 +76,11 @@ class LogRetriever(threading.Thread):
         log["TYPE"], _, log["MESSAGE"] = log["MESSAGE"].partition(":")
         if log["TYPE"].upper() == "LUA":
             m = lua_err_rx.match(log["MESSAGE"])
-            log["LUA_FILE"], log["LUA_LINE"], log["LUA_ERROR"] = m.groups()
+            if not m:
+                m = ("<unknown>", 1, log["MESSAGE"])
+            else:
+                m = m.groups()
+            log["LUA_FILE"], log["LUA_LINE"], log["LUA_ERROR"] = m
             log["LUA_LINE"] = int(log["LUA_LINE"])
         items = list(log.items())
         for (k, v) in items:

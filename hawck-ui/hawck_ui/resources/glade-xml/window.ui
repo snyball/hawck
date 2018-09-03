@@ -67,6 +67,10 @@ SOFTWARE.
         <property name="can_focus">True</property>
         <property name="vexpand">True</property>
         <property name="editable">False</property>
+        <property name="left_margin">10</property>
+        <property name="right_margin">10</property>
+        <property name="top_margin">10</property>
+        <property name="bottom_margin">10</property>
         <property name="cursor_visible">False</property>
         <property name="buffer">BSDLicense</property>
         <property name="accepts_tab">False</property>
@@ -536,36 +540,6 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
       </object>
     </child>
   </object>
-  <object class="GtkPopover" id="popover1">
-    <property name="can_focus">False</property>
-    <child>
-      <object class="GtkBox">
-        <property name="visible">True</property>
-        <property name="can_focus">False</property>
-        <property name="orientation">vertical</property>
-        <child>
-          <placeholder/>
-        </child>
-        <child>
-          <object class="GtkSearchEntry">
-            <property name="visible">True</property>
-            <property name="can_focus">True</property>
-            <property name="primary_icon_name">edit-find-symbolic</property>
-            <property name="primary_icon_activatable">False</property>
-            <property name="primary_icon_sensitive">False</property>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">1</property>
-          </packing>
-        </child>
-        <child>
-          <placeholder/>
-        </child>
-      </object>
-    </child>
-  </object>
   <object class="GtkPopover" id="popover2">
     <property name="can_focus">False</property>
     <child>
@@ -971,6 +945,68 @@ stack traceback:
 	[C]: in ?</property>
   </object>
   <object class="GtkTextBuffer" id="script_error_buffer"/>
+  <object class="GtkPopover" id="set_keymap_popover">
+    <property name="can_focus">False</property>
+    <property name="opacity">0.90000000000000002</property>
+    <child>
+      <object class="GtkBox">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="orientation">vertical</property>
+        <property name="spacing">10</property>
+        <child>
+          <object class="GtkSearchEntry" id="keymap_search_entry">
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="max_length">40</property>
+            <property name="max_width_chars">30</property>
+            <property name="primary_icon_name">edit-find-symbolic</property>
+            <property name="primary_icon_activatable">False</property>
+            <property name="primary_icon_sensitive">False</property>
+            <property name="placeholder_text" translatable="yes">Search ...</property>
+            <property name="input_hints">GTK_INPUT_HINT_NO_SPELLCHECK | GTK_INPUT_HINT_LOWERCASE | GTK_INPUT_HINT_NONE</property>
+            <signal name="search-changed" handler="on_keymap_search_entry_search_changed" swapped="no"/>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkScrolledWindow">
+            <property name="height_request">150</property>
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="shadow_type">in</property>
+            <child>
+              <object class="GtkViewport">
+                <property name="height_request">200</property>
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="vexpand">True</property>
+                <child>
+                  <object class="GtkListBox" id="keymap_search_list">
+                    <property name="height_request">150</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="vexpand">True</property>
+                    <signal name="row-activated" handler="on_keymap_search_list_row_activated" swapped="no"/>
+                    <signal name="row-selected" handler="on_keymap_search_list_row_selected" swapped="no"/>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">1</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+  </object>
   <object class="GtkApplicationWindow" id="MainWindow">
     <property name="can_focus">False</property>
     <property name="icon_name">hawck</property>
@@ -1241,14 +1277,37 @@ stack traceback:
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
+                      <object class="GtkSwitch" id="script_enabled_switch">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                      </object>
+                      <packing>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
                       <object class="GtkButton">
-                        <property name="label" translatable="yes">Key</property>
+                        <property name="label" translatable="yes">Save as</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
-                        <property name="image">img_icon_key</property>
+                        <property name="image">image7</property>
                         <property name="always_show_image">True</property>
-                        <signal name="clicked" handler="onInsertKey" swapped="no"/>
+                        <signal name="clicked" handler="saveScript" swapped="no"/>
+                      </object>
+                      <packing>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="use_script_btn">
+                        <property name="label" translatable="yes">Use</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="image">image8</property>
+                        <property name="always_show_image">True</property>
+                        <signal name="clicked" handler="useScript" swapped="no"/>
                       </object>
                       <packing>
                         <property name="position">0</property>
@@ -1259,7 +1318,7 @@ stack traceback:
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
-                        <property name="popover">delete_script_popover</property>
+                        <property name="popover">popover4</property>
                         <child>
                           <object class="GtkGrid">
                             <property name="visible">True</property>
@@ -1270,7 +1329,7 @@ stack traceback:
                               <object class="GtkLabel">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
-                                <property name="label" translatable="yes">Delete</property>
+                                <property name="label" translatable="yes">Import</property>
                               </object>
                               <packing>
                                 <property name="left_attach">1</property>
@@ -1281,7 +1340,7 @@ stack traceback:
                               <object class="GtkImage">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
-                                <property name="icon_name">edit-delete</property>
+                                <property name="icon_name">document-open</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -1341,7 +1400,7 @@ stack traceback:
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
-                        <property name="popover">popover4</property>
+                        <property name="popover">delete_script_popover</property>
                         <child>
                           <object class="GtkGrid">
                             <property name="visible">True</property>
@@ -1352,7 +1411,7 @@ stack traceback:
                               <object class="GtkLabel">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
-                                <property name="label" translatable="yes">Import</property>
+                                <property name="label" translatable="yes">Delete</property>
                               </object>
                               <packing>
                                 <property name="left_attach">1</property>
@@ -1363,7 +1422,7 @@ stack traceback:
                               <object class="GtkImage">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
-                                <property name="icon_name">document-open</property>
+                                <property name="icon_name">edit-delete</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -1378,37 +1437,14 @@ stack traceback:
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkButton" id="use_script_btn">
-                        <property name="label" translatable="yes">Use</property>
-                        <property name="visible">True</property>
-                        <property name="can_focus">True</property>
-                        <property name="receives_default">True</property>
-                        <property name="image">image8</property>
-                        <property name="always_show_image">True</property>
-                        <signal name="clicked" handler="useScript" swapped="no"/>
-                      </object>
-                      <packing>
-                        <property name="position">0</property>
-                      </packing>
-                    </child>
-                    <child>
                       <object class="GtkButton">
-                        <property name="label" translatable="yes">Save as</property>
+                        <property name="label" translatable="yes">Key</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
-                        <property name="image">image7</property>
+                        <property name="image">img_icon_key</property>
                         <property name="always_show_image">True</property>
-                        <signal name="clicked" handler="saveScript" swapped="no"/>
-                      </object>
-                      <packing>
-                        <property name="position">0</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkSwitch" id="script_enabled_switch">
-                        <property name="visible">True</property>
-                        <property name="can_focus">True</property>
+                        <signal name="clicked" handler="onInsertKey" swapped="no"/>
                       </object>
                       <packing>
                         <property name="position">0</property>
@@ -1910,13 +1946,14 @@ stack traceback:
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">True</property>
+                                <property name="tooltip_text" translatable="yes">Hint: If you're european, you probably want one
+of the -latin maps</property>
                                 <property name="direction">right</property>
-                                <property name="popover">popover1</property>
+                                <property name="popover">set_keymap_popover</property>
                                 <child>
-                                  <object class="GtkLabel">
+                                  <object class="GtkLabel" id="keymap_name_label">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
-                                    <property name="label" translatable="yes">Auto</property>
                                   </object>
                                 </child>
                               </object>
@@ -2004,7 +2041,7 @@ stack traceback:
                                 <property name="can_focus">False</property>
                                 <property name="tooltip_text" translatable="yes">Control how quickly Hawck should output keys, some programs may become overrun with keys.</property>
                                 <property name="popup_fixed_width">False</property>
-                                <property name="active_id">speed_0</property>
+                                <property name="active_id">speed_3</property>
                                 <items>
                                   <item id="speed_-2" translatable="yes">Very slow</item>
                                   <item id="speed_-1" translatable="yes">Slow</item>
@@ -2453,8 +2490,5 @@ Have fun.</property>
   </object>
   <object class="GtkTextBuffer" id="textbuffer2">
     <property name="text" translatable="yes">hawck-input</property>
-  </object>
-  <object class="GtkTextBuffer" id="textbuffer3">
-    <property name="text" translatable="yes">jonas</property>
   </object>
 </interface>
