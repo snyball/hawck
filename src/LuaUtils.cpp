@@ -110,6 +110,18 @@ namespace Lua {
         abs_src = string(rpath.get());
     }
 
+    void Script::reset() {
+        lua_close(L);
+        auto L = unique_ptr<lua_State, decltype(&lua_close)>(luaL_newstate(), &lua_close);
+        this->L = L.get();
+        luaL_openlibs(L.get());
+        L.release();
+    }
+
+    void Script::reload() {
+        from(abs_src);
+    }
+
     Script::~Script() noexcept {
         lua_close(L);
     }

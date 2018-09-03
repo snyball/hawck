@@ -718,5 +718,9 @@ namespace Lua {
         }
 
         void exec(const std::string& str);
+
+        void reset();
+
+        void reload();
     };
 }

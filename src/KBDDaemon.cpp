@@ -296,7 +296,7 @@ void KBDDaemon::run() {
         }
 
         // Check if the key is listed in the passthrough set.
-        if (is_passthrough && action.ev.code != 56) {
+        if (is_passthrough) {
             input_event orig_ev = action.ev;
 
             // Pass key to Lua executor

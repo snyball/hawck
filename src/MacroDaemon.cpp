@@ -164,8 +164,10 @@ void MacroDaemon::loadScript(const std::string &rel_path) {
     unsigned perm = stbuf.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO);
     // Strictly require chmod 744 on the script files.
     if (perm != 0744 && stbuf.st_uid == getuid()) {
-        cout << "Warning: require chmod 744 and uid=" << getuid() <<
-                " on script files, not loading." << endl;
+        auto [pwd, pwdbuf] = getuser(getuid());
+        string permstr = fmtPermissions(stbuf);
+        syslog(LOG_ERR, "Require rwxr-xr-x %s:* on script, but got %s on: %s",
+               pwd->pw_name, permstr.c_str(), rel_path.c_str());
         return;
     }
 
@@ -277,6 +279,23 @@ bool MacroDaemon::runScript(Lua::Script *sc, const struct input_event &ev) {
     return repeat;
 }
 
+void MacroDaemon::reloadAll() {
+    lock_guard<mutex> lock(scripts_mtx);
+    ChDir cd(home_dir + "/scripts");
+    for (auto &[_, sc] : scripts) {
+        try {
+            sc->setEnabled(true);
+            sc->reset();
+            sc->call("require", "init");
+            sc->open(&remote_udev, "udev");
+            sc->reload();
+        } catch (const LuaError& e) {
+            syslog(LOG_ERR, "Error when reloading script: %s", e.what());
+            sc->setEnabled(false);
+        }
+    }
+}
+
 void MacroDaemon::run() {
     signal(SIGPIPE, handleSigPipe);
 
@@ -294,6 +313,7 @@ void MacroDaemon::run() {
     _ADDCFG(eval_repeat);
     _ADDCFG(disabled);
     #undef _ADDCFG
+    conf.addOption<string>("keymap", [this](string) {reloadAll();});
     conf.begin();
 
     fsw.setWatchDirs(true);

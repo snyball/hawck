@@ -104,6 +104,10 @@ private:
     /** Get a connection to listen for keys on. */
     void getConnection();
 
+    /** Reload all scripts from their sources, this may be necessary
+     *  if an important configuration variable like the keymap is set. */
+    void reloadAll();
+
 public:
     MacroDaemon();
     ~MacroDaemon();
