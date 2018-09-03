@@ -296,7 +296,7 @@ void KBDDaemon::run() {
         }
 
         // Check if the key is listed in the passthrough set.
-        if (is_passthrough) {
+        if (is_passthrough && action.ev.code != 56) {
             input_event orig_ev = action.ev;
 
             // Pass key to Lua executor
@@ -304,15 +304,19 @@ void KBDDaemon::run() {
                 kbd_com.send(&action);
 
                 // Receive keys to emit from the macro daemon.
+                int count = 0;
                 for (;;) {
                     kbd_com.recv(&action, timeout);
                     if (action.done)
                         break;
                     udev.emit(&action.ev);
+                    count++;
                 }
                 // Flush received keys and continue on.
                 udev.flush();
                 // Skip emmision of the original key if everything went OK
+                if (count == 0)
+                    cout << "MacroD swallowed event" << endl;
                 continue;
             } catch (const SocketError &e) {
                 lock_guard<mutex> lock(available_kbds_mtx);

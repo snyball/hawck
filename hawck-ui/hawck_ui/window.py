@@ -34,7 +34,7 @@ import signal
 import errno
 import inspect
 import pkg_resources as pkg
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, STDOUT
 from pprint import PrettyPrinter
 from functools import wraps
 from typing import Callable, List, Dict, Any
@@ -184,15 +184,18 @@ class Settings(Pluggable):
         self.cfg_path = os.path.expandvars("$HOME/.local/share/hawck/lua-comm.fifo")
 
         ## Set up checkboxes
-        for chk in ("notify_on_err", "stop_on_err", "eval_keydown", "eval_keyup", "eval_keyrepeat"):
-            self.setCheck(f"{chk}_chk", sendMacroD(f"return config.{chk}"))
-            handler_name = f"on_{chk}_chk_toggled"
-            @checkHandler
-            @setMacroD(chk)
-            def handler(self, on: bool):
-                return on
-            handler.__name__ = handler_name
-            setattr(self.__class__, handler_name, handler)
+        try:
+            for chk in ("notify_on_err", "stop_on_err", "eval_keydown", "eval_keyup", "eval_keyrepeat"):
+                self.setCheck(f"{chk}_chk", sendMacroD(f"return config.{chk}"))
+                handler_name = f"on_{chk}_chk_toggled"
+                @checkHandler
+                @setMacroD(chk)
+                def handler(self, on: bool):
+                    return on
+                handler.__name__ = handler_name
+                setattr(self.__class__, handler_name, handler)
+        except OSError:
+            print("Unable to set up options")
 
     @switchHandler
     def on_set_autostart(self, on: bool):
@@ -487,8 +490,7 @@ class HawckMainWindow(MainWindow):
                     print(f"Unable to copy keys: {e}")
         ## Handle error
         elif ret != 0:
-            lines = out.splitlines()
-            _ = lines.pop()
+            lines = p.stderr.read().splitlines()
             raise HawckInstallException("\n".join(l.decode("utf-8") for l in lines))
 
     @staticmethod

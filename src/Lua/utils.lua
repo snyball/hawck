@@ -25,17 +25,23 @@
    OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --]====================================================================================]
 
-u = {}
+local strict = require "strict"
+local u = {}
 local indent_str = "  "
 local builtins = {} -- require "builtins"
 local string_byte, string_char, concat = string.byte, string.char, table.concat
 local serialize_recursive
 local unpack = table.unpack
 
+--- Append to an array
+-- @param t The array to append to.
+-- @param val The value to append.
+-- @return nil
 function u.append(t, val)
   t[#t + 1] = val
 end
 
+--- Join a number of arrays together.
 -- Example:
 --   join({1,2,3},{4,5,6},{"a","b","c"}) -> {1,2,3,4,5,6,"a","b","c"}
 function u.join(...)
@@ -48,9 +54,14 @@ function u.join(...)
   return t
 end
 
+--- Curry a function.
+-- 
 -- Example:
 --   curry((function (a, b) return a + b end), 2) ->
 --     function (b) return 2 + b end -- (Essentially)
+--
+-- @param f The function to be curried
+-- @return The curried function
 function u.curry(f, ...)
   local pre = {...}
   return function (...)
@@ -58,9 +69,10 @@ function u.curry(f, ...)
   end
 end
 
----
 --- Print the string `c` to standard output `n` times
----
+-- @param c String to print
+-- @param n How many times to print it
+-- @param out Optional output stream [default: io.stdout]
 local function printN(c, n, out)
   local out = out or io.stdout
   for i = 1, n do
@@ -68,9 +80,7 @@ local function printN(c, n, out)
   end
 end
 
----
 --- Check if the given table `t` is an array.
----
 function u.isArray(t)
   local i = 0
   for u, v in pairs(t) do
@@ -89,6 +99,11 @@ local function hexDigit(d)
   return (d <= 9 and tostring(d)) or letters[d - 9]
 end
 
+--- Get the hexadecimal representation of a number
+--
+-- @param i The number to represent.
+-- @param pad Optional padding zeroes [default: 0]
+-- @return The hexadecimal representation of the number i.
 function u.hex(i, pad)
   local pad = pad or 0
   local digits = {}
@@ -106,24 +121,6 @@ function u.hex(i, pad)
   return str
 end
 
-local LateLinkMeta = {
-  __what = "LateLink"
-}
-
-function LateLinkMeta.__call(t)
-  return t.link()
-end
-
-local LateLink = {}
-
-function LateLink.new(f)
-  local t = {
-    link = f
-  }
-  setmetatable(t, LateLinkMeta)
-  return t
-end
-
 local string_escapes = {
   [string.byte("\a")] = "a",
   [string.byte("\b")] = "b",
@@ -134,6 +131,9 @@ local string_escapes = {
   [string.byte("\r")] = "r"
 }
 
+--- Get the valid Lua representation of a string.
+-- @param v The string to represent
+-- @return Valid Lua representation of the given string.
 function u.reprString(v)
   local quote = string_byte("\"")
   local bytes = {string_byte(v, 1, #v)}
@@ -174,7 +174,11 @@ local function keyString(v, nice)
   end
 end
 
+--- Check if a table is empty
+-- @param t The table to check
+-- @return True if empty, false otherwise.
 function table.empty(t)
+  assert(type(t) == "table")
   for _ in pairs(t) do
     return false
   end
@@ -212,11 +216,11 @@ local function serialize_array(t, indent, path, visited, links, out)
   out:write "}"
 end
 
-function isAtomic(x)
+local function isAtomic(x)
   return type(x) ~= "table" or table.empty(x)
 end
 
-function putsAtomic(x, out)
+local function putsAtomic(x, out)
   local out = out or io.stdout
   if x == nil then
     out:write("nil")
@@ -292,9 +296,9 @@ function serialize_recursive(t, indent, path, visited, links, out)
   end
 end
 
----
 --- Print `t` in a human readable format.
----
+-- @param t The value to print
+-- @param indent Optional starting indentation [default: 0]
 function u.puts(t, indent)
   serialize_recursive(t, indent)
 end
@@ -303,9 +307,10 @@ local function formatLink(link, name)
   return link[2] .. " = " .. link[1]
 end
 
----
 --- Serialize a value `t` with the name `name`
----
+-- @param name Name of the table in the output.
+-- @param t The value to serialize.
+-- @param out Optional output stream [default: io.stdout]
 function u.serialize(name, t, out)
   local out = out or io.stdout
   out:write("local " .. name .. " = ")
@@ -332,18 +337,20 @@ function u.serializeAs(t, name)
   end
 end
 
----
 --- Map `f` over `xs` and return the mapping as an array.
----
+-- @tparam function f Function to map over xs
+-- @tparam table xs Array of values to be mapped over.
+-- @treturn table Result of mapping.
 function u.map(f, xs)
   for k, v in xs do
     f(k, v)
   end
 end
 
----
 --- Map `f` over `xs` and return the mapping as an iterator.
----
+-- @tparam function f Function to map over xs
+-- @tparam table xs Array of values to be mapped over.
+-- @treturn function Iterator.
 function u.mapi(f, xs)
   function iter (xs, i)
     local i = i + 1
@@ -356,53 +363,174 @@ function u.mapi(f, xs)
   return iter, xs, 0
 end
 
----
+function u.expect(typen, var)
+  local got = type(var)
+  assert(got == typen, ("Expected %s, got: %s"):format(typen, got))
+end
+
 --- Expand environment variables in the given string.
---- Environment variables should appear in the form: $variable
----
+-- 
+-- Environment variables should appear in the form: $variable
+--
+-- @tparam string path
+-- @treturn string The original path with $vars expanded.
 function u.expandEnv(path)
+  -- FIXME: This may also expand variables with '$var' inside them.
   for m in path:gmatch("%$([a-zA-Z_]+)") do
     path = path:gsub("%$" .. m, os.getenv(m) or "")
   end
-
   return path
 end
 
-local test = false
-if test then
-  __puts_test = {
-    a = "b",
-    c = {
-      "d", "e", "f", {3,2,1,2,3,4,1,2,3,4,5,3,{},1,2,{},32,2}, 1, 2, 3, 4, 5, 6, 7, 8
-    },
-    [true] = "this",
-    [1337] = 7331,
-    ["This is a \"key\""] = "this\n is\n'\t a \"value\"",
-    d = {
-      e = {
-        f = {
-          z = 2,
-          ds = 389,
-          fn = function (x) print("This: " .. x) end
-        }
-      }
-    }
-  }
-
-  -- Recursive test
-  __puts_test.self = __puts_test
-  __puts_test.a = {}
-  __puts_test.a.b = {}
-  __puts_test.a.b.c = {}
-  __puts_test.a.b.c.d = __puts_test.a
-  __puts_test.a.b.d = __puts_test.a.b.c
-  __puts_test.a.b.c.fn = function ()
-    __puts_test.d.e.f.fn("YEEEEEE BOIIIII")
+--- Split a string based on a given pattern string.
+-- @tparam string rx Pattern string to use for splitting.
+-- @treturn table An array of strings.
+function string:split(rx)
+  assert(type(rx) == "string", "Expected a pattern string")
+  local i = 1
+  local parts = {}
+  while true do
+    local beg, mark = self:find(rx, i)
+    if not beg then
+      break
+    end
+    table.insert(parts, self:sub(i, beg-1))
+    i = mark+1
   end
-
-  -- serialize("__puts_test", __puts_test)
-  u.serialize("globals", _G)
-  u.puts("string")
-  u.puts(function() end)
+  table.insert(parts, self:sub(i, #self))
+  return parts
 end
 
+--- Check if a string ends with another string
+-- @param str The string to check for.
+-- @return boolean
+function string:endswith(str)
+  return self:sub(#self - #str + 1, #self) == str
+end
+
+--- Check if a string starts with another string
+-- @param str The string to check for.
+-- @return boolean
+function string:startswith(str)
+  return self:sub(1, #str) == str
+end
+
+--- Pop a value from the top of a table.
+-- @param t
+-- @return The top element.
+function table.pop(t)
+  assert(type(t) == "table", "Expected a table")
+  local ret = t[#t]
+  t[#t] = nil
+  return ret
+end
+
+--- Update a table with keys from another table
+--
+-- Does not perform a deep copy
+--
+-- @param dst Destination table
+-- @param src Source table
+-- @return dst
+function table.update(dst, src)
+  for k, v in pairs(src) do
+    dst[k] = v
+  end
+  return dst
+end
+
+--- Get directory name of path
+-- @param path File system path.
+-- @return The directory of the given file path.
+function u.dirname(path)
+  assert(type(path) == "string", "Expected a string")
+  local parts = path:split("/+")
+  repeat
+    local top = table.pop(parts)
+  until #parts == 0 or top ~= ""
+  return table.concat(parts, "/")
+end
+
+--- Get file name of path
+-- @tparam string path File system path.
+-- @treturn string The file name.
+function u.basename(path)
+  assert(type(path) == "string", "Expected a string")
+  local top
+  local parts = path:split("/+")
+  repeat
+    top = table.pop(parts)
+  until #parts == 0 or top ~= ""
+  return top
+end
+
+--- Join paths together.
+-- @param paths An array of path strings.
+-- @return A single path string.
+function u.joinpaths(paths)
+  local npaths = {}
+  for i, v in ipairs(paths) do
+    if v:match("/+") == v then
+      npaths[i] = "/"
+    else
+      npaths[i] = v:gsub("/+$", "")
+    end
+  end
+  return table.concat(npaths, "/")
+end
+
+--- Shell escape string
+-- @param str The string to be sent into a shell
+-- @return The escaped string (with quotes around it.)
+function u.shescape(str)
+  assert(str)
+  str = str:gsub("\"", "\\\"")
+  str = str:gsub("%$", "\\$")
+  str = str:gsub("`", "\\`")
+  return "\"" .. str .. "\""
+end
+
+--- Copy a file
+-- @param src The source file path
+-- @param dst The destination file path
+-- @return nil
+function u.copyfile(src, dst)
+  local src_f = io.open(src, "r")
+  if not src_f then
+    error("Unable to open file for reading: " .. src)
+  end
+  local dst_f = io.open(dst, "w")
+  if not dst_f then
+    src_f:close()
+    error("Unable to open file for writing: " .. dst)
+  end
+  local src_txt = src_f:read("*a")
+  dst_f:write(src_txt)
+  src_f:close()
+  dst_f:close()
+end
+
+--- Unzip a gzipped file, returns new file path
+--
+-- This function requires that gunzip is installed and available
+-- in the current $PATH.
+--
+-- Warning: The original file will not be available after the
+-- unzipping. Use the returned file path instead to access the file.
+--
+-- @param path Path to zipped file, must have .gz file extension
+function u.gunzip(path)
+  assert(type(path) == "string")
+  assert(path:endswith(".gz"))
+
+  local ret_path = path:sub(1, #path - 3)
+  if not os.execute("gunzip -f " .. u.shescape(path)) then
+    error("Unable to gunzip file at: " .. path)
+  end
+
+  return ret_path
+end
+
+strict:off()
+
+return u

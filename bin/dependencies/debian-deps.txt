@@ -14,3 +14,5 @@ python3-pip
 zenity
 wget
 gawk
+gzip
+gunzip

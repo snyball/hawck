@@ -25,7 +25,7 @@
    OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --]====================================================================================]
 
-require "utils"
+local u = require "utils"
 
 local unpack = table.unpack
 

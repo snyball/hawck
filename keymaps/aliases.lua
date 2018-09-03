@@ -5,11 +5,12 @@
 return {
   ["<"] = "less",
   ["\n"] = "Return",
+  ["\""] = "quotedbl",
   ["å"] = "aring",
   ["ø"] = "oslash",
   ["+"] = "plus",
   ["?"] = "question",
-  ["	"] = "Tab",
+  ["\t"] = "Tab",
   ["9"] = "9",
   ["|"] = "bar",
   ["6"] = "6",

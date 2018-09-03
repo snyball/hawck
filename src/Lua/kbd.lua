@@ -26,11 +26,14 @@
 --]====================================================================================]
 
 require "match"
-require "Keymap"
-require "utils"
+local strict = require "strict"
+local kbmap = require "Keymap"
+local u = require "utils"
+local cfg = require "cfg"
 
 local kbd = {
-  keys_held = {}
+  keys_held = {},
+  map = kbmap.new(cfg.keymap),
 }
 
 local meta = {}
@@ -59,18 +62,21 @@ local KeyMode = {
 }
 
 function kbd:init(keymap)
-  setKeymap(keymap)
 end
 
-function kbd.getKeysym(key)
-  local keysym 
-  if type(key) == "number" then
-    return key
-  else
-    return getKeysym(key)
+function kbd:getKeysym(key)
+  if type(key) ~= "number" then
+    return self.map:getKeysym(key)
   end
+  return key
 end
 
+--- Wrapper around udev:emit, implicitly generates a SYN event
+--  after the event emission.
+--
+-- @param event_type See the Event table for possible values.
+-- @param event_code The key code.
+-- @param event_value See the KeyMode table for possible values.
 function kbd:emit(event_type, event_code, event_value)
   udev:emit(event_type, event_code, event_value)
   udev:emit(Event.SYN, 0, 0)
@@ -86,22 +92,30 @@ function kbd:pressN(event_code)
   udev:flush()
 end
 
+--- Generate a key up event.
+-- @param code The key to release.
 function kbd:up(code)
-  code = kbd.getKeysym(code)
+  code = self:getKeysym(code)
   self:emit(Event.KEY, code, KeyMode.UP)
 end
 
+--- Generate a key down event.
+-- @param code The key to press down.
 function kbd:down(code)
-  code = kbd.getKeysym(code)
+  code = self:getKeysym(code)
   self:emit(Event.KEY, code, KeyMode.DOWN)
 end
 
+--- Press a key by generating a key up followed by a key down.
+-- 
+-- @param code The key to press.
 function kbd:press(code)
   self:down(code)
   self:up(code)
   udev:flush()
 end
 
+--- Prepare the keyboard by retrieving values from MacroD
 function kbd:prepare()
   self.event_value = __event_value_num
   self.event_code = __event_code
@@ -123,34 +137,47 @@ function kbd:prepare()
   end
 end
 
+--- Check if we got a key down event
 function kbd:hadKeyDown()
   return self.has_down
 end
 
+--- Check if we got a key up event
 function kbd:hadKeyUp()
   return self.has_up
 end
 
+--- Compare a key with the key that was pressed.
+-- @param code The key to check for.
 function kbd:hadKey(code)
-  code = self.getKeysym(code)
+  code = self:getKeysym(code)
   return self.event_code == code
 end
 
+--- Check if a key is held down
+-- @param code The key to check for.
 function kbd:keyIsDown(code)
-  code = self.getKeysym(code)
+  code = self:getKeysym(code)
   return self.keys_held[code]
 end
 
+--- Check if a key is up
+-- @param code The key to check for.
 function kbd:keyIsUp(code)
   return not self:keyIsDown(code)
 end
 
+--- Perform actions with a clean set of modifier keys, e.g without any of
+--  Control/Shift/Alt/AltGr being held down while a function is running.
+--
+-- @param f The function to run with clean modifiers.
+-- @return nil
 function kbd:withCleanMods(f)
   -- Clear all modifiers by sending key-up events for them
   local keys_held = self.keys_held
   self.keys_held = {}
   for code, _ in pairs(keys_held) do
-    if isModifier(code) then
+    if self.map:isModifier(code) then
       self:up(code)
     end
   end
@@ -161,7 +188,7 @@ function kbd:withCleanMods(f)
 
   -- Reset the modifiers by sending key-down events
   for code, _ in pairs(keys_held) do
-    if isModifier(code) then
+    if self.map:isModifier(code) then
       self:down(code)
     end
   end
@@ -171,6 +198,13 @@ function kbd:withCleanMods(f)
   udev:flush()
 end
 
+--- Press a modifier+key combination.
+--
+-- The parameters should be a series of keys to hold down,
+-- followed by a final key that should be pressed while
+-- all the preceding ones are still held.
+--
+-- This function will call kbd:withCleanMods(f)
 function kbd:pressMod(...)
   local keys = {...}
 
@@ -192,6 +226,7 @@ function kbd:pressMod(...)
   end)
 end
 
+--- Echo back the key that was pressed.
 function kbd:echo()
   if not self.event_type or not self.event_code or not self.event_value then
     error("No key to echo")
@@ -204,5 +239,7 @@ end
 local kbd_expose = kbd
 
 setmetatable(kbd_expose, meta)
+
+strict:off()
 
 return kbd_expose

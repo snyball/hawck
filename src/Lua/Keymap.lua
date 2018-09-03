@@ -25,90 +25,179 @@
    OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --]====================================================================================]
 
-require "utils"
+local strict = require "strict"
+local u = require "utils"
+local ALIASES = require "keymaps/aliases"
+local kbmap = {}
+local KEYMAP_MODS = {"Shift",
+                     "AltGr",
+                     "Control",
+                     "Alt",
+                     "Shift_L",
+                     "Shift_R",
+                     "Control_L",
+                     "Control_R",
+                     "CapsShift"}
+local SYNONYMS = {zero = "0",
+                  one = "1",
+                  two = "2",
+                  three = "3",
+                  four = "4",
+                  five = "5",
+                  six = "6",
+                  seven = "7",
+                  eight = "8",
+                  nine = "9"}
+local readLinuxKBMap
 
-DEFAULT_KEYMAP = require "keymaps/default_linux"
-ALIASES = require "keymaps/aliases"
+--- Call readLinuxKBMap on an include file
+-- @param path Path to the original file.
+-- @param include_name Name of the included file.
+-- @return Result of readLinuxKBMap on the include file.
+local function getInclude(path, include_name)
+  -- Walk up to find the two include directories.
+  -- I.e for `/usr/share/kbd/keymaps/i386/qwerty/no.map` this would be
+  --   - /usr/share/kbd/keymaps/i386
+  --   - /usr/share/kbd/keymaps
+  local paths = {}
+  local path_parts = u.dirname(path):split("/+")
+  table.pop(path_parts)
+  table.insert(paths, table.concat(path_parts, "/"))
+  table.pop(path_parts)
+  table.insert(paths, table.concat(path_parts, "/"))
 
-KEYMAP_MODS = {"Shift",
-               "AltGr",
-               "Control",
-               "Alt",
-               "ShiftL",
-               "ShiftR",
-               "CtrlL",
-               "CtrlR",
-               "CapsShift"}
+  -- If the include ends in .map, we can assume it is gzipped
+  if include_name:endswith(".map") then
+    include_name = include_name .. ".gz"
+  -- If the include has some other file extension, keep it
+  elseif include_name:match("%.(.*)$") then
+  -- Otherwise it is a .inc file.
+  else
+    include_name = include_name .. ".inc"
+  end
 
-local KEYMAP_MOD_CODES = nil
-KEYMAP = nil
-COMBO_KEYMAP = nil
-
-local SYNONYMS = {
-  zero = "0",
-  one = "1",
-  two = "2",
-  three = "3",
-  four = "4",
-  five = "5",
-  six = "6",
-  seven = "7",
-  eight = "8",
-  nine = "9",
-}
-
--- Reverse search
-for u, v in pairs(DEFAULT_KEYMAP) do
-  DEFAULT_KEYMAP[v] = u
+  for i, inc_dir in ipairs(paths) do
+    local include_path = u.joinpaths({inc_dir, "include", include_name})
+    -- Attempt to load the map
+    local succ, submap, subcombi, submods = pcall(readLinuxKBMap, include_path)
+    -- If successful, return it
+    if succ then
+      return submap, subcombi, submods
+    end
+  end
+  error("No such include: " .. include_name)
 end
 
-function readKeymap(path)
-  local keymap_line_regex =  "^ *keycode *([0-9]+) *= *([a-zA-Z+]+) *(.*)$"
+--- Read a Linux keymap .map.gz or .inc file, this will also pull
+--  in their dependencies
+--
+-- @param path Path to the Linux keymap file, should be in:
+--             /usr/share/kbd/keymaps/<machine>/<layout type>/<language>[-<extension>].map.gz
+--             For Norwegian on i386, this would be
+--             /usr/share/kbd/keymaps/i386/qwerty/no-latin1.map.gz
+function readLinuxKBMap(path)
+  local include_line_rx = "^[\t ]*include \"(.*)\""
+  local keymap_line_rx =  "^[\t ]*keycode *([0-9]+) *= *([0-9a-zA-Z+]+) *(.*)$"
+
+  local orig_path = path
+  local has_gz = path:endswith(".gz")
+  -- Got to unzip it
+  if has_gz then
+    local dst = u.joinpaths({"/tmp", u.basename(os.tmpname()) .. "_" .. u.basename(path)})
+    u.copyfile(path, dst)
+    path = u.gunzip(dst)
+  end
 
   local map = {}
   local combos = {}
   local file = io.open(path)
 
   if not file then
-    error(("Unable to read map: %s"):format(path))
+    if has_gz then os.remove(path) end
+    error(("Unable to read map: %s"):format(orig_path))
   end
 
   file:close()
 
   local combo_pre = {}
+  local mod_codes = {}
+  local combined_keys = {}
+
   for line in io.lines(path) do
-    code, name, rest = line:match(keymap_line_regex)
+    -- Skip comments
+    line = line:split("#+")[1]:split("!+")[1]
+
+    local code, name, rest = line:match(keymap_line_rx)
+    local include_path = line:match(include_line_rx)
+
+    -- Does not start with "keycode", use alternative method for lines
+    -- where modifier key codes are explicitly written down.
+    if not code then
+      local modifiers = {}
+      for key in line:gmatch("([a-z]+)") do
+        -- This terminates the modifier list.
+        if key == "keycode" then
+          break
+        end
+        table.insert(modifiers, key)
+      end
+      local alt_code, alt_name = line:match(".*keycode *([0-9]+) *= *([a-zA-Z0-9+]+)")
+      -- We only care about the plain ones for now.
+      if modifiers[1] == "plain" then
+        code, name, rest = alt_code, alt_name, ""
+      end
+    end
+
     if code and name and name ~= "nul" then
+      -- Some keys are formatted as '+A' where A is a literal character,
+      -- we just remove this plus.
+      local is_letter = false
       if name:sub(1, 1) == "+" then
+        is_letter = true
         name = name:sub(2)
       end
-      -- name = name:lower()
       code = tonumber(code)
       combo_pre_entry = {code, name}
+      -- Keymaps are layed out like this:
+      --   keycode <code> = <clean> <with Shift> <with AltGr> <with Control> <with Alt>
+      -- We don't yet know the keycodes of the modifiers, so we save the extra
+      -- modifier+key mappings for later.
       for v in rest:gmatch("[^%s]+") do
         table.insert(combo_pre_entry, v)
       end
+      -- Hack for broken .map files that don't include a shift+letter upper case variant.
+      -- Will obviously not do the correct thing for all alphabets/scripts.
+      if is_letter and #combo_pre_entry == 2 then
+        table.insert(combo_pre_entry, name:sub(1,1):upper() .. name:sub(2))
+      end
       table.insert(combo_pre, combo_pre_entry)
+      -- Swap out names with synonyms if available.
       if SYNONYMS[name] then
         name = SYNONYMS[name]
       end
+      -- A second instance of a key means it is the right version of that key, i.e
+      -- Control and Control_R
       if map[name] then
-        map["right_" .. name] = code
+        map[name .. "_R"] = code
       else
         map[code] = name
         map[name] = code
       end
+    elseif include_path then
+      local submap, subcombi, submods = getInclude(orig_path, include_path)
+      table.update(map, submap)
+      table.update(combined_keys, subcombi)
+      table.update(mod_codes, submods)
     end
   end
 
-  local mod_codes = {}
   for i, mod in ipairs(KEYMAP_MODS) do
-    local mod_code = map[mod--[[:lower()]]] or 0
-    --print(mod:lower(), mod_code)
+    local mod_code = map[mod] or 0
     table.insert(mod_codes, mod_code)
   end
 
-  local combined_keys = {}
+  -- Assemble modifier key combos now that we know the key names for
+  -- all key codes.
   for i, combos in ipairs(combo_pre) do
     local key_name = combos[2]
     local root_code = combos[1]
@@ -122,7 +211,7 @@ function readKeymap(path)
         sym_name = sym_name:sub(2)
       end
       if mod_code ~= 0 and not combined_keys[sym_name] then
-        combined_keys[sym_name--[[:lower()]]] = {mod_code, root_code}
+        combined_keys[sym_name] = {mod_code, root_code}
       end
     end
   end
@@ -134,53 +223,81 @@ function readKeymap(path)
     end
   end
 
+  if has_gz then os.remove(path) end
   return map, combined_keys, modkey_lookup
 end
 
-function setKeymap(path)
-  KEYMAP, COMBO_KEYMAP, KEYMAP_MOD_CODES = readKeymap(path)
-  -- io.write("KEYMAP = ")
-  -- u.puts(KEYMAP)
-  -- io.write("COMBO_KEYMAP = ")
-  -- u.puts(COMBO_KEYMAP)
+local kbmap = {}
+
+local kbmap_meta = {
+  __index = kbmap
+}
+
+--- Get all installed key maps.
+--
+-- Requires the `find` command to be present on the system.
+--
+-- @return Table of key map file paths indexed by language.
+function kbmap.getall()
+  local p = io.popen("find /usr/share/kbd/keymaps -name '*.map.gz'")
+  local keymap_rx = ".*/([a-z0-9]+)/([a-z0-9]+)/([a-z0-9-]+)%.map%.gz"
+  local keymaps = {}
+  for line in p:lines() do
+    local machine, layout, lang = line:match(keymap_rx)
+    if machine then
+      keymaps[lang] = line
+    end
+  end
+  p:close()
+  return keymaps
 end
 
-function getKeysym(a)
-  if ALIASES and ALIASES[a] then
-    a = ALIASES[a]
+--- Create a new kbmap from a Linux keymap file
+-- @param lang The key map language.
+function kbmap.new(lang)
+  assert(lang)
+  local maps = kbmap.getall()
+  if not maps[lang] then
+    error("No such keymap: " .. lang)
   end
-
-  if KEYMAP and KEYMAP[a] then
-    return KEYMAP[a]
-  end
-
-  if DEFAULT_KEYMAP[a] then
-    return DEFAULT_KEYMAP[a]
-  end
-
-  error(("No such key: %s"):format(a))
+  local keymap, combo_map, mod_codes = readLinuxKBMap(maps[lang])
+  local map = {
+    keymap = keymap,
+    combo_map = combo_map,
+    mod_codes = mod_codes,
+  }
+  setmetatable(map, kbmap_meta)
+  return map
 end
 
-function getCombo(a)
-  if ALIASES and ALIASES[a] then
-    a = ALIASES[a]
+--- Get a combo key, i.e a key that consists of a modifier+key combo.
+-- @param key Key name.
+function kbmap:getCombo(key)
+  if ALIASES and ALIASES[key] then
+    key = ALIASES[key]
   end
-
-  if COMBO_KEYMAP[a] then
-    return COMBO_KEYMAP[a]
-  end
-
-  error(("No such combo key: %s"):format(a))
+  return self.combo_map[key] or error(("No such combo key: %s"):format(key))
 end
 
-function isModifier(key)
-  local keycode
-  if type(key) == "number" then
-    keycode = key
-  else
+--- Get a key code from a key name.
+-- @param key Key name.
+function kbmap:getKeysym(key)
+  if ALIASES and ALIASES[key] then
+    key = ALIASES[key]
+  end
+  return self.keymap[key] or error(("No such key: %s"):format(key))
+end
+
+--- Check if a key is a modifier, i.e one of Control/Control_R/Shift/Shift_R/Alt/AltGr
+-- @param key Key code/symbol.
+function kbmap:isModifier(key)
+  local keycode = key
+  if type(key) ~= "number" then
     keycode = getKeysym(key)
   end
-  return KEYMAP_MOD_CODES[keycode]
+  return self.mod_codes[keycode]
 end
 
-setKeymap("./keymaps/qwerty/no.map")
+strict:off()
+
+return kbmap

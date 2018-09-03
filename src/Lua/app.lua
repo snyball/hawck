@@ -25,16 +25,13 @@
    OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --]====================================================================================]
 
--- TODO: Change the calling method into the following:
---       app("firefox"):new_window("some-site.com")
---       app("firefox"):run("some-site.com") -- default action
-
-require "utils"
+local strict = require "strict"
+local u = require "utils"
 require "match"
 
 local DESKTOP_FILE_CACHE = {}
 
-function readDesktopFile(path)
+local function readDesktopFile(path)
   if DESKTOP_FILE_CACHE[path] then
     return DESKTOP_FILE_CACHE[path]
   end
@@ -77,20 +74,13 @@ function readDesktopFile(path)
   return actions
 end
 
-AppMethods = {}
+local AppMethods = {}
 
 function AppMethods:new(arg)
   return self[0](arg)
 end
 
-AppMetaMethods = {}
-
-local function escape(str)
-  assert(str)
-  str = str:gsub("\"", "\\\"")
-  str = str:gsub("%$", "\\$")
-  return str
-end
+local AppMetaMethods = {}
 
 function AppMetaMethods.__index(t, key)
   assert(key)
@@ -114,15 +104,15 @@ function AppMetaMethods.__index(t, key)
       print(arg)
       local cmd
       if not exec:find("%%u") and arg then
-        cmd = exec .. " " .. escape(arg)
+        cmd = exec .. " " .. u.shescape(arg)
       else
-        cmd = exec:gsub("%%u", escape(arg or ""))
+        cmd = exec:gsub("%%u", u.shescape(arg or ""))
       end
       io.popen(cmd)
   end)
 end
 
-function app(name)
+local function app(name)
   local t = {
     _actions = readDesktopFile(("/usr/share/applications/%s.desktop"):format(name))
   }
@@ -130,10 +120,6 @@ function app(name)
   return t
 end
 
--- app("chromium")[0]("reddit.com")
--- a = app("chromium"):new_window("reddit.com")
--- a()
--- print(a.run)
--- r = a.run
--- s = a:run("reddit.com")()
--- print(s)
+strict:off()
+
+return app

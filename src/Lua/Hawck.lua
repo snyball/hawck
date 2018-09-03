@@ -25,8 +25,11 @@
    OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --]====================================================================================]
 
-require "Keymap"
-require "utils"
+local u = require "utils"
+
+local cfg = dofile(u.expandEnv("$HOME/.local/share/hawck/cfg.lua"))
+local kbmap = require "Keymap"
+
 require "match"
 require "app"
 kbd = require "kbd"
@@ -63,9 +66,10 @@ off = noop
 
 key = function (key_name)
   __keys[key_name] = true
-  return LazyCondF.new(function (key_name)
-      return kbd:hadKey(key_name)
-  end)(key_name)
+  local key_code = kbd:getKeysym(key_name)
+  return LazyCondF.new(function (key_code)
+      return kbd:hadKey(key_code)
+  end)(key_code)
 end
 
 press = LazyF.new(function (key)
@@ -77,24 +81,26 @@ write = LazyF.new(function (text)
     for p, c in utf8.codes(text) do
       local succ, _ = pcall(function ()
         getEntryFunction(utf8.char(c))()
-        udev:flush()
       end)
       if not succ then
-        print("No such key: " .. c)
+        print("No such key: " .. utf8.char(c))
       end
     end
   end)
 end)
 
+
 function getEntryFunction(sym)
   local succ, code
 
-  succ, code = pcall(u.curry(getKeysym, sym))
+  succ, code = pcall(u.curry(kbd.map.getKeysym, kbd.map, sym))
   if succ then
-    return press(code)
+    return function ()
+      kbd:press(code)
+    end
   end
 
-  succ, code = pcall(u.curry(getCombo, sym))
+  succ, code = pcall(u.curry(kbd.map.getCombo, kbd.map, sym))
   if succ then
     return function ()
       kbd:pressMod(unpack(code))
@@ -105,15 +111,17 @@ function getEntryFunction(sym)
 end
 
 insert = LazyF.new(function (str)
-    getEntryFunction(str)()
+    kbd:withCleanMods(getEntryFunction(str))
 end)
 
 replace = LazyF.new(function (key)
-    if kbd:hadKeyDown() then
-      kbd:down(key)
-    elseif kbd:hadKeyUp() then
-      kbd:up(key)
-    end
+    kbd:withCleanMods(function ()
+        if kbd:hadKeyDown() then
+          kbd:down(key)
+        elseif kbd:hadKeyUp() then
+          kbd:up(key)
+        end
+    end)
 end)
 sub = replace
 
@@ -134,13 +142,11 @@ up = Cond.new(function ()
 end)
 
 modkeys = {
-  shift_r = "rightshift",
-  shift_l = "leftshift",
-  ctrl_l = "leftctrl",
-  ctrl_r = "rightctrl",
-  alt_r = "rightalt",
-  alt_l = "leftalt",
-  alt = "alt",
+  shift_r = "Shift_R",
+  shift_l = "Shift",
+  ctrl_l = "Control",
+  ctrl_r = "Control_R",
+  alt = "Alt",
 }
 
 for key, sys_key in pairs(modkeys) do
@@ -148,20 +154,19 @@ for key, sys_key in pairs(modkeys) do
 end
 
 ctrl = ctrl_l / ctrl_r
-alt = alt_l / alt_r
 shift = shift_l / shift_r
 control_l = ctrl_l
 control_r = ctrl_r
 control = ctrl
 
 fn_keys = {}
-for i = 1, 24 do
-  table.insert(fn_keys, "f" .. tostring(i))
+for i = 1, 12 do
+  table.insert(fn_keys, "F" .. tostring(i))
 end
 
 fn_keycodes = {}
 for i, key in pairs(fn_keys) do
-  fn_keycodes[getKeysym(key)] = true
+  fn_keycodes[kbd:getKeysym(key)] = true
 end
 
 prepare = Cond.new(function ()
@@ -201,13 +206,6 @@ end
 
 __match[prepare] = echo
 ProtectedMeta = {
-  -- __newindex = function(t, name, val)
-  --   if name:sub(1, 2) == "__" then
-  --     error("Names starting with '__' are not allowed.")
-  --   end
-  --   rawset(t, name, val)
-  -- end,
-
   __index = function (t, name)
     if not rawget(t, name) then
       error(("Undefined variable: %s"):format(name))
@@ -215,8 +213,6 @@ ProtectedMeta = {
     return rawget(t, name)
   end
 }
-
-setKeymap("./keymaps/qwerty/no.map")
 
 local OMNIPRESENT = {"Control_R",
                      "Control_L",
@@ -231,25 +227,7 @@ for idx, name in ipairs(OMNIPRESENT) do
   __keys[name] = true
 end
 
--- Called after loading a hwk script, requests keys from the daemon
--- depending on which keys are checked for using the key() function.
-function __setup()
-  -- Request keys from the keyboard-listening daemon, if we are currently
-  -- in the daemon. If not then we are inside the Lua executor and have
-  -- already requested keys in the other process.
-  -- if KBDDaemon then
-  --   for name, _ in pairs(__keys) do
-  --     local succ, key = pcall(function ()
-  --         return getKeysym(name)
-  --     end)
-  --     if succ then
-  --       KBDDaemon:requestKey(key)
-  --       print(("Requested key: %s"):format(name))
-  --     else
-  --       print(("Unable to request key: %s"):format(name))
-  --     end
-  --   end
-  -- end
-end
+function __setup() end
 
--- setmetatable(_G, ProtectedMeta)
+setmetatable(_G, ProtectedMeta)
+

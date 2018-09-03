@@ -1,4 +1,4 @@
-require "utils"
+local u = require "utils"
 local json = require "json"
 
 local reg = debug.getregistry()
