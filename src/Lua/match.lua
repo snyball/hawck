@@ -30,7 +30,13 @@ local u = require "utils"
 local unpack = table.unpack
 
 PatternScopeMeta = {
-  __call = function (t)
+  __call = function (t, ...)
+    if rawget(t, "prepare") then
+      if not rawget(t, "prepare")(...) then
+        return false
+      end
+    end
+
     for u, patt in ipairs(t.patterns) do
       local result = patt()
       if result == FALLTHROUGH then
@@ -43,7 +49,11 @@ PatternScopeMeta = {
   end,
 
   __newindex = function (t, pattern, action)
-    u.append(t.patterns, Pattern.new(pattern, action))
+    if pattern == "prepare" then
+      rawset(t, "prepare", action)
+    else
+      u.append(t.patterns, Pattern.new(pattern, action))
+    end
   end,
 
   __index = function(t, idx)

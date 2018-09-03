@@ -169,16 +169,16 @@ for i, key in pairs(fn_keys) do
   fn_keycodes[kbd:getKeysym(key)] = true
 end
 
-prepare = Cond.new(function ()
-    kbd:prepare()
+function __match.prepare(...)
+    kbd:prepare(...)
 
     -- Don't act on Ctrl+Alt+F(n) keys
     if (ctrl + alt)() and fn_keycodes[kbd.event_code] then
-      return true
+      return false
     end
 
-    return false
-end)
+    return true
+end
 
 notify = LazyF.new(function (title, message)
     local p = io.popen(("notify-send -a '%s' -u normal -i hawck -t 3000 '%s'"):format(title, message))
@@ -204,7 +204,7 @@ function mode(name, cond)
   end)
 end
 
-__match[prepare] = echo
+-- __match[prepare] = echo
 ProtectedMeta = {
   __index = function (t, name)
     if not rawget(t, name) then

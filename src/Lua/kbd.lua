@@ -116,10 +116,10 @@ function kbd:press(code)
 end
 
 --- Prepare the keyboard by retrieving values from MacroD
-function kbd:prepare()
-  self.event_value = __event_value
-  self.event_code = __event_code
-  self.event_type = __event_type
+function kbd:prepare(ev_value, ev_code, ev_type)
+  self.event_value = ev_value
+  self.event_code = ev_code
+  self.event_type = ev_type
 
   if self.event_type ~= Event.KEY then
     error("Event is not a key event.")

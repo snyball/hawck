@@ -261,12 +261,8 @@ static void handleSigPipe(int) {
 bool MacroDaemon::runScript(Lua::Script *sc, const struct input_event &ev) {
     bool repeat = true;
 
-    sc->set("__event_type",  (int) ev.type);
-    sc->set("__event_code",  (int) ev.code);
-    sc->set("__event_value", (int) ev.value);
-
     try {
-        auto [succ] = sc->call<bool>("__match");
+        auto [succ] = sc->call<bool>("__match", (int)ev.value, (int)ev.code, (int)ev.type);
         repeat = !succ;
     } catch (const LuaError &e) {
         if (disable_on_err)
