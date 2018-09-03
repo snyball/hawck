@@ -117,24 +117,23 @@ end
 
 --- Prepare the keyboard by retrieving values from MacroD
 function kbd:prepare()
-  self.event_value = __event_value_num
+  self.event_value = __event_value
   self.event_code = __event_code
-  self.event_type = __event_type_num
+  self.event_type = __event_type
 
-  if __event_value == "DOWN" then
-    self.keys_held[__event_code] = true
-  elseif __event_value == "UP" then
-    self.keys_held[__event_code] = nil
+  if self.event_type ~= Event.KEY then
+    error("Event is not a key event.")
   end
 
-  self.has_down = false
-  self.has_up = false
+  if self.event_value == KeyMode.DOWN then
+    self.keys_held[self.event_code] = true
+  elseif self.event_value == KeyMode.UP then
+    self.keys_held[self.event_code] = nil
+  end
+
   self.has_repeat = false
-
-  if __event_type == "KEY" then
-    self.has_down = __event_value == "DOWN"
-    self.has_up = __event_value == "UP"
-  end
+  self.has_down = self.event_value == KeyMode.DOWN
+  self.has_up = self.event_value == KeyMode.UP
 end
 
 --- Check if we got a key down event

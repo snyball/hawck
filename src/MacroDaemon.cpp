@@ -261,14 +261,9 @@ static void handleSigPipe(int) {
 bool MacroDaemon::runScript(Lua::Script *sc, const struct input_event &ev) {
     bool repeat = true;
 
-    const char *ev_val = (ev.value <= 2) ? evval[ev.value] : "?";
-    const char *ev_type = event_str[ev.type];
-
-    sc->set("__event_type",            ev_type);
-    sc->set("__event_type_num",  (int) ev.type);
-    sc->set("__event_code",      (int) ev.code);
-    sc->set("__event_value",           ev_val);
-    sc->set("__event_value_num", (int) ev.value);
+    sc->set("__event_type",  (int) ev.type);
+    sc->set("__event_code",  (int) ev.code);
+    sc->set("__event_value", (int) ev.value);
 
     try {
         auto [succ] = sc->call<bool>("__match");
