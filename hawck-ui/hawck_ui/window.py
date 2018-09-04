@@ -288,7 +288,7 @@ class Settings(Pluggable):
         sendMacroD(f"config.keymap = {row.text!r}")
         label = self.builder.get_object("keymap_name_label")
         label.set_text(row.text)
-    
+
 class HawckMainWindow(MainWindow):
     __gtype_name__ = 'HawckMainWindow'
 

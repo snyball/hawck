@@ -15,4 +15,5 @@ zenity
 wget
 gawk
 gzip
-gunzip
+console-keymaps
+python3-dill
