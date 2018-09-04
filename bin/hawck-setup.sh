@@ -127,6 +127,8 @@ echo uinput > /etc/modules-load.d/hawck-uinput.conf
 cp bin/hawck-ui.desktop /usr/share/applications/
 chmod 644 /usr/share/applications/hawck-ui.desktop
 
+cp bin/hawck-inputd.service /etc/systemd/system/
+
 ## Default keyboards to listen on.
 cp bin/keyboards.txt /var/lib/hawck-input/
 
