@@ -40,7 +40,7 @@ function run() {
     echo "70%"
     ninja hawck-ui >&2 || die "Failed to build hawck-ui"
     echo "80%"
-    pkexec bash -c "cd $(pwd) && ninja install" >&2 || die "Installation failed"
+    pkexec bash -c "cd '$(pwd)' && ninja install" >&2 || die "Installation failed"
     popd &>/dev/null
     
     ## Set up user directories
