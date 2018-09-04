@@ -178,7 +178,13 @@ class SudoMethod:
         return sub
 
 def checkPkexec():
-    p = Popen(["/sbin/ps", "-Ao", "args"], stdout=PIPE, env={})
+    ## If inside one of these environments we can assume we have a running
+    ## polkit authentication agent.
+    if os.environ.get("XDG_SESSION_DESKTOP") in ("ubuntu", "gnome"):
+        return True
+
+    ## Attempt to find a polkit authentication agent
+    p = Popen(["ps", "-Ao", "args"], stdout=PIPE, env={})
     rx = re.compile("^.*polkit-.*authentication-agent.*$", re.MULTILINE)
     s = rx.findall(p.stdout.read().decode("utf-8"))
     ret = p.wait()
@@ -196,7 +202,10 @@ cmds = [
     ## as arguments related to itself. The only redeeming feature is that it lets
     ## you set a custom message.
     #[assume      , "gksudo",           {"user": "--user", "message": "--message"},    ],
-    [assume      , "sudo_fallback.py", {"user": None}                                 ]
+    #[assume      , "sudo_fallback.py", {"user": None}                                 ],
+
+    ## Dummy method
+    [assume, "echo", {"user": None} ]
 ]
 
 def getSudoMethod():
@@ -209,7 +218,7 @@ def getSudoMethod():
             return SudoMethod(*args)
         except SudoException:
             pass
-    raise SudoException("No methods found")
+    raise SudoException(f"No methods found user={getpass.getuser()}")
 
 if __name__ == "__main__":
     su = getSudoMethod()
