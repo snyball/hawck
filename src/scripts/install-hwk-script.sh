@@ -69,7 +69,7 @@ echo "key_name,key_code" > "$tmp_keys"
 lua5.3 -l init -l "$name" -e '
 for name, _ in pairs(__keys) do
     local succ, key = pcall(function ()
-        return getKeysym(name)
+        return kbd:getKeysym(name)
     end)
     if not succ then
         key = -1
