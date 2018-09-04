@@ -67,10 +67,11 @@ local function getInclude(path, include_name)
   table.insert(paths, table.concat(path_parts, "/"))
 
   -- If the include ends in .map, we can assume it is gzipped
-  if include_name:endswith(".map") then
+  if include_name:endswith(".map") or include_name:endswith(".kmap") then
     include_name = include_name .. ".gz"
   -- If the include has some other file extension, keep it
   elseif include_name:match("%.(.*)$") then
+      -- Do nothing.
   -- Otherwise it is a .inc file.
   else
     include_name = include_name .. ".inc"
@@ -78,6 +79,10 @@ local function getInclude(path, include_name)
 
   for i, inc_dir in ipairs(paths) do
     local include_path = u.joinpaths({inc_dir, "include", include_name})
+    -- If the original file cannot be found, just try appending .gz
+    if not io.open(include_path) then
+      include_path = include_path .. ".gz"
+    end
     -- Attempt to load the map
     local succ, submap, subcombi, submods = pcall(readLinuxKBMap, include_path)
     -- If successful, return it
@@ -239,8 +244,24 @@ local kbmap_meta = {
 --
 -- @return Table of key map file paths indexed by language.
 function kbmap.getall()
-  local p = io.popen("find /usr/share/kbd/keymaps -name '*.map.gz'")
-  local keymap_rx = ".*/([a-z0-9]+)/([a-z0-9]+)/([a-z0-9-]+)%.map%.gz"
+  local kbmap_paths = {
+    "/usr/share/kbd/keymaps",
+    "/usr/share/keymaps",
+  }
+  -- Find the path to the keymaps directory.
+  local kbmap_path = nil
+  for i, v in ipairs(kbmap_paths) do
+    if os.execute(("[ -d %s ]"):format(u.shescape(v))) then
+      kbmap_path = v
+      break
+    end
+  end
+  if not kbmap_path then
+    error("Unable to find keymaps directory.")
+  end
+
+  local p = io.popen(("find %s -name '*map.gz'"):format(u.shescape(kbmap_path)))
+  local keymap_rx = ".*/([a-z0-9]+)/([a-z0-9]+)/([a-z0-9-]+)%.k?map%.gz"
   local keymaps = {}
   for line in p:lines() do
     local machine, layout, lang = line:match(keymap_rx)

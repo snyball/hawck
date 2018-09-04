@@ -36,15 +36,15 @@ def setUnsafeMode(enabled):
 def setInputDSystemDAutostart(enabled):
     from subprocess import Popen
     if enabled:
-        Popen(["/usr/bin/systemctl", "enable", "hawck-inputd"]).wait()
+        Popen(["systemctl", "enable", "hawck-inputd"]).wait()
     else:
-        Popen(["/usr/bin/systemctl", "disable", "hawck-inputd"]).wait()
+        Popen(["systemctl", "disable", "hawck-inputd"]).wait()
 
 @su.do("root")
 def startStopInputD(start):
     from subprocess import Popen
     if start:
-        Popen(["/usr/bin/systemctl", "start", "hawck-inputd"]).wait()
+        Popen(["systemctl", "start", "hawck-inputd"]).wait()
     else:
-        Popen(["/usr/bin/systemctl", "stop", "hawck-inputd"]).wait()
+        Popen(["systemctl", "stop", "hawck-inputd"]).wait()
 

@@ -185,9 +185,12 @@ def makeListTextRow(text):
 
 class KeymapsList:
     def __init__(self):
-        paths = Popen(["find", "/usr/share/kbd/keymaps", "-name", "*.map.gz"],
+        keymaps_dir = list(filter(os.path.exists, ("/usr/share/kbd/keymaps", "/usr/share/keymaps")))
+        if not keymaps_dir:
+            raise OSError("Unable to find keymaps")
+        paths = Popen(["find", keymaps_dir[0], "-name", "*map.gz"],
                       stdout=PIPE)
-        map_rx = re.compile(r".*/([^/]+)\.map\.gz$")
+        map_rx = re.compile(r".*/([^/]+)\.k?map\.gz$")
         self.lookup = {}
         for line in paths.stdout.readlines():
             path = line.strip().decode("utf-8")
@@ -233,11 +236,10 @@ class Settings(Pluggable):
                     return on
                 handler.__name__ = handler_name
                 setattr(self.__class__, handler_name, handler)
+            keymap_label = self.builder.get_object("keymap_name_label")
+            keymap_label.set_text(sendMacroD(f"return config.keymap")[0])
         except OSError:
             print("Unable to set up options")
-
-        keymap_label = self.builder.get_object("keymap_name_label")
-        keymap_label.set_text(sendMacroD(f"return config.keymap")[0])
 
     @switchHandler
     def on_set_autostart(self, on: bool):
@@ -673,7 +675,7 @@ class HawckMainWindow(MainWindow):
     def checkHawckDRunning(self):
         inputd_label = self.builder.get_object("inputd_status")
         macrod_label = self.builder.get_object("macrod_status")
-        pgrep_loc = "/usr/bin/pgrep"
+        pgrep_loc = "pgrep"
 
         run_str = "<tt><span fgcolor=\"#4CB940\" font_weight=\"bold\">Running</span></tt>" 
         stop_str = "<tt><span fgcolor=\"#BF4040\" font_weight=\"bold\">Stopped</span></tt>"
