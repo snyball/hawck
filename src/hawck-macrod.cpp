@@ -21,9 +21,9 @@ int main(int argc, char *argv[]) {
         "Usage: hawck-macrod [--no-fork]\n"
         "\n"
         "Options:\n"
-        "  --no-fork  Don't daemonize/fork.\n"
-        "  --help     Display this help information.\n"
-        "  --version  Display version and exit.\n"
+        "  --no-fork   Don't daemonize/fork.\n"
+        "  -h, --help  Display this help information.\n"
+        "  --version   Display version and exit.\n"
     ;
 
     //daemonize("/var/log/hawck-input/log");

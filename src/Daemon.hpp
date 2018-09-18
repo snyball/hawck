@@ -1,3 +1,8 @@
+/** @file Daemon.hpp
+ *
+ * @brief Daemonization utilities.
+ */
+
 #include <string>
 
 /**

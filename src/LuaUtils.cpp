@@ -155,4 +155,6 @@ namespace Lua {
         lua_pushlightuserdata(L, new LuaError(errmsg, traceback));
         return 1;
     }
+
+    std::atomic<uint64_t> id_incr;
 }

@@ -14,7 +14,6 @@ def sendcfg(path, opath, cfg):
     with OSOpen(opath, os.O_RDONLY) as fd:
         (sz, ) = struct.unpack("I", fd.read(4))
         json_str = fd.read(sz).decode("utf-8")
-        print(f"json_str: {json_str!r}")
         return json.loads(json_str)
 
 sendMacroD = partial(sendcfg,

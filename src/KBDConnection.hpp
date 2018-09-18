@@ -33,17 +33,23 @@
 #include <string>
 #include "KBDAction.hpp"
 
-/**
- * Persistent connection to a keyboard server, a daemon
- * that performs actions depending on keypresses.
+/** Persistent connection to a keyboard server, a daemon
+ *  that performs actions depending on keypresses.
  */
 class KBDConnection {
 private:
     int fd;
 
 public:
+    /** Connect to UNIX socket at an address.
+     *
+     * @param addr The file system addres of the UNIX socket.
+     */
     explicit KBDConnection(std::string addr);
+    /** Close connection and destroy associated data. */
     ~KBDConnection();
+    /** Close connection */
     void close();
+    /** Send packet */
     void send(const KBDAction *action);
 };

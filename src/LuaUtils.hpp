@@ -217,6 +217,7 @@ namespace Lua {
             return fmtError();
         }
 
+        /** Format the Lua error traceback. */
         std::string fmtTraceback() const noexcept {
             std::stringstream err_ss;
             int lv = 0;
@@ -251,7 +252,13 @@ namespace Lua {
         void get(lua_State *, int) {}
     };
 
+    /** Lua integers. */
     template <> struct LuaValue<int> {
+        /** Retrieve an integer from the Lua state.
+         *
+         * @param L Lua state.
+         * @param idx The index of the integer on the stack.
+         */
         int get(lua_State *L, int idx) {
             if (!lua_isnumber(L, idx))
                 throw LuaError("Expected number");
@@ -259,7 +266,13 @@ namespace Lua {
         }
     };
 
+    /** Lua numbers. */
     template <> struct LuaValue<double> {
+        /** Retrieve a number from the Lua state.
+         *
+         * @param L Lua state.
+         * @param idx The index of the number on the stack.
+         */
         int get(lua_State *L, int idx) {
             if (!lua_isnumber(L, idx))
                 throw LuaError("Expected number");
@@ -267,7 +280,13 @@ namespace Lua {
         }
     };
 
+    /** Lua strings */
     template <> struct LuaValue<std::string> {
+        /** Retrieve a string from the Lua state.
+         *
+         * @param L Lua state.
+         * @param idx The index of the string on the stack.
+         */
         std::string get(lua_State *L, int idx) {
             size_t sz;
             const char *s = lua_tolstring(L, idx, &sz);
@@ -275,7 +294,13 @@ namespace Lua {
         }
     };
 
+    /** Lua booleans */
     template <> struct LuaValue<bool> {
+        /** Retrieve a boolean from the Lua state.
+         *
+         * @param L Lua state.
+         * @param idx The index of the boolean on the stack.
+         */
         bool get(lua_State *L, int idx) {
             if (!lua_isboolean(L, idx))
                 throw LuaError("Expected boolean");
@@ -287,7 +312,13 @@ namespace Lua {
         void get(lua_State*, int) { }
     };
 
+    /** Lua arrays */
     template <class T> struct LuaValue<std::vector<T>> {
+        /** Retrieve an array from the Lua state.
+         *
+         * @param L Lua state.
+         * @param idx The index of the array on the stack.
+         */
         std::vector<T> get(lua_State *L, int idx) {
             std::vector<T> vec;
             lua_pushvalue(L, idx);
@@ -361,6 +392,7 @@ namespace Lua {
         return std::string(lua_tostring(L, idx));
     }
 
+    /** Tools for binding a C++ method to Lua. */
     template <class T>
     class LuaMethod {
     private:
@@ -433,8 +465,7 @@ namespace Lua {
             return checkLuaType(idx, head) and checkArgs(idx+1, tail...);
         }
 
-        /**
-         * Finish off recursion in callFromLuaFunction, in this case there
+        /** Finish off recursion in callFromLuaFunction, in this case there
          * are no arguments left to get from the Lua stack, so we just return
          * a function that will finally push the return value onto the stack
          * and return the amount of results that were pushed.
@@ -451,9 +482,8 @@ namespace Lua {
             };
         }
 
-        /**
-         * Recurse downwards creating lambda functions along the way that
-         * get values from the Lua stack with the appropriate lua_get* function.
+        /** Recurse downwards creating lambda functions along the way that
+         *  get values from the Lua stack with the appropriate lua_get* function.
          */
         template <class R, class Fn, class Head, class... Atoms>
         const std::function<int()> callFromLuaFunction(int idx, Fn f, Head head, Atoms... tail) noexcept {
@@ -508,8 +538,7 @@ namespace Lua {
             }
         }
 
-        /**
-         * Wrap a function so that it may be called from Lua.
+        /** Wrap a function so that it may be called from Lua.
          * The resulting object can be called after setState()
          * has been called. The returned function will then receive
          * all the Lua values from the stack, and push the return
@@ -550,7 +579,7 @@ namespace Lua {
 
     // Does not need to be initialized, is simply a magic number used for run-time
     // type-checking in Lua
-    static std::atomic<uint64_t> id_incr;
+    extern std::atomic<uint64_t> id_incr;
 
     template <class T>
     struct LuaPtr {
@@ -622,6 +651,8 @@ namespace Lua {
         return countT<0, T...>();
     }
 
+    /** C++ bindings to make the Lua API easier to deal with.
+     */
     class Script {
     private:
         lua_State *L;
@@ -631,14 +662,28 @@ namespace Lua {
         std::string src;
         std::string abs_src;
 
+        /** Initialize a Lua state and load a script.
+         * 
+         * @param path Path to the Lua script.
+         */
         explicit Script(std::string path);
+
+        /** Initialize a Lua state. */
         Script();
+
+        /** Destroy a Lua state. */
         virtual ~Script() noexcept;
 
+        /** Get the raw Lua state. */
         lua_State *getL() noexcept;
 
+        /** Load a script into the Lua state.
+         *
+         * @param path Path to the Lua script. 
+         */
         virtual void from(const std::string& path);
 
+        /** Open a Lua interface in the Script. */
         template <class T>
         void open(LuaIface<T> *iface, std::string name) {
             iface->luaOpen(L, name.c_str());
@@ -654,6 +699,8 @@ namespace Lua {
             return n+1;
         }
 
+        /** Utility function for Script::call in order to push arguments
+         *  onto the Lua stack. */
         template <class A, class... Arg>
         int call_r(int n, A arg, Arg... args) noexcept {
             luaPush(L, arg);
@@ -665,6 +712,8 @@ namespace Lua {
             return std::make_tuple();
         }
 
+        /** Utility function for Script::call in order to retrieve returned
+         *  values as a tuple. */
         template <int idx, class A, class... Arg>
         std::tuple<A, Arg...> ret_r() noexcept {
             return std::tuple_cat(
@@ -673,6 +722,13 @@ namespace Lua {
             );
         }
 
+        /** Call a global Lua function and return the result(s).
+         *
+         * @tparam T... The list of return types.
+         * @tparam Arg... The list of function argument types.
+         * @param name Name of global Lua function.
+         * @param args Any number of arguments that the Lua function requires.
+         */
         template <class... T, class... Arg>
         std::tuple<T...> call(std::string name, Arg... args) {
             lua_pushcfunction(L, hwk_lua_error_handler_callback);
@@ -697,9 +753,15 @@ namespace Lua {
             return ret_r<-nres, T...>();
         }
 
+        /** Retrieve a global Lua value. */
         template <class T>
         T get(std::string name);
 
+        /** Set a global Lua value.
+         * 
+         * @param name Name of global variable.
+         * @param value Value to set the variable to.
+         */
         template <class T>
         void set(std::string name, T value) {
             if (luaPush(L, value) == 1) {
@@ -717,10 +779,18 @@ namespace Lua {
             this->enabled = enabled;
         }
 
+        /** Run Lua code inside the Lua state.
+         *
+         * @param str Lua code. 
+         */
         void exec(const std::string& str);
 
+        /** Reset the Lua state, will destroy all data currently
+         *  held within it */
         void reset();
 
+        /** Reload from the file that the Lua state was initially
+         *  initialized with. */
         void reload();
     };
 }

@@ -1,3 +1,8 @@
+/** @file utils.hpp
+ *
+ * @brief Miscellaneous utilities used throughout hawck.
+ */
+
 #include <memory>
 #include <sstream>
 #include <regex>
@@ -45,11 +50,6 @@ using sstream = std::stringstream;
 
 /**
  * Change directory in RAII fashion.
- *
- * Warning: This function will abort() if the original directory
- * ceases to exist before the destructor is called.
- * If you want to handle this yourself, use ChDir::popd() instead
- * of relying on the destructor.
  */
 class ChDir {
 private:
@@ -57,6 +57,13 @@ private:
     bool done = false;
 
 public:
+    /**
+     * chdir() to the given directory.
+     *
+     * @param path Path to directory.
+     *
+     * @throws SystemError If unable to chdir() to the path.
+     */
     explicit ChDir(const std::string& path) {
         char *cur_path = realpath(".", nullptr);
         if (cur_path == nullptr)
@@ -70,6 +77,9 @@ public:
     /**
      * Go back to the original directory, after this call
      * ~ChDir() becomes a no-op.
+     *
+     * @throws SystemError If unable to chdir() back to the original
+     *                     directory.
      */
     void popd() {
         done = true;
@@ -78,18 +88,26 @@ public:
             throw SystemError("Unable to chdir() back to: " + olddir);
     }
 
+    /**
+     * Go back to the original directory.
+     *
+     * @throws SystemError If unable to chdir() back to the original
+     *                     directory. If you want to prevent this, call
+     *                     ChDir::popd() and catch the error.
+     */
     ~ChDir() {
         if (done)
             return;
-
-        if (chdir(olddir.c_str()) == 0)
-            return;
-
-        std::cout << "chdir() back to original directory failed, aborting." << std::endl;
-        abort();
+        popd();
     }
 };
 
+/**
+ * Wrapper around the POSIX ::basename(char *) function.
+ * 
+ * @param path The path to get the basename of.
+ * @return Result of basename(path).
+ */
 inline std::string pathBasename(const std::string& path) {
     const char *full = path.c_str();
     // Basename will return a pointer to somewhere inside `full`

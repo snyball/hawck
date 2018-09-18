@@ -595,9 +595,10 @@ class HawckMainWindow(MainWindow):
     @staticmethod
     def disableScript(name: str) -> None:
         try:
+            print(f"name: {name}")
             os.unlink(os.path.join(LOCATIONS["scripts-enabled"], name + ".lua"))
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"e: {e}")
 
     def setScriptEnabled(self, switch_obj: Gtk.Switch, enabled: bool):
         hwk_path = self.getCurrentEditFile()
@@ -632,10 +633,10 @@ class HawckMainWindow(MainWindow):
         path = self.getCurrentEditFile()
         notebook = self.builder.get_object("edit_notebook")
         page_num = notebook.get_current_page()
-        notebook.remove_page(page_num)
         pg = self.edit_pages
         name = self.getCurrentScriptName()
         HawckMainWindow.disableScript(name)
+        notebook.remove_page(page_num)
         self.edit_pages = pg[:page_num] + pg[page_num+1:]
         os.remove(path)
 

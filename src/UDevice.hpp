@@ -1,3 +1,8 @@
+/** @file UDevice.hpp
+ *
+ * @brief User input device.
+ */
+
 #pragma once
 
 extern "C" {

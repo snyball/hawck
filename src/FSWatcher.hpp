@@ -179,13 +179,11 @@ private:
     FSEvent *handleEvent(struct inotify_event *ev);
 
 public:
-    /**
-     * Initialize inotify file descriptor.
+    /** Initialize inotify file descriptor.
      */
     FSWatcher();
 
-    /**
-     * FSWatcher destructor, stops the currently running thread.
+    /** FSWatcher destructor, stops the currently running thread.
      *
      * If we time out on stopping the thread a runtime_exception
      * will be thrown, this can happen if your callback ran into
@@ -214,14 +212,12 @@ public:
      */
     void remove(std::string path);
 
-    /**
-     * Add an entire directory tree, this only adds the directories.
+    /** Add an entire directory tree, this only adds the directories.
      */
     void addTree();
 
-    /** 
-     * Adds all files in a directory tree, this does not add any
-     * directories.
+    /** Adds all files in a directory tree, this does not add any
+     *  directories.
      */
     void addTreeFiles();
 
@@ -241,9 +237,8 @@ public:
      */
     void removeFrom(std::string path);
 
-    /**
-     * Spawn a thread watching over the added files, this
-     * new thread calls watch() with the provided callback.
+    /** Spawn a thread watching over the added files, this
+     *  new thread calls watch() with the provided callback.
      *
      * The thread will be detached, stop the thread by calling
      * stop() on the FSWatcher instance, or by returning false

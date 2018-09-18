@@ -103,26 +103,6 @@ bool Keyboard::isMe(const char *path) const {
     if (ioctl(new_fd, EVIOCGID, &dev_id) == -1)
         memset(&dev_id, 0, sizeof(dev_id));
 
-    #if 0
-    cout << "This keyboard:" << endl;
-    cout << "  name: '" << name << "'" << endl;
-    cout << "  uniq: '" << uniq_id << "'" << endl;
-    cout << "  phys: '" << phys << "'" << endl;
-    cout << "  dev_id.bustype: " << this->dev_id.bustype << endl;
-	cout << "  dev_id.vendor: " << this->dev_id.vendor << endl;
-	cout << "  dev_id.product: " << this->dev_id.product << endl;
-	cout << "  dev_id.version: " << this->dev_id.version << endl;
-
-    cout << "Other keyboard:" << endl;
-    cout << "  name: '" << ioctlGetString(new_fd, EVIOCGNAME) << "'" << endl;
-    cout << "  uniq: '" << ioctlGetString(new_fd, EVIOCGUNIQ) << "'" << endl;
-    cout << "  phys: '" << ioctlGetString(new_fd, EVIOCGPHYS) << "'" << endl;
-    cout << "  dev_id.bustype: " << dev_id.bustype << endl;
-	cout << "  dev_id.vendor: " << dev_id.vendor << endl;
-	cout << "  dev_id.product: " << dev_id.product << endl;
-	cout << "  dev_id.version: " << dev_id.version << endl;
-    #endif
-
     return (name == ioctlGetString(new_fd, EVIOCGNAME) &&
             uniq_id == ioctlGetString(new_fd, EVIOCGUNIQ) &&
             // phys == ioctlGetString(new_fd, EVIOCGPHYS) &&
