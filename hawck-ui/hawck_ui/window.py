@@ -708,7 +708,7 @@ class HawckMainWindow(MainWindow):
         about_dialog.hide()
 
     def saveScript(self, *_):
-        sav_dialog = Gtk.FileChooserDialog("Save as", self,
+        sav_dialog = Gtk.FileChooserDialog("Save as", self.window,
                                            Gtk.FileChooserAction.SAVE,
                                            (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
                                             Gtk.STOCK_SAVE, Gtk.ResponseType.OK))
