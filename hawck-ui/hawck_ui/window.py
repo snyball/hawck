@@ -480,6 +480,8 @@ class HawckMainWindow(MainWindow):
         name_entry = self.builder.get_object("import_script_name_entry")
         name = name_entry.get_text()
         dst_path = os.path.join(LOCATIONS["scripts"], name + ".hwk")
+        if not self.warnOverwrite(dst_path):
+            return
         src_path = file_chooser.get_filename()
         shutil.copy(src_path, dst_path)
         self.addEditPage(dst_path)
