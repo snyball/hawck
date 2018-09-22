@@ -508,8 +508,10 @@ class HawckMainWindow(MainWindow):
     def onNewScriptOK(self, *_):
         popover = self.builder.get_object("new_script_popover")
         popover.popdown()
-        name_entry = self.builder.get_object("new_script_name")
-        path = os.path.join(LOCATIONS["scripts"], name_entry.get_text() + ".hwk")
+        name = self.builder.get_object("new_script_name").get_text()
+        path = os.path.join(LOCATIONS["scripts"], name + ".hwk")
+        if not self.warnOverwrite(path):
+            return
         with open(path, "w") as f:
             f.write(SCRIPT_DEFAULT)
         self.addEditPage(path)
