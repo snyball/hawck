@@ -50,11 +50,6 @@ using namespace Lua;
 using namespace Permissions;
 using namespace std;
 
-static const char *const evval[] = {
-    "UP",
-    "DOWN",
-    "REPEAT"
-};
 static const char *event_str[EV_CNT];
 
 inline bool goodLuaFilename(const string& name) {
@@ -207,7 +202,7 @@ struct script_error_info {
 // TODO: My idea for this would be to run "gedit $info->path +$info->ar.currentline",
 //       then figure out what other editors support opening a file on a specific line
 //       and let the user choose which editor to use.
-void viewSource(NotifyNotification *n, char *action, script_error_info *info) {
+extern "C" void viewSource(NotifyNotification *n, char *action, script_error_info *info) {
     pid_t pid;
     fprintf(stderr, "Line nr: %d\n", info->ar.currentline);
     fprintf(stderr, "path: %s\n", info->path);
@@ -267,7 +262,7 @@ bool MacroDaemon::runScript(Lua::Script *sc, const struct input_event &ev) {
         auto [succ] = sc->call<bool>("__match", (int)ev.value, (int)ev.code, (int)ev.type);
         repeat = !succ;
     } catch (const LuaError &e) {
-        if (disable_on_err)
+        if (stop_on_err)
             sc->setEnabled(false);
         std::string report = e.fmtReport();
         if (notify_on_err)
@@ -307,7 +302,7 @@ void MacroDaemon::run() {
     #define _ADDCFG(_var) conf.addOption(#_var, &(_var))
     // Add atomic boolean options.
     _ADDCFG(notify_on_err);
-    _ADDCFG(disable_on_err);
+    _ADDCFG(stop_on_err);
     _ADDCFG(eval_keydown);
     _ADDCFG(eval_keyup);
     _ADDCFG(eval_repeat);
@@ -315,10 +310,10 @@ void MacroDaemon::run() {
     #undef _ADDCFG
     conf.addOption<string>("keymap", [this](string) {reloadAll();});
     conf.begin();
-
+    
     fsw.setWatchDirs(true);
     fsw.setAutoAdd(false);
-    fsw.begin([&](FSEvent &ev) {
+    fsw.begin([this](FSEvent &ev) {
                   lock_guard<mutex> lock(scripts_mtx);
                   try {
                       if (ev.mask & IN_DELETE) {
@@ -340,6 +335,7 @@ void MacroDaemon::run() {
                   }
                   return true;
               });
+
 
     getConnection();
 

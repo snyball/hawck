@@ -89,8 +89,7 @@ void KBDDaemon::unloadPassthrough(std::string path) {
 
 void KBDDaemon::loadPassthrough(std::string rel_path) {
     try {
-        // The CSV file is being reloaded after a change,
-        // remove the old keys.
+        // The CSV file is being reloaded after a change, remove the old keys.
         char *rpath = realpath(rel_path.c_str(), nullptr);
         if (rpath == nullptr) {
             throw SystemError("Error in realpath() unable to get path for: " + rel_path);
@@ -130,8 +129,8 @@ void KBDDaemon::loadPassthrough(std::string rel_path) {
 void KBDDaemon::loadPassthrough(FSEvent *ev) {
     unsigned perm = ev->stbuf.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO);
 
-    // Require that the file permission mode is 644 and that the file is
-    // owned by the daemon user.
+    // Require that the file permission mode is 644 and that the file is owned
+    // by the daemon user.
     if (perm == 0644 && ev->stbuf.st_uid == getuid()) {
         loadPassthrough(ev->path);
     } else {
@@ -167,7 +166,7 @@ void KBDDaemon::run() {
 
     updateAvailableKBDs();
 
-    keys_fsw.begin([&](FSEvent &ev) {
+    keys_fsw.begin([this](FSEvent &ev) {
                        lock_guard<mutex> lock(passthrough_keys_mtx);
                        syslog(LOG_INFO, "kbd file change on: %s", ev.path.c_str());
                        if (ev.mask & IN_DELETE_SELF)
@@ -186,7 +185,8 @@ void KBDDaemon::run() {
         input_gid = grp->gr_gid;
     }
 
-    input_fsw.begin([&](FSEvent &ev) {
+
+    input_fsw.begin([this, input_gid](FSEvent &ev) {
                         // Don't react to the directory itself.
                         if (ev.path == "/dev/input")
                             return true;
@@ -215,8 +215,9 @@ void KBDDaemon::run() {
                                 ret = stat(ev.path.c_str(), &stbuf);
                                 grp_perm = stbuf.st_mode & S_IRWXG;
 
-                                // Check if it is a character device, test is done here because
-                                // permissions might not allow for even stat()ing the file.
+                                // Check if it is a character device, test is
+                                // done here because permissions might not allow
+                                // for even stat()ing the file.
                                 if (ret != -1 && !S_ISCHR(ev.stbuf.st_mode)) {
                                     // Not a character device, return
                                     syslog(LOG_WARNING, "File %s is not a character device",
@@ -350,8 +351,8 @@ void KBDDaemon::run() {
                     try {
                         kbd->lock();
                     } catch (const KeyboardError &e) {
-                        // Report the error and continue, further keyboard errors will be caught in kbd->get()
-                        // later on.
+                        // Report the error and continue, further keyboard
+                        // errors will be caught in kbd->get() later on.
                         syslog(LOG_ERR, "Unable to lock keyboard: %s", kbd->getName().c_str());
                     }
 

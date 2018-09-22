@@ -74,7 +74,7 @@ private:
     std::string home_dir;
 
     std::atomic<bool> notify_on_err = true;
-    std::atomic<bool> disable_on_err = false;
+    std::atomic<bool> stop_on_err = false;
     std::atomic<bool> eval_keydown = true;
     std::atomic<bool> eval_keyup = true;
     std::atomic<bool> eval_repeat = true;

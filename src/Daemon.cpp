@@ -29,9 +29,8 @@ void dup_streams(const string &stdout_path, const string &stderr_path) {
 
     // Attempt to open /dev/null
     auto dev_null = fopen("/dev/null", "r");
-    if (dev_null == nullptr) {
+    if (dev_null == nullptr)
         abort();
-    }
 
     // Open new output files
     auto stdout_new = fopen(stdout_path, "wa");
