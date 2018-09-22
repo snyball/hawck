@@ -223,13 +223,14 @@ class Settings(Pluggable):
 
         ## Set up checkboxes
         try:
-            for chk in ("notify_on_err", "stop_on_err", "eval_keydown", "eval_keyup"):
+            for chk in ("notify_on_err", "stop_on_err", "eval_keydown", "eval_keyup", "eval_keyrepeat"):
                 try:
                     self.setCheck(f"{chk}_chk", sendMacroD(f"return config.{chk}")[0])
                 except KeyError:
                     print(f"Unable to retrieve config.{chk}")
                     continue
                 handler_name = f"on_{chk}_chk_toggled"
+                print(f"handler_name: {handler_name}")
                 @checkHandler
                 @setMacroD(chk)
                 def handler(self, on: bool):
@@ -599,6 +600,64 @@ class HawckMainWindow(MainWindow):
             os.unlink(os.path.join(LOCATIONS["scripts-enabled"], name + ".lua"))
         except Exception as e:
             print(f"e: {e}")
+
+    def pagesIter(self):
+        notebook = self.builder.get_object("edit_notebook")
+        return map(notebook.get_nth_page, range(notebook.get_n_pages()))
+
+    def warnOverwrite(self, path: str) -> None:
+        r = Gtk.ResponseType.YES
+        if os.path.exists(path):
+            m = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.WARNING, Gtk.ButtonsType.YES_NO,
+                                  f"{os.path.basename(path)} already exists, are you sure you want to overwrite it?")
+            r = m.run()
+            m.destroy()
+            ## Delete the notebook currently corresponding to `path`
+            if r == Gtk.ResponseType.YES:
+                notebook = self.builder.get_object("edit_notebook")
+                labels = map(notebook.get_tab_label, self.pagesIter())
+                for i, page_label in enumerate(labels):
+                    if os.path.basename(path) == page_label.get_text():
+                        notebook.remove_page(i)
+                        break
+        return r == Gtk.ResponseType.YES
+
+    def on_rename_script_ok_clicked(self, btn: Gtk.Button):
+        def loc(name):
+            return (os.path.join(prefix, name + postfix) for prefix, postfix in (
+                (LOCATIONS["scripts"], ".lua"),
+                (LOCATIONS["scripts"], ".hwk"),
+            ))
+        newname = self.builder.get_object("rename_script_entry").get_text()
+        oldname = self.getCurrentScriptName()
+
+        self.builder.get_object("rename_popover").popdown()
+
+        if newname == oldname:
+            return
+
+        if not self.warnOverwrite(os.path.join(LOCATIONS["scripts"], newname + ".hwk")):
+            return
+
+        for old, new in zip(loc(oldname), loc(newname)):
+            try:
+                shutil.move(old, new)
+            except FileNotFoundError:
+                pass
+
+        ## Change link if it exists
+        oldlnk = os.path.join(LOCATIONS["scripts-enabled"], oldname + ".lua")
+        newlnk = os.path.join(LOCATIONS["scripts-enabled"], newname + ".lua")
+        if os.path.exists(oldlnk):
+            os.unlink(oldlnk)
+            os.symlink(newlnk, os.path.join(LOCATIONS["scripts"], newname + ".lua"))
+        ## Script is not enabled, but overwritten script was, remove the link.
+        elif os.path.exists(newlnk):
+            os.unlink(newlnk)
+
+        notebook = self.builder.get_object("edit_notebook")
+        view = notebook.get_nth_page(notebook.get_current_page())
+        notebook.set_tab_label(view, Gtk.Label(newname + ".hwk"))
 
     def setScriptEnabled(self, switch_obj: Gtk.Switch, enabled: bool):
         hwk_path = self.getCurrentEditFile()

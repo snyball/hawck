@@ -90,6 +90,72 @@ SOFTWARE.
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
+  <object class="GtkDialog" id="are_you_sure_dialog">
+    <property name="can_focus">False</property>
+    <property name="type_hint">dialog</property>
+    <child>
+      <placeholder/>
+    </child>
+    <child internal-child="vbox">
+      <object class="GtkBox">
+        <property name="can_focus">False</property>
+        <property name="orientation">vertical</property>
+        <property name="spacing">2</property>
+        <child internal-child="action_area">
+          <object class="GtkButtonBox">
+            <property name="can_focus">False</property>
+            <property name="layout_style">end</property>
+            <child>
+              <object class="GtkButton" id="dialog_cancel">
+                <property name="label" translatable="yes">Cancel</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="dialog_accept">
+                <property name="label" translatable="yes">Yes</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">False</property>
+            <property name="position">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="label" translatable="yes">Are you sure you want to overwrite {newname}?</property>
+            <attributes>
+              <attribute name="font-desc" value="Liberation Sans 16"/>
+            </attributes>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">1</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+  </object>
   <object class="GtkTextBuffer" id="default_hwk_example">
     <property name="text" translatable="yes">require "init"
 
@@ -234,6 +300,46 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
         </child>
         <child>
           <placeholder/>
+        </child>
+      </object>
+    </child>
+  </object>
+  <object class="GtkImage" id="image11">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="icon_name">dialog-ok</property>
+  </object>
+  <object class="GtkPopover" id="rename_popover">
+    <property name="can_focus">False</property>
+    <child>
+      <object class="GtkGrid">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="row_homogeneous">True</property>
+        <child>
+          <object class="GtkEntry" id="rename_script_entry">
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="primary_icon_name">text-x-generic</property>
+            <property name="placeholder_text" translatable="yes">New name</property>
+          </object>
+          <packing>
+            <property name="left_attach">0</property>
+            <property name="top_attach">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkButton" id="rename_script_ok">
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="receives_default">True</property>
+            <property name="image">image11</property>
+            <signal name="clicked" handler="on_rename_script_ok_clicked" swapped="no"/>
+          </object>
+          <packing>
+            <property name="left_attach">1</property>
+            <property name="top_attach">0</property>
+          </packing>
         </child>
       </object>
     </child>
@@ -975,7 +1081,6 @@ stack traceback:
         </child>
         <child>
           <object class="GtkScrolledWindow">
-            <property name="height_request">150</property>
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="shadow_type">in</property>
@@ -991,7 +1096,6 @@ stack traceback:
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="vexpand">True</property>
-                    <signal name="row-activated" handler="on_keymap_search_list_row_activated" swapped="no"/>
                     <signal name="row-selected" handler="on_keymap_search_list_row_selected" swapped="no"/>
                   </object>
                 </child>
@@ -1280,6 +1384,47 @@ stack traceback:
                       <object class="GtkSwitch" id="script_enabled_switch">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
+                      </object>
+                      <packing>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkMenuButton">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="popover">rename_popover</property>
+                        <child>
+                          <object class="GtkGrid">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="column_spacing">3</property>
+                            <property name="row_homogeneous">True</property>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="label" translatable="yes">Rename</property>
+                              </object>
+                              <packing>
+                                <property name="left_attach">1</property>
+                                <property name="top_attach">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkImage">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="icon_name">document-revert</property>
+                              </object>
+                              <packing>
+                                <property name="left_attach">0</property>
+                                <property name="top_attach">0</property>
+                              </packing>
+                            </child>
+                          </object>
+                        </child>
                       </object>
                       <packing>
                         <property name="position">0</property>
@@ -1946,8 +2091,6 @@ stack traceback:
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">True</property>
-                                <property name="tooltip_text" translatable="yes">Hint: If you're european, you probably want one
-of the -latin maps</property>
                                 <property name="direction">right</property>
                                 <property name="popover">set_keymap_popover</property>
                                 <child>
@@ -2041,7 +2184,7 @@ of the -latin maps</property>
                                 <property name="can_focus">False</property>
                                 <property name="tooltip_text" translatable="yes">Control how quickly Hawck should output keys, some programs may become overrun with keys.</property>
                                 <property name="popup_fixed_width">False</property>
-                                <property name="active_id">speed_3</property>
+                                <property name="active_id">speed_0</property>
                                 <items>
                                   <item id="speed_-2" translatable="yes">Very slow</item>
                                   <item id="speed_-1" translatable="yes">Slow</item>
@@ -2050,7 +2193,6 @@ of the -latin maps</property>
                                   <item id="speed_2" translatable="yes">Very fast</item>
                                   <item id="speed_3" translatable="yes">Deja vu</item>
                                 </items>
-                                <signal name="changed" handler="onSetTypingSpeed" swapped="no"/>
                               </object>
                               <packing>
                                 <property name="left_attach">1</property>
