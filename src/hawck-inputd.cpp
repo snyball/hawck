@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
     signal(SIGPIPE, handleSigPipe);
 
     string HELP =
-        "Usage: hawck-inputd [--udev-event-delay <µs>] [--no-fork] [--socket-timeout] -k <device>\n"
+        "Usage: hawck-inputd [--udev-event-delay <us>] [--no-fork] [--socket-timeout] -k <device>\n"
         "\n"
         "Examples:\n"
         "  hawck-inputd --kbd-device /dev/input/event13            Listen on a single device.\n\n"
@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
         "  -h, --help          Display this help information.\n"
         "  --version           Display version and exit.\n"
         "  -k, --kbd-device    Add a keyboard to listen to.\n"
-        "  --udev-event-delay  Delay between events sent on the udevice in µs.\n"
+        "  --udev-event-delay  Delay between events sent on the udevice in us.\n"
         "  --socket-timeout    Time in milliseconds until timeout on sockets.\n"
     ;
 

@@ -4,7 +4,7 @@
 Hawck \- manual page for Hawck InputD v0.6
 .SH SYNOPSIS
 .B hawck-inputd
-[\fI\,--udev-event-delay <??s>\/\fR] [\fI\,--no-fork\/\fR] [\fI\,--socket-timeout\/\fR] \fI\,-k <device>\/\fR
+[\fI\,--udev-event-delay <us>\/\fR] [\fI\,--no-fork\/\fR] [\fI\,--socket-timeout\/\fR] \fI\,-k <device>\/\fR
 .SH DESCRIPTION
 Listen on the provided keyboard devices and pass whitelisted
 input over to hawck-macrod.
@@ -23,7 +23,7 @@ Display version and exit.
 Add a keyboard to listen to.
 .TP
 \fB\-\-udev\-event\-delay\fR
-Delay between events sent on the udevice in ??s.
+Delay between events sent on the udevice in us.
 .TP
 \fB\-\-socket\-timeout\fR
 Time in milliseconds until timeout on sockets.
@@ -50,19 +50,7 @@ Listen on all keyboard devices.
 .SH "REPORTING BUGS"
 Bugs should be reported to: <https://github.com/snyball/Hawck/issues>
 .SH COPYRIGHT
-Copyright (C) Jonas M??ller 2018
+Copyright (C) Jonas Møller 2018
 Provided under the BSD 2-clause license.
 .SH "SEE ALSO"
 hawck-ui(1) hawck-macrod(1) hwk2lua(1) lsinput(1)
-.PP
-The full documentation for
-.B Hawck
-is maintained as a Texinfo manual.  If the
-.B info
-and
-.B Hawck
-programs are properly installed at your site, the command
-.IP
-.B info Hawck
-.PP
-should give you access to the complete manual.
