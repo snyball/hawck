@@ -218,7 +218,7 @@ void KBDDaemon::run() {
                                 // Check if it is a character device, test is
                                 // done here because permissions might not allow
                                 // for even stat()ing the file.
-                                if (ret != -1 && !S_ISCHR(ev.stbuf.st_mode)) {
+                                if (ret != -1 && !S_ISCHR(stbuf.st_mode)) {
                                     // Not a character device, return
                                     syslog(LOG_WARNING, "File %s is not a character device",
                                            ev.path.c_str());
@@ -306,12 +306,11 @@ void KBDDaemon::run() {
 
                 // Receive keys to emit from the macro daemon.
                 int count = 0;
-                for (;;) {
+                for (;; count++) {
                     kbd_com.recv(&action, timeout);
                     if (action.done)
                         break;
                     udev.emit(&action.ev);
-                    count++;
                 }
                 // Flush received keys and continue on.
                 udev.flush();

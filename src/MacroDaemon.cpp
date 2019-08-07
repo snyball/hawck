@@ -347,7 +347,10 @@ void MacroDaemon::run() {
 
             kbd_com->recv(&action);
 
-            if (!( (!eval_keydown && ev.value == 1) || (!eval_keyup && ev.value == 0) ) && !disabled) {
+            if (!( (!eval_keydown && ev.value == 1) ||
+                   (!eval_keyup && ev.value == 0) ) &&
+                !disabled)
+            {
                 lock_guard<mutex> lock(scripts_mtx);
                 // Look for a script match.
                 for (auto &[_, sc] : scripts)
