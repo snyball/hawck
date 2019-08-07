@@ -50,11 +50,11 @@ end
 - Make non-us keyboards more convenient for programming:
 ```lua
 -- Replace with your respective european characters
-shift + key "ø" => replace "["
-key "ø" => replace "{"
+shift + key "ø" => insert "["
+key "ø" => insert "{"
 -- , or
-shift + key "æ" => replace "]"
-key "æ" => replace "}"
+shift + key "æ" => insert "]"
+key "æ" => insert "}"
 ```
 - Store a common phrase and activate it with a key-binding
 ```lua
@@ -130,7 +130,7 @@ As an example, here is a hawk script:
 -- It is only run when a key is not being released (-up)
 mode("Programming mode", down + key "f7") + -up => {
     -- When caps-lock is pressed, substitute with escape
-    key "caps" => insert "escape"
+    key "caps" => replace "escape"
     shift => {
         key "ø" => insert "["
         key "æ" => insert "]"
@@ -273,14 +273,14 @@ Here are some alternative models that have been considered:
       requires very careful programming and as such takes longer to
       implement.
 - Don't use scripts
- - This is obviously not as flexible.
- - A common use case for something like this is very simple
-   rebindings, like caps => control. This system would work
-   very well for those cases.
- - Although this is planned as an alternative, it can never
-   be the only supported mode, as Hawck aims to be as useful
-   when it comes to keyboard automation as something like
-   AutoHotkey.
+  - This is obviously not as flexible.
+  - A common use case for something like this is very simple
+    rebindings, like caps => control. This system would work
+    very well for those cases.
+  - Although this is planned as an alternative, it can never
+    be the only supported mode, as Hawck aims to be as useful
+    when it comes to keyboard automation as something like
+    AutoHotkey.
 - "Abandon all hope, ye who enter unsafe mode"
   - For a lot of users, especially the ones still on X11, these
     issues are not a concern. They might want a model that just
