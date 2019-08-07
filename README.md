@@ -42,7 +42,6 @@ function getClipboard()
     return clip
 end
 
--- 
 shift + alt + key "v" => function ()
   local clip_contents = getClipboard()
   write(clip_contents)() -- Note the extra parens, write() returns a closure
@@ -260,19 +259,19 @@ security model useless.
 Here are some alternative models that have been considered:
 
 - Run all scripts inside inputd
- - In this model there is only a single daemon, hawck-inputd
- - This is planned as an optional alternative, and a lot of
-   the code has already been written, but it takes a lot of
-   work and consideration to make this work well, and securely.
-   - Work on this might just be scrapped for script-less
-     rebinding directly inside inputd.
- - Scripts are sandboxed and are not allowed to communicate
-   with the outside world, this includes launching programs.
-   - Problem #1: Not being able to bind keys to launchers was
-     a deal breaker for me.
-   - Problem #2: Perfect sandboxing isn't easy to pull of, it
-     requires very careful programming and as such takes longer to
-     implement.
+  - In this model there is only a single daemon, hawck-inputd
+  - This is planned as an optional alternative, and a lot of
+    the code has already been written, but it takes a lot of
+    work and consideration to make this work well, and securely.
+    - Work on this might just be scrapped for script-less
+      rebinding directly inside inputd.
+  - Scripts are sandboxed and are not allowed to communicate
+    with the outside world, this includes launching programs.
+    - Problem #1: Not being able to bind keys to launchers was
+      a deal breaker for me.
+    - Problem #2: Perfect sandboxing isn't easy to pull of, it
+      requires very careful programming and as such takes longer to
+      implement.
 - Don't use scripts
  - This is obviously not as flexible.
  - A common use case for something like this is very simple
@@ -283,22 +282,22 @@ Here are some alternative models that have been considered:
    when it comes to keyboard automation as something like
    AutoHotkey.
 - "Abandon all hope, ye who enter unsafe mode"
- - For a lot of users, especially the ones still on X11, these
-   issues are not a concern. They might want a model that just
-   let's them do whatever they want whenever they want without
-   any bothersome password prompts. This is not recommended,
-   but a perfectly valid stance.
- - This is already supported, opt-in, by toggling unsafe mode
-   in the settings panel of hawck-ui.
+  - For a lot of users, especially the ones still on X11, these
+    issues are not a concern. They might want a model that just
+    let's them do whatever they want whenever they want without
+    any bothersome password prompts. This is not recommended,
+    but a perfectly valid stance.
+  - This is already supported, opt-in, by toggling unsafe mode
+    in the settings panel of hawck-ui.
 
 - What I'm currently aiming for is being able to support these
   three modes:
- - Sandboxed inside inputd
-  - Used for most simple key-replacement scripts.
- - Whitelisted keys passed from inputd to macrod (current method)
-  - Used for anything that can't be done from the sandbox.
- - Unsafe mode (optional current method)
-  - Used by X11 users, and users who just don't care.
+  - Sandboxed inside inputd
+    - Used for most simple key-replacement scripts.
+  - Whitelisted keys passed from inputd to macrod (current method)
+    - Used for anything that can't be done from the sandbox.
+  - Unsafe mode (optional current method)
+    - Used by X11 users, and users who just don't care.
 
 Ideally the hawck-ui editor should be able to start off
 assuming sandboxed mode, then inform the user about the
@@ -332,16 +331,16 @@ not be used:
 - GNOME desktop receives a [down + shift] event, from G710 keyboard
 - hawck-inputd starts up
 - hawck-inputd acquires an immediate lock on G710
- - GNOME will now not see any more of the G710 keypresses
+  - GNOME will now not see any more of the G710 keypresses
 - hawck-inputd registers a virtual keyboard device
- - This device will now echo key events that come from G710,
-   and any other keyboard on the system.
+  - This device will now echo key events that come from G710,
+    and any other keyboard on the system.
 - user stops pressing the shift key on G710 keyboard
 - hawck-inputd receives the [up + shift] event
 - hawck-inputd will now echo the [up + shift] event through
   its virtual keyboard.
 - GNOME desktop sees an [up + shift] event, from Hawck keyboard
- - GNOME doesn't (and shouldn't) do anything with this event
+  - GNOME doesn't (and shouldn't) do anything with this event
 - GNOME desktop still considers the shift key to be held down,
   because as far as it knows it is still held down on one of the
   keyboards, Hawck stole the memo.
@@ -359,7 +358,7 @@ For example this string syntax is not supported `[==[strings]==]`
 if it contains any `=>` operators.
 
 I think it works well enough for what it is used for, but I have
-definately considered replacing it with a more robust Haskell/Parsec
+definitely considered replacing it with a more robust Haskell/Parsec
 parser, but only if I find myself running into too many issues with
 the current hack.
 
@@ -370,4 +369,4 @@ the current hack.
   - Workaround: run hawck-inputd with the --udev-event-delay flag set to 3800 (µs)
 - hawck-ui will sometimes fail to start
   - It ends up waiting on a FIFO forever.
-  - Workardound: Kill it and run it again
+  - Workaround: Kill it and run it again
