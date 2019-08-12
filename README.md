@@ -78,6 +78,42 @@ of the AWK programming language (plus, hawks are pretty cool I guess.)
 See the `install.sh` script for how Hawck should be installed, it contains
 a few notes for package maintainers.
 
+To anyone considering or having created a package for Hawck, please consider
+typing out an issue for it (with instructions for your distribution) so that
+it may be added to this README.
+
+## How do I install it?
+
+Download or clone the GIT repo, and run the `install.sh` program from the
+command line. This script has been tested for Ubuntu 18.04.
+
+You will need to reboot the computer after running the installer, because it
+needs to add your user to a new group (with Ubuntu it seems like logging out and
+back in isn't enough.)
+
+When you've started the computer back up again, run the following commands:
+
+    $ sudo systemctl start hawck-inputd
+    $ hawck-macrod
+    $ hawck-ui
+
+>PS: There is a known bug that sometimes causes `hawck-ui` to hang on startup, in
+>that case, try again.
+
+>Important note for people using sway, i3, openbox and similar minimal WMs: You
+>need to have a [Polkit Authentication Agent](https://wiki.archlinux.org/index.php/Polkit#Authentication_agents)
+>running to use the UI.
+
+Move over to the settings tab, and change your keymap (this will hopefully be
+done automatically soon.)
+
+You can now move on to the "Edit scripts" tab and attempt to edit/enable the
+default test script.
+
+If you want to keep using Hawck, and want to have it start up automatically,
+move over to Settings and click the autostart toggle button, you will be
+prompted for your password.
+
 ## Security
 
 As you can imagine, with all this power comes great responsibility. Here's
