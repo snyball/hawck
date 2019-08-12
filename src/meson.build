@@ -31,7 +31,6 @@ macrod_src = [
   'Permissions.cpp',
   'FIFOWatcher.cpp',
   'LuaConfig.cpp',
-  #'Dir.cpp',
 ]
 executable('hawck-macrod',
            macrod_src,
@@ -40,8 +39,6 @@ executable('hawck-macrod',
                            notifydep],
            include_directories : conf_inc,
            install : true,
-           #c_pch : 'pch/macrod_pch.h',
-           #cpp_pch : 'pch/macrod_pch.hpp',
           )
 
 inputd_src = [
@@ -53,20 +50,15 @@ inputd_src = [
   'CSV.cpp',
   'hawck-inputd.cpp',
   'Permissions.cpp',
-  #'Dir.cpp',
 ]
 executable('hawck-inputd',
            inputd_src,
            dependencies : [pthreaddep],
            include_directories : conf_inc,
            install : true,
-           #c_pch : 'pch/inputd_pch.h',
-           #cpp_pch : 'pch/inputd_pch.hpp',
           )
 
 executable('lsinput',
            'tools/lsinput.cpp',
            install : true,
-           #c_pch : 'pch/lsinput_pch.h',
-           #cpp_pch : 'pch/lsinput_pch.hpp',
           )

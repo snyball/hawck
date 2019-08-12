@@ -229,6 +229,7 @@ function readLinuxKBMap(path)
   end
 
   if has_gz then os.remove(path) end
+
   return map, combined_keys, modkey_lookup
 end
 
