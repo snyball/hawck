@@ -44,7 +44,7 @@ function run() {
 
     ninja || die "Unable to compile hawck"
     ninja hawck-ui >&2 || die "Failed to build hawck-ui"
-    pkexec bash -c "cd '$(pwd)' && ninja install && ../bin/hawck-setup" >&2 || die "Installation failed"
+    pkexec bash -c "cd '$(pwd)' && ninja install" >&2 || die "Installation failed"
     popd &>/dev/null
     
     ## Run user setup
