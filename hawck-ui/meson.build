@@ -15,4 +15,6 @@ run_target('hawck-ui',
   command : [python3.find_python(), 'setup.py', 'build'],
 )
 
-meson.add_install_script('install-hawck-ui.sh')
+if get_option('use_meson_install')
+  meson.add_install_script('install-hawck-ui.sh')
+endif
