@@ -20,20 +20,7 @@ function ok() {
     echo -e "$WHITEB""OK: $GREENB$1$NC"
 }
 
-if [ "$#" -lt 1 ]; then
-    die "Not enough arguments, do not use this script directly, use install.sh"
-fi
-USER="$1"
-
-if [ "$USER" = "" ]; then
-    die "Desktop user not defined, run: 'meson configure -Ddesktop_user=\$(whoami)'"
-fi
-
-if [ "$USER" = "root" ]; then
-    die "Desktop user was set to 'root', this is not allowed, run: 'meson configure -Ddesktop_user=\$(whoami)'"
-fi
-
-ok "Setting up hawck for $USER"
+ok "Setting up hawck."
 
 function setup-users() {
     ## Set up hawck-input home directory
@@ -48,8 +35,6 @@ function setup-users() {
     groupadd hawck-uinput
     usermod -aG hawck-uinput hawck-input
 
-    ## Allow for sharing of key inputs via UNIX sockets.
-    usermod -aG hawck-input-share "$USER"
     chown hawck-input:hawck-input-share /var/lib/hawck-input
     chmod 770 /var/lib/hawck-input
 
