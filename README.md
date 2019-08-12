@@ -73,6 +73,11 @@ bit of a hack, and the scripts take inspiration from the pattern-matching style
 of the AWK programming language (plus, hawks are pretty cool I guess.)
 </small>
 
+## For package maintainers
+
+See the `install.sh` script for how Hawck should be installed, it contains
+a few notes for package maintainers.
+
 ## Security
 
 As you can imagine, with all this power comes great responsibility. Here's
