@@ -50,11 +50,11 @@ end
 - Make non-us keyboards more convenient for programming:
 ```lua
 -- Replace with your respective european characters
-shift + key "ø" => replace "["
-key "ø" => replace "{"
+shift + key "ø" => insert "["
+key "ø" => insert "{"
 -- , or
-shift + key "æ" => replace "]"
-key "æ" => replace "}"
+shift + key "æ" => insert "]"
+key "æ" => insert "}"
 ```
 - Store a common phrase and activate it with a key-binding
 ```lua
@@ -72,6 +72,47 @@ The name is a portmanteau of "Hack" and "AWK", as the program started out as a
 bit of a hack, and the scripts take inspiration from the pattern-matching style
 of the AWK programming language (plus, hawks are pretty cool I guess.)
 </small>
+
+## For package maintainers
+
+See the `install.sh` script for how Hawck should be installed, it contains
+a few notes for package maintainers.
+
+To anyone considering or having created a package for Hawck, please consider
+typing out an issue for it (with instructions for your distribution) so that
+it may be added to this README.
+
+## How do I install it?
+
+Download or clone the GIT repo, and run the `install.sh` program from the
+command line. This script has been tested for Ubuntu 18.04.
+
+You will need to reboot the computer after running the installer, because it
+needs to add your user to a new group (with Ubuntu it seems like logging out and
+back in isn't enough.)
+
+When you've started the computer back up again, run the following commands:
+
+    $ sudo systemctl start hawck-inputd
+    $ hawck-macrod
+    $ hawck-ui
+
+>PS: There is a known bug that sometimes causes `hawck-ui` to hang on startup, in
+>that case, try again.
+
+>Important note for people using sway, i3, openbox and similar minimal WMs: You
+>need to have a [Polkit Authentication Agent](https://wiki.archlinux.org/index.php/Polkit#Authentication_agents)
+>running to use the UI.
+
+Move over to the settings tab, and change your keymap (this will hopefully be
+done automatically soon.)
+
+You can now move on to the "Edit scripts" tab and attempt to edit/enable the
+default test script.
+
+If you want to keep using Hawck, and want to have it start up automatically,
+move over to Settings and click the autostart toggle button, you will be
+prompted for your password.
 
 ## Security
 
@@ -130,7 +171,7 @@ As an example, here is a hawk script:
 -- It is only run when a key is not being released (-up)
 mode("Programming mode", down + key "f7") + -up => {
     -- When caps-lock is pressed, substitute with escape
-    key "caps" => insert "escape"
+    key "caps" => replace "escape"
     shift => {
         key "ø" => insert "["
         key "æ" => insert "]"
@@ -273,14 +314,14 @@ Here are some alternative models that have been considered:
       requires very careful programming and as such takes longer to
       implement.
 - Don't use scripts
- - This is obviously not as flexible.
- - A common use case for something like this is very simple
-   rebindings, like caps => control. This system would work
-   very well for those cases.
- - Although this is planned as an alternative, it can never
-   be the only supported mode, as Hawck aims to be as useful
-   when it comes to keyboard automation as something like
-   AutoHotkey.
+  - This is obviously not as flexible.
+  - A common use case for something like this is very simple
+    rebindings, like caps => control. This system would work
+    very well for those cases.
+  - Although this is planned as an alternative, it can never
+    be the only supported mode, as Hawck aims to be as useful
+    when it comes to keyboard automation as something like
+    AutoHotkey.
 - "Abandon all hope, ye who enter unsafe mode"
   - For a lot of users, especially the ones still on X11, these
     issues are not a concern. They might want a model that just

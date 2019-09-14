@@ -1,6 +1,14 @@
-option('desktop_user', type : 'string', value : '', description : 'The desktop user installing Hawck')
 option('redirect_std',
        type : 'boolean',
        value : false,
-       description : 'Whether or not to redirect stdout and stderr to log files in the daemons')
-option('debug', type : 'boolean', value : false)
+       description : 'Whether or not to redirect stdout and stderr to log files in the daemons.')
+
+option('debug_hawck',
+       type : 'boolean',
+       value : false,
+       description : 'Debug build option.')
+
+option('use_meson_install',
+       type : 'boolean',
+       value : false,
+       description : 'Whether or not to run install scripts from the build.')

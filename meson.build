@@ -19,7 +19,7 @@ add_global_arguments('-Wno-reorder', language : 'cpp')
 add_global_arguments('-Wall', language : 'cpp')
 add_global_arguments('-Wextra', language : 'cpp')
 
-if get_option('debug')
+if get_option('debug_hawck')
   # add_global_arguments('-Wshadow', language : 'cpp')
   add_global_arguments('-Wcomment', language : 'cpp')
   add_global_arguments('-Wformat', language : 'cpp')
@@ -44,10 +44,7 @@ subdir('tests')
 subdir('hawck-ui')
 subdir('docs')
 
-de_user = get_option('desktop_user')
-if de_user == ''
-  warning('Option desktop_user not defined, run `meson configure -Ddesktop_user=$(whoami)`')
+if get_option('use_meson_install')
+  meson.add_install_script('bin/hawck-setup.sh')
 endif
-
-meson.add_install_script('bin/hawck-setup.sh', de_user)
 

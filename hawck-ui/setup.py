@@ -1,11 +1,13 @@
 #!/usr/bin/python3
 
-import setuptools, json
+import os, setuptools, json
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-with open("../build/hawck-ui/setup_config.json") as rf:
+MESON_BUILD_ROOT = os.environ.get('MESON_BUILD_ROOT') or '../build'
+
+with open(os.path.join(MESON_BUILD_ROOT, "hawck-ui/setup_config.json")) as rf:
     config = json.load(rf)
 
 setuptools.setup(
