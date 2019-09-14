@@ -26,8 +26,14 @@ rm '/etc/udev/rules.d/99-hawck-input.rules'
 ok "Removed scripts and daemon files"
 
 ## Icons
-find '/usr/share/icons/hicolor' -name "hawck.png" -exec rm '{}' \;
-find '/usr/share/icons/hicolor' -name "hawck.svg" -exec rm '{}' \;
+# find '/usr/share/icons/hicolor' -name "hawck.png" -exec rm '{}' \;
+# find '/usr/share/icons/hicolor' -name "hawck.svg" -exec rm '{}' \;
+for res in 32 64 128 256 512; do
+    res2="$res"'x'"$res"
+    fpath="/usr/share/icons/hicolor/$res2/apps/"
+    [ -f "$fpath/hawck.png" ] && rm "$fpath/hawck.png"
+    [ -f "$fpath/hawck.svg" ] && rm "$fpath/hawck.svg"
+done
 ok "Removed icons"
 
 rm '/usr/local/bin/hawck-ui'
