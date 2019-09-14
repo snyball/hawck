@@ -26,8 +26,9 @@ static inline FSWatchFn getTestFn(vector<string>& paths,
                }
 
                // Test cases done.
-               if (idx == paths.size())
+               if (idx == paths.size()) {
                    return false;
+               }
 
                return true;
            };
@@ -47,24 +48,30 @@ static inline void runTestsCMD(FSWatcher *w, vector<string>& paths, vector<strin
     const int SLEEP_TIME = 10000;
     int sleeps = 0;
     string err = "";
-    atomic<size_t> idx = 0;
+    atomic<size_t> idx(0);
     auto fn = getTestFn(paths, &err, idx);
-    w->begin(fn);
+    w->asyncWatch(fn);
 
-    for (string c : cmds)
+    cout << "Waiting for asyncWatch to start ..." << endl;
+    usleep(100000);
+
+    for (string c : cmds) {
+        cout << "$ " << c << endl;
+        usleep(10000);
         system_s(c);
+    }
 
+    cout << "Done sending commands" << endl;
     while (w->isRunning()) {
-        if (sleeps++ > MAX_SLEEPS) {
-            w->stop();
-	    while (w->isRunning()) continue;
+        cout << "Waiting for async watch to finish ..." << endl;
+        if (sleeps++ > MAX_SLEEPS)
             FAIL("Timeout");
-        }
         usleep(SLEEP_TIME);
     }
     if (err != "") {
         FAIL(err);
     }
+    cout << "Exiting test function ..." << endl;
 }
 
 static inline vector<string> mkTestFiles(int num_files, bool create) {

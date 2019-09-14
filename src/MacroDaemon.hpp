@@ -1,7 +1,7 @@
 /* =====================================================================================
  * Macro daemon.
  *
- * Copyright (C) 2018 Jonas Møller (no) <jonasmo441@gmail.com>
+ * Copyright (C) 2018 Jonas Møller (no) <jonas.moeller2@protonmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -73,12 +73,12 @@ private:
     FSWatcher fsw;
     std::string home_dir;
 
-    std::atomic<bool> notify_on_err = true;
-    std::atomic<bool> stop_on_err = false;
-    std::atomic<bool> eval_keydown = true;
-    std::atomic<bool> eval_keyup = true;
-    std::atomic<bool> eval_repeat = true;
-    std::atomic<bool> disabled = false;
+    std::atomic<bool> notify_on_err;
+    std::atomic<bool> stop_on_err;
+    std::atomic<bool> eval_keydown;
+    std::atomic<bool> eval_keyup;
+    std::atomic<bool> eval_repeat;
+    std::atomic<bool> disabled;
 
     /** Display freedesktop DBus notification. */
     void notify(std::string title,

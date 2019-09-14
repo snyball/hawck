@@ -46,7 +46,8 @@ void dup_streams(const string &stdout_path, const string &stderr_path) {
 }
 
 /**
- * Fork, becoming sub-process.
+ * Fork through, i.e fork and become the subprocess while the original process
+ * stops.
  *
  * @throws SystemError If the fork() call fails.
  */
@@ -58,7 +59,7 @@ inline void forkThrough() {
     }
 }
 
-/*
+/**
  * Adapted to C++ from Michael Kerrisks TLPI book.
  */
 void daemonize(const string &logfile_path) {
@@ -66,7 +67,7 @@ void daemonize(const string &logfile_path) {
 
     if (setsid() == -1)
         throw SystemError("Unable to setsid(): ", errno);
-    
+
     forkThrough();
 
     umask(0);

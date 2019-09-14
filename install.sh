@@ -9,7 +9,7 @@ function die() {
     exit 1
 }
 
-if [ $(whoami) = 'root' ]; then
+if [ "$(whoami)" = 'root' ]; then
     echo "Error: Do not run $0 as root, run it under your normal user account."
     exit 1
 fi
@@ -32,16 +32,16 @@ function run() {
     mkdir build
     cp bin/run-hawck.sh build/
     ## Configure, build, install
-    pushd "build" &>/dev/null
-    meson -Ddesktop_user=$(whoami) >&2 || die "Failed to create build"
-    meson configure -Ddesktop_user=$(whoami) >&2 || die "Failed to configure meson"
-    echo "25%"
-    (ninja || die "Unable to compile hawck") | ../bin/ninja-get-percent.awk 25 45
-    echo "70%"
-    ninja hawck-ui >&2 || die "Failed to build hawck-ui"
-    echo "80%"
-    pkexec bash -c "cd '$(pwd)' && ninja install" >&2 || die "Installation failed"
-    popd &>/dev/null
+    #pushd "build" &>/dev/null
+    #meson -Ddesktop_user="$(whoami)" >&2 || die "Failed to create build"
+    #meson configure -Ddesktop_user="$(whoami)" >&2 || die "Failed to configure meson"
+    #echo "25%"
+    #(ninja || die "Unable to compile hawck") | ../bin/ninja-get-percent.awk 25 45
+    #echo "70%"
+    #ninja hawck-ui >&2 || die "Failed to build hawck-ui"
+    #echo "80%"
+    #pkexec bash -c "cd '$(pwd)' && ninja install" >&2 || die "Installation failed"
+    #popd &>/dev/null
     
     ## Set up user directories
     

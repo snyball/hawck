@@ -65,35 +65,38 @@ function setup-users() {
 
 pushd "${MESON_SOURCE_ROOT}" &>/dev/null
 
-HAWCK_BIN=/usr/share/hawck/bin
+HAWCK_SHARE=/usr/share/hawck
+mkdir -p "$HAWCK_SHARE"
+
+HAWCK_BIN="$HAWCK_SHARE/bin"
 mkdir -p "$HAWCK_BIN"
 for src in src/scripts/*.sh src/scripts/*.awk; do
-    name=$(basename $src)
+    name="$(basename "$src")"
     echo "\$ install -m 755 '$src' '$HAWCK_BIN/$name'"
     install -m 755 "$src" "$HAWCK_BIN/$name"
 done
 chown -R root:root "$HAWCK_BIN"
 
 ## TODO: Move __UNSAFE_MODE.csv into here:
-mkdir -p "/usr/share/hawck/keys"
-cp bin/__UNSAFE_MODE.csv  "/usr/share/hawck/keys/"
+mkdir -p "$HAWCK_SHARE/keys"
+cp bin/__UNSAFE_MODE.csv  "$HAWCK_SHARE/keys/"
 chmod 644 bin/__UNSAFE_MODE.csv
 
-cp bin/hawck-macrod.desktop /usr/share/hawck/bin/
+cp bin/hawck-macrod.desktop $HAWCK_SHARE/bin/
 
 ok "Installed scripts to hawck/bin"
 
 cp bin/start-hawck-inputd.sh /usr/local/bin/start-hawck-inputd
 
-HAWCK_LLIB=/usr/share/hawck/LLib
+HAWCK_LLIB=$HAWCK_SHARE/LLib
 mkdir -p "$HAWCK_LLIB"
 cp src/Lua/*.lua "$HAWCK_LLIB/"
 
-KEYMAPS_DIR=/usr/share/hawck/keymaps
+KEYMAPS_DIR=$HAWCK_SHARE/keymaps
 [ -d $KEYMAPS_DIR ] && rm -r $KEYMAPS_DIR
 cp -r keymaps $KEYMAPS_DIR
 
-ICONS_DIR=/usr/share/hawck/icons
+ICONS_DIR=$HAWCK_SHARE/icons
 [ -d $ICONS_DIR ] && rm -r $ICONS_DIR
 cp -r icons $ICONS_DIR
 
@@ -137,5 +140,8 @@ popd &>/dev/null ## Done installing files
 setup-users
 
 ok "Configured groups"
+
+chmod -R a+r "$HAWCK_SHARE"
+find "$HAWCK_SHARE" -type d -exec chmod a+x '{}' \;
 
 echo -e "$WHITEB""Installation was succesful$NC"

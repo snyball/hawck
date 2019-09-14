@@ -1,7 +1,7 @@
 /* =====================================================================================
  * Remote user input device
  *
- * Copyright (C) 2018 Jonas Møller (no) <jonasmo441@gmail.com>
+ * Copyright (C) 2018 Jonas Møller (no) <jonas.moeller2@protonmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -58,7 +58,6 @@ extern "C" {
     M(RemoteUDevice, emit, int(), int(), int()) _       \
     M(RemoteUDevice, flush)
 
-// Declare extern "C" Lua bindings
 LUA_DECLARE(RemoteUDevice_lua_methods)
 
 /** Remote UDevice
@@ -70,9 +69,6 @@ class RemoteUDevice : public IUDevice,
 private:
     UNIXSocket<KBDAction> *conn = nullptr;
     std::vector<KBDAction> evbuf;
-
-    // Collect methods into an array
-    LUA_METHOD_COLLECT(RemoteUDevice_lua_methods);
 
 public:
     explicit RemoteUDevice(UNIXSocket<KBDAction> *conn);
@@ -93,7 +89,5 @@ public:
         this->conn = conn;
     }
 
-    // Extract methods as static members taking `this` as
-    // the first argument for binding with Lua
-    LUA_EXTRACT(RemoteUDevice_lua_methods)
+    LUA_CLASS_INIT(RemoteUDevice_lua_methods)
 };

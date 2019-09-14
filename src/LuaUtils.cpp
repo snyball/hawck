@@ -1,7 +1,7 @@
 /* =====================================================================================
  * Utilitiy functions, macros and templates for binding C++ code to Lua easily
  *
- * Copyright (C) 2018 Jonas Møller (no) <jonasmo441@gmail.com>
+ * Copyright (C) 2018 Jonas Møller (no) <jonas.moeller2@protonmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,8 +33,10 @@ extern "C" {
 }
 
 #include "LuaUtils.hpp"
+#include "utils.hpp"
 
 using namespace std;
+using namespace std::chrono;
 
 namespace Lua {
     /**
@@ -82,7 +84,8 @@ namespace Lua {
         if (src.size() == 0)
             throw Lua::LuaError("No path given");
 
-        auto L = unique_ptr<lua_State, decltype(&lua_close)>(luaL_newstate(), &lua_close);
+        auto L = unique_ptr<lua_State, decltype(&lua_close)>(luaL_newstate(),
+                                                             &lua_close);
         this->L = L.get();
         luaL_openlibs(L.get());
 
@@ -96,6 +99,14 @@ namespace Lua {
         luaL_openlibs(L);
     }
 
+    /*
+    void Script::sandboxFrom(const std::string& path) {
+        from("sandbox.lua");
+        call("init", realpath_safe(path), "__match");
+        auto src = call<string>("getSource");
+    }
+    */
+
     void Script::from(const std::string& path) {
         if (luaL_loadfile(L, path.c_str()) != LUA_OK) {
             string err(lua_tostring(L, -1));
@@ -106,8 +117,7 @@ namespace Lua {
             throw Lua::LuaError("Lua error: " + err);
         }
 
-        auto rpath = unique_ptr<char, decltype(&free)>(realpath(path.c_str(), nullptr), &free);
-        abs_src = string(rpath.get());
+        abs_src = realpath_safe(path);
     }
 
     void Script::reset() {
@@ -126,10 +136,6 @@ namespace Lua {
         lua_close(L);
     }
 
-    void Script::toggle(bool enabled) noexcept {
-        this->enabled = enabled;
-    }
-
     lua_State *Script::getL() noexcept {
         return L;
     }
@@ -137,6 +143,49 @@ namespace Lua {
     void Script::exec(const std::string &str) {
         if (luaL_dostring(L, str.c_str()) != LUA_OK) {
             throw LuaError("Error in exec of: " + str);
+        }
+    }
+
+    std::mutex TimeoutHook::script_end_times_mtx;
+    std::unordered_map<uintptr_t, milliseconds> TimeoutHook::script_end_times;
+
+    TimeoutHook::TimeoutHook(lua_State *L, milliseconds time)
+        : Hook(L, lua_timeout_hook, TimeoutHook::NUM_INST)
+    {
+        lock_guard<mutex> lock(script_end_times_mtx);
+        milliseconds ms = duration_cast<milliseconds>(
+            system_clock::now().time_since_epoch()
+        );
+        script_end_times[reinterpret_cast<uintptr_t>(L)] = ms + time;
+    }
+
+    TimeoutHook::~TimeoutHook() {
+        lock_guard<mutex> lock(script_end_times_mtx);
+        script_end_times.erase(reinterpret_cast<uintptr_t>(L));
+    }
+
+#define MK_LUA_ERROR_HOOK(_name, _msg)                                  \
+    static void lua_##_name##_error_hook(lua_State *L, lua_Debug *ar) { \
+        (void) ar;                                                      \
+        luaL_error(L, _msg);                                            \
+    }
+
+    extern "C" {
+        MK_LUA_ERROR_HOOK(timeout, "Timeout Error")
+    }
+#undef MK_LUA_ERROR_HOOK
+
+    extern "C" void lua_timeout_hook(lua_State *L, lua_Debug *ar) noexcept
+    {
+        (void) ar;
+        lock_guard<mutex> lock(TimeoutHook::script_end_times_mtx);
+        milliseconds end_time = TimeoutHook::script_end_times[reinterpret_cast<uintptr_t>(L)];
+        milliseconds now = duration_cast<milliseconds>(
+            system_clock::now().time_since_epoch()
+        );
+        if (now > end_time) {
+            lua_sethook(L, NULL, 0, 0);
+            lua_sethook(L, lua_timeout_error_hook, LUA_MASKCOUNT, 1);
         }
     }
 
@@ -154,6 +203,27 @@ namespace Lua {
         cout << "traceback size: " << traceback.size() << endl;
         lua_pushlightuserdata(L, new LuaError(errmsg, traceback));
         return 1;
+    }
+
+    /**
+     * This __gc metamethod is used by LuaObject.
+     * It is given two upvalues:
+     *   1. The reference counter.
+     *   2. The destructor function to use.
+     */
+    extern "C" int hwk_lua_object_destructor_cb(lua_State *L) noexcept
+    {
+        void *obj_ref = * (void **) lua_touserdata(L, -1);
+        atomic<int> *rc = * (atomic<int> **) lua_touserdata(L, lua_upvalueindex(1));
+        cout << "[from Lua] RC: " << *rc - 1 << endl;
+        if (--*rc <= 0) {
+            cout << "[from Lua] Destroying LuaObject userdata and reference-counter." << endl;
+            typedef void (*Destructor)(void*);
+            void (*destructor)(void*) = * (Destructor *) lua_touserdata(L, lua_upvalueindex(2));
+            destructor(obj_ref);
+            delete rc;
+        }
+        return 0;
     }
 
     std::atomic<uint64_t> id_incr;

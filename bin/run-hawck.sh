@@ -61,11 +61,11 @@ function kill_hawck() {
 
 trap kill_hawck SIGINT
 
-if ! ninja -j8; then
-    exit 1
-fi
+#if ! ninja -j8; then
+#    exit 1
+#fi
 
-sudo --user hawck-input $(realpath './src/hawck-inputd') --kbd-device "$KBD_DEVICE" &
+sudo ./src/hawck-inputd --user hawck-input $(realpath './src/hawck-inputd') --kbd-device "$KBD_DEVICE" &
 ./src/hawck-macrod --no-fork &
 
 ## Wait for interrupt

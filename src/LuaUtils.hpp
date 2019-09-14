@@ -1,7 +1,7 @@
 /* =====================================================================================
  * Utilitiy functions, macros and templates for binding C++ code to Lua easily
  *
- * Copyright (C) 2018 Jonas Møller (no) <jonasmo441@gmail.com>
+ * Copyright (C) 2018 Jonas Møller (no) <jonas.moeller2@protonmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,15 +31,27 @@
  * @brief Lua binding utilities.
  */
 
+/*
+ * FIXME: There are a couple of cases where the library will call abort(), in these
+ *        cases this should be logged to the system log rather than just to stdout.
+ *
+ *        Currently I think syslog is the best option, however that isn't supported
+ *        on Windows AFAIK.
+ */
+
 #pragma once
 
-#include <functional> 
+#include <functional>
 #include <unordered_map>
 #include <atomic>
 #include <iostream>
 #include <sstream>
 #include <memory>
 #include <cstring>
+#include <mutex>
+#include <typeinfo>
+#include <typeindex>
+#include <vector>
 
 extern "C" {
     #include <lua.h>
@@ -59,6 +71,22 @@ extern "C" {
  * might work just fine.
  */
 
+/**
+ * Who is this library for, and who is it not for?
+ *
+ * This library is primarily for developers using mainline Lua 5.3 (i.e not LuaJIT.)
+ * It does not (or at least it attempts to) not incur any performance degradation when
+ * compared to using the C-API manually.
+ *
+ * However, if you need very high performance you should not be using the standard C-API
+ * at all, you should use LuaJIT and it's C FFI.
+ *
+ * The caveat with using LuaJIT and it's C FFI is that it is not safe, so in essence
+ * this library allows for exposing C++ APIs that may be used safely by non-experts,
+ * or if you don't require high-performance but require safety in Lua scripts (which
+ * is why we like using them anyway.)
+ */
+
 /** How to bind classes to Lua using this API:
  *
  * From here on out, when `Module` is written, you should replace it with
@@ -66,40 +94,46 @@ extern "C" {
  *
  * At the top of your header file, declare which methods you want to export:
  *
- *     #define Module_lua_methods(M, _) \
- *             M(Module, method_name_01, int(), int(), int()) \
- *             M(Module, method_name_02, float(), std::string())
+ *     #define Module_lua_methods(M, _) \ (Note: Multi-line macros are made with '\')
+ *             M(Module, method_name_01, int(), int(), int()) _ \
+ *             M(Module, method_name_02, int(), int(), int()) _ \ (Note: the _ works as a comma
+ *             M(Module, method_name_03, int(), int(), int()) _ \  and is required)
+ *             M(Module, method_name_04, float(), LUA_PTR(std::string)) _ \
+ *             M(Module, method_name_05, LUA_PTR(MyType), LUA_PTR(char))
+ *
+ * Note that this wrapper library is designed to work best with functions that
+ * take primitive types (which includes pointers to arbitrary classes.)
+ * References (&T) are not supported.
+ * The system for handling pointer types is type safe, and will perform run-time
+ * checks on pointers received from Lua. These run-time checks are very light,
+ * they just compare 32-bit type ids.
  *
  * Then, to define the wrapper functions (prototypes):
  *
  *     // Declares prototypes for the functions that will be given to Lua
- *     // later on, these have C linkage.
+ *     // later on, these have C linkage. This must be placed ahead of the
+ *     // class definition.
  *     LUA_DECLARE(Module_lua_methods)
  *
- * Add the following to your class:
+ * Add the following to your class in the header file (Module.hpp):
  *
  *     class Module : LuaIface<Module> ... {
  *         private:
  *             ...
- *             // Defines `Module::Module_lua_methods` to be a `luaL_Reg`, which
- *             // binds method names to the prototypes defined with `LUA_DECLARE`
- *             LUA_METHOD_COLLECT(Module_lua_methods);
  *         public:
  *             ...
- *             // Extracts methods from your class, so that they can be called like
- *             // this: `Module::extracted_method(module_instance, ...)`
- *             LUA_EXTRACT(Module_lua_methods)
+ *             LUA_CLASS_INIT(Module_lua_methods)
  *     }
  *
  * Then in your implementation file, change your Module::Module initializer
  * so that it intializes LuaIface:
- * 
+ *
  *     Module(...) : LuaIface(this, Module_lua_methods) ... {
  *         ...
  *     }
  *
- * And then finally at the bottom of your implementation file:
- * 
+ * And then finally at the bottom of your implementation (Module.cpp) file:
+ *
  *     LUA_CREATE_BINDINGS(Module_lua_methods)
  *
  * Which will actually create implementations of the functions
@@ -107,7 +141,7 @@ extern "C" {
  *
  * In order to use this interface for your class, do the following:
  *
- *     // Open up a new Lua state 
+ *     // Open up a new Lua state
  *     lua_State *L = luaL_newstate();
  *     Module *instance = new Module();
  *     // Open the Lua library inside the state with the name "Module"
@@ -124,9 +158,32 @@ extern "C" {
  * Where `userdata` refers to the `Module` instance.
  */
 
+#define LUA_PTR(_T) ((_T *) nullptr)
+
+#define LUA_CLASS(_T) \
+    LUA_DECLARE(_T##_lua_methods) \
+    class _T : public LuaIface<_T>
+
+/**
+ * Given a class _T and a method _m LUA_METHOD_NAME creates a new name
+ * for the extern "C" function that Lua eventually calls.
+ *
+ * Override this if the default clashes with other extern "C" exports.
+ */
 #define LUA_METHOD_NAME(_T, _m) __bind_##_T##_##_m
+/**
+ * Given a method name _m LUA_METHOD_EXTRACT_NAME creates the name for a new class
+ * method that when given a pointer to the object followed by the arguments
+ * for the _m method, will run object->_m(args...)
+ *
+ * Override this if the default clashes with other class members.
+ */
 #define LUA_METHOD_EXTRACT_NAME(_m) __extracted_method_##_m
 
+/**
+ * Extract a method such that obj->method(args..) becomes bound_method(obj, args...)
+ * which makes it suitable for calling from Lua.
+ */
 #define LUA_METHOD_EXTRACT(_T, _method, ...) \
         template <class... Atoms> \
         static inline auto LUA_METHOD_EXTRACT_NAME(_method)(Atoms... args) noexcept { \
@@ -135,9 +192,16 @@ extern "C" {
             }; \
         }
 
+/**
+ * Pre-declare a method that LUA_METHOD_BIND later defines.
+ */
 #define LUA_METHOD_DECLARE(_T, _m, ...) \
         int LUA_METHOD_NAME(_T, _m)(lua_State *L)
 
+/**
+ * Create a Lua binding for a C++ class method, the function has the
+ * type: int(lua_State *)
+ */
 #define LUA_METHOD_BIND(_T, _m, ...) \
         int LUA_METHOD_NAME(_T, _m)(lua_State *L) { \
             thread_local static const auto ex_fn = _T::LUA_METHOD_EXTRACT_NAME(_m)(__VA_ARGS__); \
@@ -147,28 +211,60 @@ extern "C" {
             return fn(); \
         }
 
+/**
+ * Pre-declare the functions that LUA_CREATE_BINDINGS defines.
+ */
 #define LUA_DECLARE(_Mmap) \
         extern "C" { \
             _Mmap(LUA_METHOD_DECLARE, ;); \
         }
+
+/**
+ * Called by LUA_CLASS_INIT
+ */
 #define LUA_EXTRACT(_Mmap) _Mmap(LUA_METHOD_EXTRACT, )
+
+/**
+ * Create the extern "C" bindings that Lua can call.
+ */
 #define LUA_CREATE_BINDINGS(_Mmap) \
         extern "C" { \
             _Mmap(LUA_METHOD_BIND, ) \
         }
 
+/**
+ * Utility for LUA_METHOD_COLLECT
+ */
 #define _lua_utils_comma ,
 
+/**
+ * Used by LUA_METHOD_COLLECT
+ */
 #define LUA_METHOD_COLLECT_SINGLE(_T, _m, ...) {#_m , LUA_METHOD_NAME(_T, _m)}
 
+/**
+ * Called by LUA_CLASS_INIT
+ *
+ * Collects methods into a luaL_Reg array.
+ */
 #define LUA_METHOD_COLLECT(_Mmap) \
         static constexpr luaL_Reg _Mmap[] = { \
             _Mmap(LUA_METHOD_COLLECT_SINGLE, _lua_utils_comma), \
             {NULL, NULL} \
         }
 
+/**
+ * Put this at the bottom of your class to initialize method extraction
+ * for Lua.
+ */
+#define LUA_CLASS_INIT(_Mmap)                   \
+    LUA_METHOD_COLLECT(_Mmap);                  \
+    LUA_EXTRACT(_Mmap)
 
 namespace Lua {
+    using namespace std::chrono;
+    using namespace std::chrono_literals;
+
     class LuaError : public std::exception {
     private:
         std::string expl;
@@ -196,12 +292,12 @@ namespace Lua {
          *  /long/winding/path/file.lua:<line>: <error message>
          *  We are only interested in this part:
          *  file.lua:<line>: <error message>
-         *  
+         *
          * If your paths have the ':' symbol in them this function will
          * break, but so will many other things, like environment variables
          * that expect ':' to be a safe separator. The script may contain
          * one or more ':' characters without causing any problems.
-         */ 
+         */
         inline const char *fmtError() const noexcept {
             const char *ptr = expl.c_str();
             const char *start = ptr;
@@ -247,6 +343,26 @@ namespace Lua {
             return err_ss.str();
         }
     };
+
+    template <class T>
+    T *newUserdata(lua_State *L) {
+        T *ptr = reinterpret_cast<T *>(lua_newuserdata(L, sizeof(T)));
+        if (ptr == nullptr) {
+            std::cout << "lua_newuserdata returned NULL (FATAL OOM)" << std::endl;
+            abort();
+        }
+        return ptr;
+    }
+
+    /**
+     * Check if a file name matches ".+\.lua".
+     */
+    inline bool goodLuaFilename(const std::string& name) {
+        return !(
+            name.size() < 4 || name[0] == '.' ||
+            name.find(".lua") != name.size()-4
+        );
+    }
 
     template <class T> struct LuaValue {
         void get(lua_State *, int) {}
@@ -340,8 +456,145 @@ namespace Lua {
         }
     };
 
-    extern "C" int hwk_lua_error_handler_callback(lua_State *L) noexcept;
+    struct UncheckedLuaPtr;
 
+    /**
+     * Example usage with UncheckedLuaPtr:
+     *   UncheckedLuaPtr ul_ptr;
+     *   // ... Retrieve the ul_ptr from a Lua state ...
+     *   LuaPtr<MyType> l_ptr;
+     *   try {
+     *       l_ptr = (LuaPtr<MyType>) ul_ptr;
+     *   } catch (const Lua::LuaError& e) {
+     *       // Unable to cast ul_ptr to MyType as it had the wrong type.
+     *       // Perform reasonable error-handling here
+     *       // Depending on your use case you may either abort, or make it
+     *       // a soft error.
+     *       abort();
+     *   }
+     *   // You can now know for certain that ptr can be accessed in a
+     *   // safe manner.
+     *   MyType *ptr = l_ptr.ptr;
+     *
+     * Note that the name UncheckedLuaPtr is a bit of a misnomer,
+     * as the pointer is actually checked and has all the type information.
+     * But that type information isn't actually *checked* until you explicitly
+     * check it by casting and handling any error.
+     */
+    template <class T>
+    struct LuaPtr {
+        T *ptr;
+
+        static constexpr size_t getTypeID() {
+            return typeid(T).hash_code();
+        }
+
+        explicit LuaPtr(T *ptr) {
+            this->ptr = ptr;
+        }
+
+        inline void provide(lua_State *L) const;
+
+        operator UncheckedLuaPtr();
+    };
+
+    /**
+     * Essentially a (void *) pointer that can be safely cast back
+     * to a Lua pointer.
+     *
+     * When casting, a LuaError will be raised if the type cannot
+     * be cast. This is a runtime check (I don't really see any
+     * other way to do it securely.)
+     *
+     * FIXME: Currently this does not do perform memory management.
+     * TODO: Install a __gc callback that gets called when the pointer
+     * goes out of Lua scope. This is a slightly complex problem however,
+     * the destructor for UncheckedLuaPointer should in this case decrement
+     * an atomic reference counter. The __gc callback should do the same,
+     * which means it needs a light_userdata upvalue.
+     * However, the UncheckedLuaPtr only contains a (void *) pointer to
+     * the actual data, which means that we don't have access to the
+     * destructor function. This will have to be looked into further,
+     * and will have to be implemented with LuaPtr<T> i honestly
+     * don't see any other way (without invoking nasal demons.)
+     */
+    struct UncheckedLuaPtr {
+        void *ptr = nullptr;
+        size_t type_id = -1;
+
+        explicit inline UncheckedLuaPtr() {}
+
+        template <class T>
+        explicit inline UncheckedLuaPtr(T *ptr) {
+            this->ptr = (void *) ptr;
+            type_id = LuaPtr<T>::getTypeID();
+        }
+
+        explicit inline UncheckedLuaPtr(lua_State *L, int idx) {
+            auto buf = reinterpret_cast<UncheckedLuaPtr*>(lua_touserdata(L, idx));
+            ptr = buf->ptr;
+            type_id = buf->type_id;
+        }
+
+        inline void provide(lua_State *L) {
+            auto *ud =
+                reinterpret_cast<UncheckedLuaPtr *>(
+                    lua_newuserdata(L, sizeof(UncheckedLuaPtr)));
+            if (ud == nullptr) {
+                std::cout << "lua_newuserdata returned NULL (FATAL OOM)" << std::endl;
+                abort();
+            }
+            ud->ptr = ptr;
+            ud->type_id = LuaPtr<void>::getTypeID();
+        }
+
+        template <class T>
+        operator LuaPtr<T>() {
+            std::stringstream ss;
+            if (ptr == nullptr) {
+                ss << "Attempted to cast null pointer to " << typeid(T).name();
+                throw LuaError(ss.str());
+            }
+            if (type_id != LuaPtr<T>::getTypeID()) {
+                ss << "Attempted to cast (tid=" << type_id << ") to " << typeid(T).name();
+                throw LuaError(ss.str());
+            }
+            return LuaPtr<T>(reinterpret_cast<T*>(ptr));
+        }
+    };
+
+    template <class T> struct LuaValue<T*> {
+        T *get(lua_State *L, int idx) {
+            if (!lua_isuserdata(L, idx))
+                throw LuaError("Expected userdata");
+            UncheckedLuaPtr ulptr(L, idx);
+            LuaPtr<T> lptr = (LuaPtr<T>) ulptr;
+            return lptr.ptr;
+        }
+    };
+
+    template <class T>
+    LuaPtr<T>::operator UncheckedLuaPtr() {
+        UncheckedLuaPtr ptr;
+        ptr.ptr = this->ptr;
+        ptr.type_id = LuaPtr<T>::getTypeID();
+        return ptr;
+    }
+
+    template <class T>
+    inline void LuaPtr<T>::provide(lua_State *L) const {
+        UncheckedLuaPtr *ud =
+            (struct UncheckedLuaPtr *) lua_newuserdata(L, sizeof(UncheckedLuaPtr));
+        if (ud == nullptr) {
+            std::cout << "lua_newuserdata returned NULL (FATAL OOM)" << std::endl;
+            abort();
+        }
+        ud->ptr = ptr;
+        ud->type_id = LuaPtr<T>::getTypeID();
+    }
+
+
+    extern "C" int hwk_lua_error_handler_callback(lua_State *L) noexcept;
 
     static const std::string lua_type_names[LUA_NUMTAGS] = {
         "nil",           // Lua type: nil
@@ -375,6 +628,19 @@ namespace Lua {
         return 1;
     }
 
+    inline int luaPush(lua_State *L, const void *ptr) noexcept {
+        if (ptr == nullptr)
+            lua_pushnil(L);
+        else {
+            UncheckedLuaPtr ul_ptr(ptr);
+            ul_ptr.provide(L);
+        }
+        return 1;
+    }
+
+    template <class T>
+    class LuaIface;
+
     template <class Any>
     inline int luaPush(lua_State *, Any) noexcept {
         return 0;
@@ -392,7 +658,24 @@ namespace Lua {
         return std::string(lua_tostring(L, idx));
     }
 
-    /** Tools for binding a C++ method to Lua. */
+    /** Tools for binding a C++ function to Lua.
+     *
+     * This is gathered together in a class mostly to make management of the lua_State
+     * dead simple, it's always available as the L member variable.
+     *
+     * @param T Return type of the wrapped function.
+     *
+     * XXX: Using any methods of LuaMethod without calling setState first invokes undefined
+     *      behaviour, you should not assume that the Lua state stored inside a LuaMethod
+     *      still exists, or that the current thread has exclusive access to it (unless
+     *      you Know What You're Doing™.)
+     *      The safest method to use is to always call setState before doing anything, and
+     *      making sure you've handled all the required synchronization (which is outside
+     *      the scope of the LuaMethod class.)
+     *
+     * TODO: The currying method can be replaced with std::apply from C++17
+     *       Resource: <https://en.cppreference.com/w/cpp/utility/apply>
+     */
     template <class T>
     class LuaMethod {
     private:
@@ -417,7 +700,7 @@ namespace Lua {
             return lua_type(L, idx) == LUA_TNUMBER;
         }
 
-        inline bool checkLuaType(int idx, std::string&&) noexcept {
+        inline bool checkLuaType(int& idx, std::string) noexcept {
             return lua_type(L, idx) == LUA_TSTRING;
         }
 
@@ -425,6 +708,8 @@ namespace Lua {
             return lua_type(L, idx) == LUA_TBOOLEAN;
         }
 
+        // XXX: luaGetVal is deprecated in favor of LuaVal<T>::get(lua_State, int)
+        #if 0
         inline int luaGetVal(int idx, int) noexcept {
             return lua_tonumber(L, idx);
         }
@@ -435,17 +720,19 @@ namespace Lua {
 
         template <class P>
         inline P* luaGetVal(int idx, P *) noexcept {
-            P **ptr = (P **) lua_touserdata(L, idx);
-            if (ptr == nullptr) {
-                fprintf(stderr, "Received null userdata pointer\n");
-                abort();
-            }
-            return *ptr;
+            return ((LuaPtr<P>) UncheckedLuaPtr(L, idx)).ptr;
         }
 
         inline const char *luaGetVal(int idx, const char *) noexcept {
             return lua_tostring(L, idx);
         }
+
+        inline const std::string luaGetVal(int idx, const std::string&) noexcept {
+            size_t len;
+            char *str_p = lua_tolstring(L, &len, idx);
+            return std::string(str_p, len);
+        }
+        #endif
 
         static inline constexpr int varargLength() noexcept {
             return 0;
@@ -474,7 +761,7 @@ namespace Lua {
         inline std::function<int()> callFromLuaFunction(int, Fn f) noexcept {
             return [f, this]() -> int {
                 if constexpr (std::is_void<R>::value) {
-                    (void) (this);
+                    (void) this;
                     f();
                     return 0;
                 } else
@@ -486,9 +773,10 @@ namespace Lua {
          *  get values from the Lua stack with the appropriate lua_get* function.
          */
         template <class R, class Fn, class Head, class... Atoms>
-        const std::function<int()> callFromLuaFunction(int idx, Fn f, Head head, Atoms... tail) noexcept {
+        const std::function<int()>
+        callFromLuaFunction(int idx, Fn f, Head head, Atoms... tail) noexcept {
             auto nf = [this, idx, head, f](Atoms... args) -> R {
-                return f(luaGetVal(idx, head), args...);
+                return f(LuaValue<Head>().get(L, idx), args...);
             };
             return callFromLuaFunction<R>(idx + 1, nf, tail...);
         }
@@ -500,7 +788,11 @@ namespace Lua {
         const std::string typeString(float        ) noexcept { return "number";  }
         const std::string typeString(bool         ) noexcept { return "boolean"; }
         template <class P>
-        const std::string typeString(P *          ) noexcept { return "userdata"; }
+        const std::string typeString(P *          ) noexcept {
+            if constexpr (std::is_base_of<LuaIface<P>, P>::value)
+                return typeid(P).name();
+            return "userdata";
+        }
         /* default: */
         template <class Other>
         const std::string typeString(Other        ) noexcept { return "unknown"; }
@@ -522,6 +814,10 @@ namespace Lua {
 
         const std::string formatArgsLuaH(int idx) noexcept {
             int tnum = lua_type(L, idx);
+
+            // TODO:
+            if (tnum == LUA_TUSERDATA) {}
+
             if (tnum >= 0 && tnum < LUA_NUMTAGS)
                 return lua_type_names[tnum];
             else
@@ -577,45 +873,39 @@ namespace Lua {
         }
     };
 
-    // Does not need to be initialized, is simply a magic number used for run-time
-    // type-checking in Lua
-    extern std::atomic<uint64_t> id_incr;
-
-    template <class T>
-    struct LuaPtr {
-    private:
-
-    public:
-        T *ptr;
-        uint64_t type_id;
-
-        explicit LuaPtr(T *ptr) {
-            type_id   = id_incr++;
-            this->ptr = ptr;
-        }
-
-        void provide(lua_State *L) const {
-            struct LuaPtr *ud = (struct LuaPtr *)lua_newuserdata(L, sizeof(LuaPtr<T>));
-            memcpy(ud, this, sizeof(*ud));
-        }
-    };
-
+    /**
+     * Lua interfaces are classes that can be opened as objects
+     * inside Lua states. By deriving from this class and using the
+     * LUA_DECLARE/LUA_CLASS_INIT/LUA_CREATE_BINDINGS macros
+     * you can expose a C++ instance to Lua.
+     *
+     * Note: This class is for objects that you don't want the Lua
+     * GC to manage. I.e if you pass a LuaIface into a Lua state the
+     * memory should live for as long as the Lua state lives.
+     *
+     * See GC for objects that can be managed by the Lua GC.
+     */
     template <class T>
     class LuaIface {
     private:
         const luaL_Reg *regs;
         T              *inst;
         LuaPtr<T>       lua_ptr;
+        const char     *type_name;
 
     public:
+
         LuaIface(T *inst, const luaL_Reg *regs) : lua_ptr(inst) {
+            type_name = typeid(T).name();
             this->regs = regs;
             this->inst = inst;
         }
 
         virtual ~LuaIface() {}
 
-        virtual void luaOpen(lua_State *L, const char *name) {
+        virtual void luaPush(lua_State *L) {
+            lua_checkstack(L, 4);
+
             // Provide pointer to Lua
             lua_ptr.provide(L);
 
@@ -626,7 +916,7 @@ namespace Lua {
             lua_pushstring(L, "__index");
 
             // Push method table
-            luaL_checkversion(L);
+            // luaL_checkversion(L);
             lua_createtable(L, 0, 32);
             luaL_setfuncs(L, regs, 0);
 
@@ -634,10 +924,139 @@ namespace Lua {
 
             // Set metatable for pointer userdata
             lua_setmetatable(L, -2);
+        }
 
+        virtual void luaOpen(lua_State *L, const char *name) {
+            luaPush(L);
             lua_setglobal(L, name);
         }
     };
+
+    extern "C" int hwk_lua_object_destructor_cb(lua_State *L) noexcept;
+
+    /**
+     * On the C++ side it works like a shared_ptr, except that it can also
+     * be passed onto Lua states, and allows for the Lua __gc metamethod
+     * to decrement the reference count.
+     *
+     * So, if you want Lua to delete your objects when you're done with
+     * them you should do the following:
+     *
+     *   main.cpp:
+     *     Script mkScript() {
+     *       // Here, MyObject inherits from LuaIface<MyObject>
+     *       GC obj(new MyObject());
+     *       Script script;
+     *       script.from("main.lua");
+     *       script.set("my_object", &obj);
+     *       return script;
+     *       // GC goes out of scope, now Lua is responsible for
+     *       // the memory allocated for MyObject.
+     *     }
+     *
+     *     int main() {
+     *       Script script = mkScript();
+     *       script.call("main");
+     *       script.call("do_full_gc");
+     *     }
+     *
+     *   main.lua:
+     *     function main()
+     *       my_object:doStuff("with this")
+     *       my_object = nil
+     *       -- Destructor for MyObject /could/ be called around here.
+     *       print("Done doing stuff")
+     *     end
+     *
+     *     function do_full_gc()
+     *       -- Destructor for MyObject is definitely called here if it hasn't
+     *       -- been called already.
+     *       collectgarbage("collect")
+     *     end
+     */
+    template <class T>
+    class GC {
+        static_assert(std::is_base_of<LuaIface<T>, T>::value,
+                      "When instantiating GC<T>, T must derive from LuaIface<T>");
+
+    protected:
+        LuaIface<T> *iface;
+        std::atomic<int> *rc;
+
+    public:
+        inline GC(LuaIface<T> *iface) : iface(iface),
+                                        rc(new std::atomic<int>(1))
+        {}
+
+        inline GC(const GC<T>& other) : iface(other.iface),
+                                        rc(other.rc)
+        { ++*rc; }
+
+        virtual ~GC()
+        {
+            std::cout << "[from C++] RC: " << *rc - 1 << std::endl;
+            if (--*rc <= 0) {
+                std::cout <<
+                "[from C++] Destroying GC userdata and reference-counter." <<
+                std::endl;
+                delete iface;
+                delete rc;
+            }
+        }
+
+        /**
+         * This method exists solely so that the hwk_lua_object_destructor_cb function "knows"
+         * which destructor to call for T. It otherwise wouldn't be able to, because it's not
+         * generic over any T.
+         */
+        static void destroy(void *ptr) {
+            auto obj = reinterpret_cast<LuaIface<T> *>(ptr);
+            delete obj;
+        }
+
+        virtual void luaPush(lua_State *L) {
+            ++*rc;
+
+            iface->luaPush(L);
+
+            // Retrieve the metatable again and add the __gc metamethod.
+            lua_getmetatable(L, -1);
+            lua_pushstring(L, "__gc");
+            // Push upvalues, then push the static destructor function.
+            *newUserdata<std::atomic<int> *>(L) = rc;
+            *newUserdata<void (*)(void*)>(L) = &GC<T>::destroy;
+            lua_pushcclosure(L, hwk_lua_object_destructor_cb, 2);
+            lua_settable(L, -3);
+
+            lua_setmetatable(L, -2);
+        }
+
+        virtual void luaOpen(lua_State *L, const char *name) {
+            luaPush(L);
+            lua_setglobal(L, name);
+        }
+
+        inline T *operator->() {
+            return reinterpret_cast<T *>(iface);
+        }
+    };
+
+    template <class T>
+    inline int luaPush(lua_State *L, GC<T> ptr) noexcept {
+        ptr.luaPush(L);
+        return 1;
+    }
+
+    template <class T>
+    inline int luaPush(lua_State *L, T *ptr) noexcept {
+        if constexpr (std::is_base_of<LuaIface<T>, T>::value) {
+            ptr->luaPush(L);
+        } else {
+            UncheckedLuaPtr lptr(ptr);
+            lptr.provide(L);
+        }
+        return 0;
+    }
 
     bool isCallable(lua_State *L, int idx);
 
@@ -651,19 +1070,52 @@ namespace Lua {
         return countT<0, T...>();
     }
 
+    class Hook {
+        using Callback = void (*)(lua_State *L, lua_Debug *ar);
+
+    protected:
+        Callback cb;
+        lua_State *L;
+
+    public:
+        inline Hook(lua_State *L, Callback cb, int num_instructions) : cb(cb), L(L) {
+            lua_sethook(L, cb, LUA_MASKCOUNT, num_instructions);
+        }
+
+        virtual ~Hook() {
+            lua_sethook(L, NULL, 0, 0);
+        }
+    };
+
+    extern "C" void lua_timeout_hook(lua_State *L, lua_Debug *ar) noexcept;
+
+    class TimeoutHook : public Hook {
+    public:
+        static std::mutex script_end_times_mtx;
+        static std::unordered_map<uintptr_t, milliseconds> script_end_times;
+        static const int NUM_INST = 16384;
+
+        TimeoutHook(lua_State *L, milliseconds time);
+
+        virtual ~TimeoutHook();
+    };
+
     /** C++ bindings to make the Lua API easier to deal with.
      */
     class Script {
     private:
         lua_State *L;
         bool enabled = true;
+        long max_run_time_ms = 2000;
+        int max_instructions = 16384;
+        milliseconds SCRIPT_TIMEOUT = 2000ms;
 
     public:
         std::string src;
         std::string abs_src;
 
         /** Initialize a Lua state and load a script.
-         * 
+         *
          * @param path Path to the Lua script.
          */
         explicit Script(std::string path);
@@ -679,7 +1131,7 @@ namespace Lua {
 
         /** Load a script into the Lua state.
          *
-         * @param path Path to the Lua script. 
+         * @param path Path to the Lua script.
          */
         virtual void from(const std::string& path);
 
@@ -731,25 +1183,28 @@ namespace Lua {
          */
         template <class... T, class... Arg>
         std::tuple<T...> call(std::string name, Arg... args) {
+            TimeoutHook hook(L, SCRIPT_TIMEOUT);
+
             lua_pushcfunction(L, hwk_lua_error_handler_callback);
             lua_getglobal(L, name.c_str());
             if (!isCallable(L, -1))
-                throw LuaError("Unable to retrieve " + name + " function from Lua state");
+                throw LuaError("Unable to retrieve " + name +
+                                " function from Lua state");
             int nargs = call_r(0, args...);
             constexpr int nres = countT<T...>();
 
             // -n-nargs is the position of hwk_lua_error_handler_callback
             // on the Lua stack.
             if (lua_pcall(L, nargs, nres, -2-nargs) != LUA_OK) {
-                auto exc = std::unique_ptr<LuaError>(static_cast<LuaError*>(
-                    // Here be dragons
-                    lua_touserdata(L, -1)
-                ));
+                // Here be dragons
+                auto exc = std::unique_ptr<LuaError>(
+                    static_cast<LuaError*>(lua_touserdata(L, -1)));
                 if (!exc)
                     throw LuaError("Unknown error");
                 LuaError err = *exc;
                 throw err;
             }
+
             return ret_r<-nres, T...>();
         }
 
@@ -758,18 +1213,15 @@ namespace Lua {
         T get(std::string name);
 
         /** Set a global Lua value.
-         * 
+         *
          * @param name Name of global variable.
          * @param value Value to set the variable to.
          */
         template <class T>
         void set(std::string name, T value) {
-            if (luaPush(L, value) == 1) {
-                lua_setglobal(L, name.c_str());
-            }
+            luaPush(L, value);
+            lua_setglobal(L, name.c_str());
         }
-
-        void toggle(bool enabled) noexcept;
 
         inline bool isEnabled() noexcept {
             return enabled;
@@ -781,7 +1233,7 @@ namespace Lua {
 
         /** Run Lua code inside the Lua state.
          *
-         * @param str Lua code. 
+         * @param str Lua code.
          */
         void exec(const std::string& str);
 
@@ -792,5 +1244,6 @@ namespace Lua {
         /** Reload from the file that the Lua state was initially
          *  initialized with. */
         void reload();
+
     };
 }

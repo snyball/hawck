@@ -21,7 +21,17 @@ extern "C" {
 #include <stdexcept>
 #include "IUDevice.hpp"
 
-class UDevice : public IUDevice {
+// Methods to export to Lua
+// (ClassName, methodName, type0(), type1()...)
+#define UDevice_lua_methods(M, _)               \
+    M(UDevice, emit, int(), int(), int()) _     \
+    M(UDevice, flush)
+
+// Declare extern "C" Lua bindings
+LUA_DECLARE(UDevice_lua_methods)
+
+class UDevice : public IUDevice,
+                public Lua::LuaIface<UDevice> {
 private:
     static const size_t evbuf_start_len = 128;
     int fd;
@@ -31,6 +41,8 @@ private:
     size_t evbuf_len;
     size_t evbuf_top;
     input_event *evbuf;
+
+    LUA_METHOD_COLLECT(UDevice_lua_methods);
 
 public:
     UDevice();
@@ -57,4 +69,6 @@ public:
     /** Generate key up events for all held keys.
      */
     void upAll();
+
+    LUA_EXTRACT(UDevice_lua_methods)
 };

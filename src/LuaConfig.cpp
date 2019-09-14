@@ -4,6 +4,7 @@ extern "C" {
 
 #include "LuaConfig.hpp"
 #include "Dir.hpp"
+#include "XDG.hpp"
 #include <vector>
 
 using namespace std;
@@ -15,7 +16,8 @@ LuaConfig::LuaConfig(const std::string& fifo_path,
     : FIFOWatcher(fifo_path, ofifo_path),
       luacfg_path(luacfg_path)
 {
-    ChDir cd("/usr/share/hawck/LLib/");
+    XDG xdg;
+    ChDir cd(xdg["DATA_HOME"] + "/hawck/scripts/LLib");
     lua.from("./config.lua");
     lua.call("loadConfig", luacfg_path);
 }

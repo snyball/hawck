@@ -1,7 +1,7 @@
 /* =====================================================================================
  * Keyboard daemon.
  *
- * Copyright (C) 2018 Jonas Møller (no) <jonasmo441@gmail.com>
+ * Copyright (C) 2018 Jonas Møller (no) <jonas.moeller2@protonmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -52,16 +52,27 @@ extern "C" {
 #define DANGER_DANGER_LOG_KEYS 0
 
 class KBDDaemon {
+    enum KeyVisibility {
+        /* Show a key to the MacroDaemon */
+        KEY_SHOW,
+        /* Keep a key inside the InputDaemon */
+        KEY_KEEP,
+        /* Hide a key, this means no Lua scripts will see them, and they will be echoed
+           onto the virtual keyboard. */
+        KEY_HIDE
+    };
+
     using Milliseconds = std::chrono::milliseconds;
 private:
     Milliseconds timeout = Milliseconds(1024);
-    std::set<int> passthrough_keys;
-    std::mutex passthrough_keys_mtx;
+    std::atomic<KeyVisibility> key_visibility[KEY_MAX];
     std::string home_path = "/var/lib/hawck-input";
     std::unordered_map<std::string, std::string> data_dirs = {
         {"keys", home_path + "/keys"}
     };
     std::unordered_map<std::string, std::vector<int>*> key_sources;
+    std::unordered_map<std::string, Lua::Script *> scripts;
+    const std::string scripts_dir = "/var/lib/hawck-input/scripts";
     UNIXSocket<KBDAction> kbd_com;
     UDevice udev;
     /** All keyboards. */
@@ -82,6 +93,12 @@ public:
     explicit KBDDaemon(const char *device);
     KBDDaemon();
     ~KBDDaemon();
+
+    /**
+     * Load a Lua script to process inputs. These Lua scripts are far more
+     * limited than their @{link MacroDaemon#loadScript()} counterparts.
+     */
+    void loadScript(const std::string &rel_path);
 
     void initPassthrough();
 

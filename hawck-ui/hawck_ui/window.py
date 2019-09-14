@@ -54,6 +54,9 @@ from .log_retriever import LogRetriever
 from .locations import HAWCK_HOME, LOCATIONS, resourcePath
 from .privesc import SudoException
 
+from cfgmsg import sendMacroD
+sendMacroD
+
 pprint = PrettyPrinter(indent = 4).pprint
 
 SCRIPT_DEFAULT = """

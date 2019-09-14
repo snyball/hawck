@@ -10,4 +10,13 @@ build/*
 build
 latex/*
 html/*
+.ccls-cache/*
+.ccls
+.ccls-cache
+.ccls*
+docs/html/*
+docs/latex/*
+compile_commands.json
+.projectile
+*.strace
 *.out

@@ -24,8 +24,11 @@ if catch2dep.found()
     'CSV-tests.cpp',
     'FSWatcher-tests.cpp',
     'tests-main.cpp',
+    'XDG-tests.cpp',
     '../src/FSWatcher.cpp',
-    '../src/CSV.cpp'
+    '../src/XDG.cpp',
+    '../src/CSV.cpp',
+    '../src/Permissions.cpp',
   ]
   
   executable('hawck-tests',

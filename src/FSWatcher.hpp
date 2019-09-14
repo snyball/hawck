@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * FSWatcher.hpp, file system monitoring.                                            *
  *                                                                                   *
- * Copyright (C) 2018 Jonas Møller (no) <jonasmo441@gmail.com>                       *
+ * Copyright (C) 2018 Jonas Møller (no) <jonas.moeller2@protonmail.com>                       *
  * All rights reserved.                                                              *
  *                                                                                   *
  * Redistribution and use in source and binary forms, with or without                *
@@ -252,7 +252,7 @@ public:
      *
      * @param callback Passed to watch()
      */
-    inline void begin(const FSWatchFn &callback) {
+    inline void asyncWatch(const FSWatchFn &callback) {
         if (running == RunState::RUNNING)
             throw std::runtime_error("Have already begun watching.");
 

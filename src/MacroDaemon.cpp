@@ -1,18 +1,18 @@
 /* =====================================================================================
  * Macro daemon.
  *
- * Copyright (C) 2018 Jonas Møller (no) <jonasmo441@gmail.com>
+ * Copyright (C) 2018 Jonas Møller (no) <jonas.moeller2@protonmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
  *    list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
  *    and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -52,12 +52,6 @@ using namespace std;
 
 static const char *event_str[EV_CNT];
 
-inline bool goodLuaFilename(const string& name) {
-    return !(
-        name.size() < 4 || name[0] == '.' || name.find(".lua") != name.size()-4
-    );
-}
-
 static inline void initEventStrs()
 {
     event_str[EV_SYN      ] = "SYN"       ;
@@ -78,7 +72,15 @@ static inline void initEventStrs()
 MacroDaemon::MacroDaemon()
     : kbd_srv("/var/lib/hawck-input/kbd.sock")
 {
+    notify_on_err = true;
+    stop_on_err = false;
+    eval_keydown = true;
+    eval_keyup = true;
+    eval_repeat = true;
+    disabled = false;
+
     auto [grp, grpbuf] = getgroup("hawck-input-share");
+    (void) grpbuf;
     chown("/var/lib/hawck-input/kbd.sock", getuid(), grp->gr_gid);
     chmod("/var/lib/hawck-input/kbd.sock", 0660);
     initEventStrs();
@@ -111,8 +113,10 @@ void MacroDaemon::getConnection() {
 }
 
 MacroDaemon::~MacroDaemon() {
-    for (auto &[_, s] : scripts)
+    for (auto &[_, s] : scripts) {
+        (void) _;
         delete s;
+    }
 }
 
 void MacroDaemon::initScriptDir(const std::string &dir_path) {
@@ -150,21 +154,8 @@ void MacroDaemon::loadScript(const std::string &rel_path) {
 
     cout << "Preparing to load script: " << rel_path << endl;
 
-    struct stat stbuf;
-    if (stat(path.c_str(), &stbuf) == -1) {
-        cout << "Warning: unable to stat(), not loading." << endl;
+    if (!checkFile(path, "frwxr-xr-x ~:*"))
         return;
-    }
-
-    unsigned perm = stbuf.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO);
-    // Strictly require chmod 744 on the script files.
-    if (perm != 0744 && stbuf.st_uid == getuid()) {
-        auto [pwd, pwdbuf] = getuser(getuid());
-        string permstr = fmtPermissions(stbuf);
-        syslog(LOG_ERR, "Require rwxr-xr-x %s:* on script, but got %s on: %s",
-               pwd->pw_name, permstr.c_str(), rel_path.c_str());
-        return;
-    }
 
     auto sc = mkuniq(new Script());
     sc->call("require", "init");
@@ -244,7 +235,7 @@ void MacroDaemon::notify(string title, string msg) {
                                    free);
     g_signal_connect(n, "closed", free, info);
     #endif
-    
+
     if (!notify_notification_show(n, nullptr)) {
         fprintf(stderr, "Failed to show notification: %s\n", msg.c_str());
     }
@@ -278,6 +269,7 @@ void MacroDaemon::reloadAll() {
     lock_guard<mutex> lock(scripts_mtx);
     ChDir cd(home_dir + "/scripts");
     for (auto &[_, sc] : scripts) {
+        (void) _;
         try {
             sc->setEnabled(true);
             sc->reset();
@@ -299,43 +291,39 @@ void MacroDaemon::run() {
 
     // Setup/start LuaConfig
     LuaConfig conf(home_dir + "/lua-comm.fifo", home_dir + "/json-comm.fifo", home_dir + "/cfg.lua");
-    #define _ADDCFG(_var) conf.addOption(#_var, &(_var))
-    // Add atomic boolean options.
-    _ADDCFG(notify_on_err);
-    _ADDCFG(stop_on_err);
-    _ADDCFG(eval_keydown);
-    _ADDCFG(eval_keyup);
-    _ADDCFG(eval_repeat);
-    _ADDCFG(disabled);
-    #undef _ADDCFG
+    conf.addOption("notify_on_err", &notify_on_err);
+    conf.addOption("stop_on_err", &stop_on_err);
+    conf.addOption("eval_keydown", &eval_keydown);
+    conf.addOption("eval_keyup", &eval_keyup);
+    conf.addOption("eval_repeat", &eval_repeat);
+    conf.addOption("disabled", &disabled);
     conf.addOption<string>("keymap", [this](string) {reloadAll();});
-    conf.begin();
-    
+    conf.start();
+
     fsw.setWatchDirs(true);
     fsw.setAutoAdd(false);
-    fsw.begin([this](FSEvent &ev) {
-                  lock_guard<mutex> lock(scripts_mtx);
-                  try {
-                      if (ev.mask & IN_DELETE) {
-                          cout << "Deleting script: " << ev.name << endl;
-                          unloadScript(ev.name);
-                      } else if (ev.mask & IN_MODIFY) {
-                          cout << "Reloading script: " << ev.path << endl;
-                          if (!S_ISDIR(ev.stbuf.st_mode)) {
-                              unloadScript(pathBasename(ev.path));
-                              loadScript(ev.path);
-                          }
-                      } else if (ev.mask & IN_CREATE) {
-                          loadScript(ev.path);
-                      } else {
-                          cout << "Received unhandled event" << endl;
-                      }
-                  } catch (exception &e) {
-                      cout << e.what() << endl;
-                  }
-                  return true;
-              });
-
+    fsw.asyncWatch([this](FSEvent &ev) {
+        lock_guard<mutex> lock(scripts_mtx);
+        try {
+            if (ev.mask & IN_DELETE) {
+                cout << "Deleting script: " << ev.name << endl;
+                unloadScript(ev.name);
+            } else if (ev.mask & IN_MODIFY) {
+                cout << "Reloading script: " << ev.path << endl;
+                if (!S_ISDIR(ev.stbuf.st_mode)) {
+                    unloadScript(pathBasename(ev.path));
+                    loadScript(ev.path);
+                }
+            } else if (ev.mask & IN_CREATE) {
+                loadScript(ev.path);
+            } else {
+                cout << "Received unhandled event" << endl;
+            }
+        } catch (exception &e) {
+            cout << e.what() << endl;
+        }
+        return true;
+    });
 
     getConnection();
 
@@ -347,14 +335,18 @@ void MacroDaemon::run() {
 
             kbd_com->recv(&action);
 
-            if (!( (!eval_keydown && ev.value == 1) || (!eval_keyup && ev.value == 0) ) && !disabled) {
+            if (!( (!eval_keydown && ev.value == 1) ||
+                   (!eval_keyup && ev.value == 0) ) && !disabled)
+            {
                 lock_guard<mutex> lock(scripts_mtx);
                 // Look for a script match.
-                for (auto &[_, sc] : scripts)
+                for (auto &[_, sc] : scripts) {
+                    (void) _;
                     if (sc->isEnabled() && !(repeat = runScript(sc, ev)))
                         break;
+                }
             }
-        
+
             if (repeat)
                 remote_udev.emit(&ev);
 
@@ -367,4 +359,3 @@ void MacroDaemon::run() {
         }
     }
 }
-

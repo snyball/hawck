@@ -1,6 +1,6 @@
 luadep = dependency('lua', version : '>=5.3', required : false)
 if not luadep.found()
-  luadep = dependency('lua5.3', version : '>=5.3.0')
+  luadep = dependency('lua5.3', version : '>=5.3')
 endif
 
 gtkdep = dependency('gtk+-3.0', version: '>=3.6')
@@ -21,17 +21,17 @@ configure_file(output : 'hawck_config.h',
 conf_inc = include_directories('.')
 
 macrod_src = [
+  'hawck-macrod.cpp',
   'RemoteUDevice.cpp',
   'Daemon.cpp',
   'MacroDaemon.cpp',
   'LuaUtils.cpp',
   'Keyboard.cpp',
   'FSWatcher.cpp',
-  'hawck-macrod.cpp',
   'Permissions.cpp',
   'FIFOWatcher.cpp',
   'LuaConfig.cpp',
-  #'Dir.cpp',
+  'XDG.cpp',
 ]
 executable('hawck-macrod',
            macrod_src,
@@ -40,33 +40,42 @@ executable('hawck-macrod',
                            notifydep],
            include_directories : conf_inc,
            install : true,
-           #c_pch : 'pch/macrod_pch.h',
-           #cpp_pch : 'pch/macrod_pch.hpp',
           )
 
 inputd_src = [
+  'hawck-inputd.cpp',
   'UDevice.cpp',
   'Daemon.cpp',
   'KBDDaemon.cpp',
   'Keyboard.cpp',
   'FSWatcher.cpp',
   'CSV.cpp',
-  'hawck-inputd.cpp',
   'Permissions.cpp',
-  #'Dir.cpp',
+  'LuaUtils.cpp',
 ]
 executable('hawck-inputd',
            inputd_src,
-           dependencies : [pthreaddep],
+           dependencies : [pthreaddep, luadep],
            include_directories : conf_inc,
            install : true,
-           #c_pch : 'pch/inputd_pch.h',
-           #cpp_pch : 'pch/inputd_pch.hpp',
           )
+
+luatest_src = [
+  'UDevice.cpp',
+  'Keyboard.cpp',
+  'FSWatcher.cpp',
+  'CSV.cpp',
+  'Permissions.cpp',
+  'LuaUtils.cpp',
+  'LuaTest.cpp',
+]
+executable('luatest',
+           luatest_src,
+           dependencies : [pthreaddep, luadep],
+           include_directories : conf_inc,
+           install : false)
 
 executable('lsinput',
            'tools/lsinput.cpp',
            install : true,
-           #c_pch : 'pch/lsinput_pch.h',
-           #cpp_pch : 'pch/lsinput_pch.hpp',
           )

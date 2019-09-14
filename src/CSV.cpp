@@ -1,7 +1,7 @@
 /* =====================================================================================
  * CSV library
  *
- * Copyright (C) 2018 Jonas Møller (no) <jonasmo441@gmail.com>
+ * Copyright (C) 2018 Jonas Møller (no) <jonas.moeller2@protonmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -43,9 +43,9 @@ CSV::CSV(ifstream &istream) {
 
 using Segment = tuple<int, int>;
 static void segmentOn(string line, char sep, vector<Segment> &vec) {
+    static const char quot = '"';
     int beg = 0,
         i = 0;
-    char quot = '"';
     bool in_quot = false,
          quit_quot = false;
     for (char c : line) {
@@ -80,7 +80,7 @@ static string readCell(const string &cell) {
     stringstream ss;
     bool skip = true;
     for (size_t i = 0; i < cell.length()-1; i++) {
-        char c = cell[i];
+        const char c = cell[i];
         if (skip) {
             skip = false;
             continue;
@@ -100,13 +100,13 @@ void CSV::loadFromStream(ifstream &istream) {
     getline(istream, line);
     vector<Segment> segment_idxs;
     auto pushRow = [&](string line) -> size_t {
-                       segmentOn(line, ',', segment_idxs);
-                       for (auto [beg, end] : segment_idxs)
-                           matrix.push_back(readCell(line.substr(beg, end-beg)));
-                       size_t sz = segment_idxs.size();
-                       segment_idxs.clear();
-                       return sz;
-                   };
+        segmentOn(line, ',', segment_idxs);
+        for (auto [beg, end] : segment_idxs)
+            matrix.push_back(readCell(line.substr(beg, end-beg)));
+        size_t sz = segment_idxs.size();
+        segment_idxs.clear();
+        return sz;
+    };
 
     pushRow(line);
 

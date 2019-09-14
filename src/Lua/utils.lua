@@ -81,6 +81,8 @@ local function printN(c, n, out)
 end
 
 --- Check if the given table `t` is an array.
+-- @param t Value to check.
+-- @return Is array?
 function u.isArray(t)
   local i = 0
   for u, v in pairs(t) do
@@ -92,7 +94,11 @@ function u.isArray(t)
   return true
 end
 
+--- Turn a number into a hexadecimal digit.
+-- @param d A number in the range [0..15]
+-- @return Hexadecimal digit in the range ([0..9] U [a..f])
 local function hexDigit(d)
+  assert(d >= 0 and d <= 15)
   local letters = {
     "a", "b", "c", "d", "e", "f"
   }
@@ -100,7 +106,6 @@ local function hexDigit(d)
 end
 
 --- Get the hexadecimal representation of a number
---
 -- @param i The number to represent.
 -- @param pad Optional padding zeroes [default: 0]
 -- @return The hexadecimal representation of the number i.
@@ -151,6 +156,10 @@ function u.reprString(v)
   return "\"" .. concat(bytes, "") .. "\""
 end
 
+--- Return valid Lua syntax for representing a value as a key in a table.
+-- @param v The value to be represented as a key.
+-- @param nice Whether to drop square brackets on strings if possible. (Default: true)
+-- @return Valid Lua representation of `v` as a key-value.
 local function keyString(v, nice)
   if nice == nil then nice = true end
 
@@ -185,6 +194,14 @@ function table.empty(t)
   return true
 end
 
+--- Serialize a value as a Lua array, i.e a table with keys [0..]
+-- @param t The table acting as the array.
+-- @param indent The indent level to use.
+-- @param path The path up-to the `t` value. (Default: {"root"})
+-- @param visited Paths that have been visited before. (Default: {})
+-- @param links Collection of prior paths. (Default: {})
+-- @param out The output file, see json.sstream for serializing to a string. (Default: io.stdout)
+-- @return nil, output is written to `out`
 local function serialize_array(t, indent, path, visited, links, out)
   local indent = indent or 0
   local visited = visited or {}
@@ -220,6 +237,11 @@ local function isAtomic(x)
   return type(x) ~= "table" or table.empty(x)
 end
 
+--- Serialize an "atomic" value, atomic values are values that don't contain
+--- other values (i.e end-points for recursive descents through tables.)
+-- @param x The value to serialize.
+-- @param out The output file. (Default: io.stdout)
+-- @return Whether or not the value `x` was atomic.
 local function putsAtomic(x, out)
   local out = out or io.stdout
   if x == nil then
@@ -255,6 +277,14 @@ local function putsAtomic(x, out)
   return true
 end
 
+--- Serialize any Lua value.
+-- @param t The value to be serialized.
+-- @param indent The indent level to use.
+-- @param path The path up-to the `t` value. (Default: {"root"})
+-- @param visited Paths that have been visited before. (Default: {})
+-- @param links Collection of prior paths. (Default: {})
+-- @param out The output file, see json.sstream for serializing to a string. (Default: io.stdout)
+-- @return nil, output is written to `out`
 function serialize_recursive(t, indent, path, visited, links, out)
   local indent = indent or 0
   local visited = visited or {}
@@ -327,6 +357,9 @@ function u.serialize(name, t, out)
   out:write("\n")
 end
 
+--- Serialize a value and give it a name.
+-- @param t The value to be serialized.
+-- @param name The name to give `t`.
 function u.serializeAs(t, name)
   print(name .. " = {}")
   for u, v in pairs(t) do

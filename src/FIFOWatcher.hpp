@@ -29,5 +29,5 @@ public:
 
     /** Start a new thread to watch the fifo, call the callback when
      *  a packet is received. */
-    virtual void begin();
+    virtual void start();
 };

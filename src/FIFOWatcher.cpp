@@ -91,7 +91,7 @@ std::string FIFOWatcher::handleMessage(const char *buf, size_t) {
     return "";
 }
 
-void FIFOWatcher::begin() {
+void FIFOWatcher::start() {
     cout << "####### BEGIN #######" << endl;
     thread t0([this]() {
                   watch();

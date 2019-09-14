@@ -1,7 +1,7 @@
 /* =====================================================================================
  * Keyboard daemon.
  *
- * Copyright (C) 2018 Jonas Møller (no) <jonasmo441@gmail.com>
+ * Copyright (C) 2018 Jonas Møller (no) <jonas.moeller2@protonmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -41,9 +41,7 @@ extern "C" {
 #include "utils.hpp"
 #include "Daemon.hpp"
 #include "Permissions.hpp"
-
-// #undef DANGER_DANGER_LOG_KEYS
-// #define DANGER_DANGER_LOG_KEYS 1
+#include "LuaUtils.hpp"
 
 #if DANGER_DANGER_LOG_KEYS
     #warning "Currently logging keypresses"
@@ -52,6 +50,7 @@ extern "C" {
 
 using namespace std;
 using namespace Permissions;
+using namespace Lua;
 
 constexpr int FSW_MAX_WAIT_PERMISSIONS_US = 5 * 1000000;
 
@@ -74,16 +73,19 @@ void KBDDaemon::unloadPassthrough(std::string path) {
     if (key_sources.find(path) != key_sources.end()) {
         auto vec = key_sources[path];
         for (int code : *vec)
-            passthrough_keys.erase(code);
+            key_visibility[code] = KEY_HIDE;
         delete vec;
         key_sources.erase(path);
 
         syslog(LOG_INFO, "Removing passthrough keys from: %s", path.c_str());
 
         // Re-add keys
-        for (const auto &[_, vec] : key_sources)
+        for (const auto &[_, vec] : key_sources) {
+            (void) _;
             for (int code : *vec)
-                passthrough_keys.insert(code);
+                key_visibility[code] = KEY_SHOW;
+
+        }
     }
 }
 
@@ -109,9 +111,12 @@ void KBDDaemon::loadPassthrough(std::string rel_path) {
             } catch (const std::exception &e) {
                 continue;
             }
-            if (i >= 0) {
-                passthrough_keys.insert(i);
+            if (i >= 0 && i < KEY_MAX) {
+                key_visibility[i] = KEY_SHOW;
                 cells_i->push_back(i);
+            } else {
+                syslog(LOG_WARNING, "Key code was out of range: %d", i);
+                continue;
             }
         }
         key_sources[path] = cells_i.release();
@@ -126,6 +131,82 @@ void KBDDaemon::loadPassthrough(std::string rel_path) {
     }
 }
 
+// FIXME: This is pretty much an exact copy of MacroDaemon::loadScript. You should
+//        probably make loadScript into a free function.
+void KBDDaemon::loadScript(const std::string &rel_path) {
+    string bn = pathBasename(rel_path);
+    if (!goodLuaFilename(bn)) {
+        cout << "Wrong filename, not loading: " << bn << endl;
+        return;
+    }
+
+    ChDir cd(scripts_dir);
+
+    char *rpath_chars = realpath(rel_path.c_str(), nullptr);
+    if (rpath_chars == nullptr)
+        throw SystemError("Error in realpath: ", errno);
+    string path(rpath_chars);
+    free(rpath_chars);
+
+    cout << "Preparing to load script: " << rel_path << endl;
+
+    struct stat stbuf;
+    if (stat(path.c_str(), &stbuf) == -1) {
+        cout << "Warning: unable to stat(), not loading." << endl;
+        return;
+    }
+
+    unsigned perm = stbuf.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO);
+    // Strictly require chmod 744 on the script files.
+    if (perm != 0744 && stbuf.st_uid == getuid()) {
+        auto [pwd, pwdbuf] = getuser(getuid());
+        (void) pwdbuf;
+        string permstr = fmtPermissions(stbuf);
+        syslog(LOG_ERR, "Require rwxr-xr-x %s:* on script, but got %s on: %s",
+               pwd->pw_name, permstr.c_str(), rel_path.c_str());
+        return;
+    }
+
+    auto sc = mkuniq(new Script());
+    sc->call("require", "init");
+    sc->open(&udev, "udev");
+
+    // These functions/tables are not available in scripts that run inside KBDDaemon.
+    auto blacklist = {"io",
+                      "debug",
+                      "os",
+                      "require",
+                      "print",
+                      "package",
+                      "getmetatable",
+                      "setmetatable",
+                      "dofile",
+                      "load",
+                      "loadfile",
+                      "loadstring",
+                      "rawequal",
+                      "rawget",
+                      "rawset",
+                      "rawlen",
+                      "setfenv"};
+
+    for (auto lib : blacklist)
+        sc->set(lib, NULL);
+
+    sc->from(path);
+
+    string name = pathBasename(rel_path);
+
+    if (scripts.find(name) != scripts.end()) {
+        // Script already loaded, reload it
+        delete scripts[name];
+        scripts.erase(name);
+    }
+
+    cout << "Loaded script: " << name << endl;
+    scripts[name] = sc.release();
+}
+
 void KBDDaemon::loadPassthrough(FSEvent *ev) {
     unsigned perm = ev->stbuf.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO);
 
@@ -134,15 +215,17 @@ void KBDDaemon::loadPassthrough(FSEvent *ev) {
     if (perm == 0644 && ev->stbuf.st_uid == getuid()) {
         loadPassthrough(ev->path);
     } else {
-        auto [grp, grpbuf] = getgroup(ev->stbuf.st_uid);
         auto perm_str = fmtPermissions(ev->stbuf);
         syslog(LOG_ERR, "Invalid permissions for '%s', require rw-r--r-- hawck-input:*, "
                         "but was: %s",
                ev->path.c_str(), perm_str.c_str());
+
     }
 }
 
 void KBDDaemon::initPassthrough() {
+    for (auto i = 0; i < KEY_MAX; i++)
+        key_visibility[i] = KEY_HIDE;
     auto files = mkuniq(keys_fsw.addFrom(data_dirs["keys"]));
     for (auto &file : *files)
         loadPassthrough(&file);
@@ -166,8 +249,7 @@ void KBDDaemon::run() {
 
     updateAvailableKBDs();
 
-    keys_fsw.begin([this](FSEvent &ev) {
-                       lock_guard<mutex> lock(passthrough_keys_mtx);
+    keys_fsw.asyncWatch([this](FSEvent &ev) {
                        syslog(LOG_INFO, "kbd file change on: %s", ev.path.c_str());
                        if (ev.mask & IN_DELETE_SELF)
                            unloadPassthrough(ev.path);
@@ -182,11 +264,12 @@ void KBDDaemon::run() {
 
     gid_t input_gid; {
         auto [grp, grpbuf] = getgroup("input");
+        (void) grpbuf;
         input_gid = grp->gr_gid;
     }
 
 
-    input_fsw.begin([this, input_gid](FSEvent &ev) {
+    input_fsw.asyncWatch([this, input_gid](FSEvent &ev) {
                         // Don't react to the directory itself.
                         if (ev.path == "/dev/input")
                             return true;
@@ -291,13 +374,16 @@ void KBDDaemon::run() {
         if (!had_key)
             continue;
 
-        bool is_passthrough; {
-            lock_guard<mutex> lock(passthrough_keys_mtx);
-            is_passthrough = passthrough_keys.count(action.ev.code);
+        KeyVisibility key_vis;
+        if (action.ev.code >= KEY_MAX) {
+            syslog(LOG_ERR, "Received key was out of range: %d", action.ev.code);
+            key_vis = KEY_HIDE;
+        } else {
+            key_vis = key_visibility[action.ev.code];
         }
 
         // Check if the key is listed in the passthrough set.
-        if (is_passthrough) {
+        if (key_vis == KEY_SHOW) {
             input_event orig_ev = action.ev;
 
             // Pass key to Lua executor
@@ -315,7 +401,7 @@ void KBDDaemon::run() {
                 }
                 // Flush received keys and continue on.
                 udev.flush();
-                // Skip emmision of the original key if everything went OK
+                // Skip emission of the original key if everything went OK
                 if (count == 0)
                     cout << "MacroD swallowed event" << endl;
                 continue;

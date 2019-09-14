@@ -1,7 +1,7 @@
 /* =====================================================================================
  * Keyboard listening class.
  *
- * Copyright (C) 2018 Jonas Møller (no) <jonasmo441@gmail.com>
+ * Copyright (C) 2018 Jonas Møller (no) <jonas.moeller2@protonmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -217,6 +217,7 @@ void Keyboard::reset(const char *path) {
 int kbdMultiplex(const std::vector<Keyboard*>& kbds, int timeout) {
     size_t idx = 0,
            len = kbds.size();
+
     struct pollfd pfds[len];
     for (const auto& kbd : kbds) {
         pfds[idx].events = POLLIN;

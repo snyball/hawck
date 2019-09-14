@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * FSWatcher.cpp, file system monitoring.                                            *
  *                                                                                   *
- * Copyright (C) 2018 Jonas Møller (no) <jonasmo441@gmail.com>                       *
+ * Copyright (C) 2018 Jonas Møller (no) <jonas.moeller2@protonmail.com>              *
  * All rights reserved.                                                              *
  *                                                                                   *
  * Redistribution and use in source and binary forms, with or without                *
@@ -75,6 +75,8 @@ int FSWatcher::getMaxWatchers() const {
 void FSWatcher::stop() noexcept(false) {
     int max_wait_usec = FSW_THREAD_STOP_TIMEOUT_SEC * 1000000;
     int wait_usec = 0;
+    if (running == RunState::STOPPED)
+        return;
     running = RunState::STOPPING;
     while (running != RunState::STOPPED) {
         usleep(10);
@@ -214,6 +216,7 @@ void FSWatcher::watch(const function<bool(FSEvent &ev)> &callback) {
     while (running == RunState::RUNNING) {
         pfd.fd = this->fd;
         pfd.events = POLLIN;
+        poll(&pfd, 1, 128);
 
         try {
             // Poll with a timeout of 128 ms, this is so that we can check

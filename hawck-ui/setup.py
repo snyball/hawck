@@ -12,7 +12,7 @@ setuptools.setup(
     name="hawck_ui",
     version=config.get("version", ""),
     author="Jonas Møller",
-    author_email="sanoj@nimda.no",
+    author_email="jonas.moeller2@protonmail.com",
     description="User interface for the Hawck keyboard macro system.",
     long_description=long_description,
     long_description_content_type="text/markdown",

@@ -1,3 +1,5 @@
+#pragma once
+
 /** @file utils.hpp
  *
  * @brief Miscellaneous utilities used throughout hawck.
@@ -9,6 +11,7 @@
 
 extern "C" {
     #include <unistd.h>
+    #include <syslog.h>
 }
 
 #include "SystemError.hpp"
@@ -65,11 +68,10 @@ public:
      * @throws SystemError If unable to chdir() to the path.
      */
     explicit ChDir(const std::string& path) {
-        char *cur_path = realpath(".", nullptr);
+        auto cur_path = mkuniq(realpath(".", nullptr), free);
         if (cur_path == nullptr)
             throw SystemError("Unable to get current directory");
-        olddir = std::string(cur_path);
-        free(cur_path);
+        olddir = std::string(cur_path.get());
         if (chdir(path.c_str()) == -1)
             throw SystemError("Unable to chdir() to: " + path);
     }
@@ -91,14 +93,28 @@ public:
     /**
      * Go back to the original directory.
      *
-     * @throws SystemError If unable to chdir() back to the original
-     *                     directory. If you want to prevent this, call
-     *                     ChDir::popd() and catch the error.
+     * If it can't go back to the original directory, it will attempt
+     * to move into root (/). If it can't move into the system root,
+     * the program will call abort().
+     *
+     * Errors are logged with syslog.
      */
     ~ChDir() {
-        if (done)
+        if (done || chdir(olddir.c_str()) != -1)
             return;
-        popd();
+
+        syslog(LOG_ALERT, "Unable to chdir() back to \"%s\": %s",
+               olddir.c_str(), SystemError::getErrorString().c_str());
+
+        if (chdir("/") != -1) {
+            syslog(LOG_WARNING, "Moved into system root due to chdir() failure.");
+            return;
+        }
+
+        syslog(LOG_EMERG, "Unable to move into system root: %s",
+               SystemError::getErrorString().c_str());
+        syslog(LOG_EMERG, "Will now abort!");
+        abort();
     }
 };
 
@@ -117,4 +133,11 @@ inline std::string pathBasename(const std::string& path) {
     if (bn == nullptr)
         return std::string("");
     return std::string(bn);
+}
+
+inline std::string realpath_safe(const std::string& path) {
+    auto rpath_chars = std::unique_ptr<char, decltype(&free)>(realpath(path.c_str(),
+                                                                       nullptr),
+                                                              &free);
+    return std::string(rpath_chars.get());
 }

@@ -126,9 +126,15 @@ class SudoMethod:
             except Exception as e:
                 ret = json.dumps([(type(e).__name__, str(e)), None])
             return ret
-        fn_str = dill.dumps(wrap, byref=False, fmode=False, recurse=False)
-        sep = bytes(f"BEGIN PYTHON RETURN {os.getpid()}-{time.time()}", "utf-8")
-        py_cmd = [sys.executable, "-c", PY_CMD.format(fn=base64.b64encode(fn_str), sep=sep)]
+        fn_str = dill.dumps(wrap,
+                            byref=False,
+                            fmode=False,
+                            recurse=False)
+        sep = bytes(f"BEGIN PYTHON RETURN {os.getpid()}-{time.time()}",
+                    "utf-8")
+        py_cmd = [sys.executable,
+                  "-c", PY_CMD.format(fn=base64.b64encode(fn_str),
+                                      sep=sep)]
         cmd = self.getcmd(expl, user, py_cmd)
         p = Popen(cmd, stdout=PIPE)
         def callback_wrap(callback):

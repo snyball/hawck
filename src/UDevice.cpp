@@ -50,7 +50,9 @@ static int getDevice(const string &by_name) {
     return -1;
 }
 
-UDevice::UDevice() {
+UDevice::UDevice()
+    : LuaIface(this, UDevice_lua_methods)
+{
     fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
 
     if (fd < 0)
@@ -150,41 +152,6 @@ void UDevice::flush() {
         usleep(ev_delay);
     }
 
-
-    #if 0
-    struct pollfd pfd;
-    cout << "BEGIN RECV" << endl;
-    for (;;) {
-        pfd.fd = dfd;
-        pfd.events = POLLIN;
-        // Wait for something to read for 16ms
-        switch (poll(&pfd, 1, 16)) {
-            case -1:
-                // throw SystemError("Error in poll(): ", errno);
-                cout << "Error in poll()" << endl;
-                break;
-
-            case 0:
-                // Timeout, skip events for now.
-                cout << "poll() on loopback kbd timed out." << endl;
-                goto loop_end;
-
-            default: {
-                input_event ev;
-                if (read(dfd, &ev, sizeof(ev)) != sizeof(ev))
-                    throw SystemError("Unable to receive event");
-                cout << "Received event" << endl;
-                if (ev.code == SYN_DROPPED && ev.type == EV_SYN)
-                    cout << "DROPPED" << endl;
-                cout << "ev.code: " << ev.code << endl;
-                cout << "ev.type: " << ev.type << endl;
-                cout << "ev.value: " << ev.value << endl;
-            }
-        }
-    } loop_end:
-    cout << "END RECV" << endl << endl ;
-    #endif
-
     evbuf_top = 0;
 }
 
@@ -213,3 +180,5 @@ void UDevice::upAll() {
         }
     flush();
 }
+
+LUA_CREATE_BINDINGS(UDevice_lua_methods)
