@@ -11,7 +11,9 @@ using namespace std;
 /**
  * Find XDG directories, create them if they don't exist.
  */
-XDG::XDG() noexcept(false) {
+XDG::XDG(const std::string& appname) noexcept(false)
+    : appname(appname)
+{
     auto [pw, pwbuf] = Permissions::getuser();
     (void) pwbuf;
     string user_name(pw->pw_name);
@@ -55,10 +57,17 @@ XDG::XDG() noexcept(false) {
         }
     }
 
-    dirs["CONFIG_HOME"] = config_home_var;
-    dirs["DATA_HOME"]   = data_home_var;
-    dirs["CACHE_HOME"]  = cache_home_var;
-    dirs["RUNTIME_DIR"] = runtime_dir_var;
+    dirs[XDG_CONFIG_HOME] = config_home_var;
+    dirs[XDG_DATA_HOME]   = data_home_var;
+    dirs[XDG_CACHE_HOME]  = cache_home_var;
+    dirs[XDG_RUNTIME_DIR] = runtime_dir_var;
+
+    // Create a subdirectory for this application in each of the standard XDG
+    // directories.
+    mkpath(0700, XDG_CONFIG_HOME);
+    mkpath(0700, XDG_DATA_HOME);
+    mkpath(0775, XDG_CACHE_HOME);
+    mkpath(0700, XDG_RUNTIME_DIR);
 }
 
 XDG::~XDG() {}

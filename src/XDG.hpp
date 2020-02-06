@@ -10,15 +10,22 @@ extern "C" {
     #include <syslog.h>
 }
 
+enum XDGDir {
+    XDG_DATA_HOME,
+    XDG_CACHE_HOME,
+    XDG_CONFIG_HOME,
+    XDG_RUNTIME_DIR,
+};
+
 /**
  * XDG Base directory specification tools.
  *
  * To use it, initialize an XDG object, and query it as follows:
  *   XDG xdg;
- *   xdg["CONFIG_HOME"];
- *   xdg["DATA_HOME"];
- *   xdg["CACHE_HOME"];
- *   xdg["RUNTIME_DIR"]
+ *   xdg[XDG_CONFIG_HOME];
+ *   xdg[XDG_DATA_HOME];
+ *   xdg[XDG_CACHE_HOME];
+ *   xdg[XDG_RUNTIME_DIR]
  *
  * This class does not look for the following:
  *   - XDG_CONFIG_DIRS
@@ -26,7 +33,8 @@ extern "C" {
  *   - user-dirs.dirs, i.e XDG_DESKTOP_DIR, XDG_DOWNLOAD_DIR, etc.
  */
 class XDG {
-    std::unordered_map<std::string, std::string> dirs;
+    std::unordered_map<XDGDir, std::string> dirs;
+    std::string appname;
 
 public:
     /**
@@ -49,7 +57,7 @@ public:
      * unless something has gone terribly wrong (and user action is required to
      * correct the error.)
      */
-    XDG() noexcept(false);
+    XDG(const std::string& name) noexcept(false);
     virtual ~XDG();
 
     /**
@@ -105,7 +113,7 @@ public:
      *
      * Sets `um` to 0700.
      */
-    static int mkPathIfNotExists(const std::string& path) {
+    static inline int mkPathIfNotExists(const std::string& path) {
         return mkPathIfNotExists(path, 0700);
     }
 
@@ -127,7 +135,27 @@ public:
      */
     static bool isDir(const std::string& path);
 
-    inline std::string& operator[](const std::string &name) noexcept {
-        return dirs[name];
+    template <class... Ts>
+    inline std::string path(XDGDir basedir, Ts... rest) noexcept {
+        std::stringstream sstream;
+        return join(&sstream, dirs[basedir], this->appname, rest...);
+    }
+
+    template <class... Ts>
+    inline void mkpath(mode_t um, XDGDir basedir,  Ts... rest) noexcept {
+        mkPathIfNotExists(path(basedir, rest...), um);
+    }
+
+private:
+    template <class T>
+    inline std::string join(std::stringstream *stream, T arg) {
+        (*stream) << arg;
+        return stream->str();
+    }
+
+    template <class T, class... Ts>
+    inline std::string join(std::stringstream *stream, T arg, Ts... rest) {
+        (*stream) << arg << "/";
+        return join(stream, rest...);
     }
 };
