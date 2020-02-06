@@ -84,8 +84,9 @@ it may be added to this README.
 
 ## How do I install it?
 
-Download or clone the GIT repo, and run the `install.sh` program from the
-command line. This script has been tested for Ubuntu 18.04.
+Download the latest [release](https://github.com/snyball/Hawck/releases), and
+run the `install.sh` program from the command line. This script has been tested
+for Ubuntu 18.04 LTS.
 
 You will need to reboot the computer after running the installer, because it
 needs to add your user to a new group (with Ubuntu it seems like logging out and
