@@ -8,39 +8,50 @@
 
 using namespace std;
 
+/**
+ * Find XDG directories, create them if they don't exist.
+ */
 XDG::XDG() noexcept(false) {
     auto [pw, pwbuf] = Permissions::getuser();
     (void) pwbuf;
     string user_name(pw->pw_name);
 
-    auto user_home_fallback   = "/home/" + user_name;
-    auto user_home_var        = envString("HOME", user_home_fallback);
+    auto user_home_var        = envString("HOME");
+
+    // Irrecoverable error, on the vast majority of systems super-user
+    // privileges are required in order to create a new directory in /home/
+    if (user_home_var == "" || !isDir(user_home_var)) {
+        throw SystemError("$HOME was not a directory: HOME='" + user_home_var + "'");
+    }
+
     auto config_home_fallback = user_home_var + "/.config";
     auto config_home_var      = envString("XDG_CONFIG_HOME", config_home_fallback);
     auto data_home_fallback   = user_home_var + "/.local/share";
     auto data_home_var        = envString("XDG_DATA_HOME", data_home_fallback);
     auto cache_home_fallback  = user_home_var + "/.cache";
     auto cache_home_var       = envString("XDG_CACHE_HOME", cache_home_fallback);
+    auto runtime_dir_fallback = user_home_var + "/.xdg-runtime-dir-fallback";
     auto runtime_dir_var      = envString("XDG_RUNTIME_DIR");
 
-    // These file-permissions are based on the defaults in Ubuntu 18.04
-    mkPathIfNotExists(user_home_var, 0755);
+    // These file-permissions are based on the defaults in Ubuntu 18.04, they seem
+    // pretty sane.
     mkPathIfNotExists(data_home_var, 0700);
     mkPathIfNotExists(cache_home_var, 0775);
+    mkPathIfNotExists(config_home_var, 0700);
 
+    // In this case the spec isn't entirely clear, though I don't want this to
+    // be a hard error.
+    //
+    // FIXME: Per the spec, this fallback directory should be removed when the
+    //        user logs out.
     if (runtime_dir_var == "") {
-        struct stat stbuf;
-        if (stat(data_home_var.c_str(), &stbuf) == -1)
-            throw SystemError("Unable to stat() $XDG_DATA_HOME: ", errno);
-
-        // Fall back to DATA_HOME for RUNTIME_DIR if the directory has suitable
-        // permissions.
-        if ((stbuf.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO)) == 0700) {
-            runtime_dir_var = data_home_var;
-        } else {
-            // If all else fails, try to create a fallback directory in $HOME
-            runtime_dir_var = user_home_var + "/.xdg-runtime-dir";
-            mkPathIfNotExists(runtime_dir_var, 0700);
+        mkPathIfNotExists(runtime_dir_fallback, 0700);
+        // Warn, as per the XDG spec
+        syslog(LOG_WARNING, "$XDG_RUNTIME_DIR was not set, created fallback at: %s",
+               runtime_dir_fallback.c_str());
+        // Just in case it already existed, but with the wrong permissions.
+        if (chmod(runtime_dir_fallback.c_str(), 0700) == -1) {
+            throw SystemError("Unable to set fallback $XDG_RUNTIME_DIR permissions");
         }
     }
 
@@ -52,6 +63,16 @@ XDG::XDG() noexcept(false) {
 
 XDG::~XDG() {}
 
+/**
+ * @param dir Path to create, every directory along the path will be created
+ *            if they don't exist.
+ * @param um If directories have to be created, use the file creation mode `um`
+ *
+ * Will raise SystemError if the path does not exist, and cannot be created.
+ *
+ * Note: This will not change the permissions of any directories along the path
+ *       that do exist.
+ */
 int XDG::mkPathIfNotExists(const std::string& path, mode_t um) {
     if (path.size() == 0)
         return 0;
@@ -76,6 +97,15 @@ int XDG::mkPathIfNotExists(const std::string& path, mode_t um) {
     return created;
 }
 
+/**
+ * @param dir Path to the directory, note that $(dirname dir) has to exist.
+ *            Use mkPathIfNotExists if you can't expect $(dirname dir) to exist.
+ * @param um If the directory has to be created, use the file creation mode `um`
+ *
+ * Will raise SystemError if the directory does not exist, and cannot be created.
+ *
+ * Note: This will not change the permissions of the directory if it did exist.
+ */
 bool XDG::mkdirIfNotExists(const std::string& dir, mode_t um) {
     struct stat stbuf;
     if (stat(dir.c_str(), &stbuf) == -1) {

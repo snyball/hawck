@@ -93,7 +93,7 @@ public:
      *
      * @param dir The directory path.
      * @param um File creation permissions bitfield (see stat.st_mode).
-     * @return True if a new directory was created, False otherwise.
+     * @return Whether a new directory was created.
      * @throws SystemError if unable to create a new directory, or if
      *                     a file already existed at `dir` but it was
      *                     not a directory.
