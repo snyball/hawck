@@ -15,6 +15,9 @@ enum XDGDir {
     XDG_CACHE_HOME,
     XDG_CONFIG_HOME,
     XDG_RUNTIME_DIR,
+
+    // NOTE: Must be the final element.
+    __XDG_DIR_NUM_TYPES,
 };
 
 /**
@@ -22,10 +25,10 @@ enum XDGDir {
  *
  * To use it, initialize an XDG object, and query it as follows:
  *   XDG xdg;
- *   xdg[XDG_CONFIG_HOME];
- *   xdg[XDG_DATA_HOME];
- *   xdg[XDG_CACHE_HOME];
- *   xdg[XDG_RUNTIME_DIR]
+ *   xdg.path(XDG_CONFIG_HOME, "relative", "from", "XDG", "dir");
+ *   xdg.path(XDG_DATA_HOME, "relative", "from", "XDG", "dir");
+ *   xdg.path(XDG_CACHE_HOME, "relative", "from", "XDG", "dir");
+ *   xdg.path(XDG_RUNTIME_DIR, "relative", "from", "XDG", "dir")
  *
  * This class does not look for the following:
  *   - XDG_CONFIG_DIRS
@@ -33,7 +36,7 @@ enum XDGDir {
  *   - user-dirs.dirs, i.e XDG_DESKTOP_DIR, XDG_DOWNLOAD_DIR, etc.
  */
 class XDG {
-    std::unordered_map<XDGDir, std::string> dirs;
+    std::string dirs[__XDG_DIR_NUM_TYPES];
     std::string appname;
 
 public:
