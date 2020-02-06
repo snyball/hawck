@@ -1,5 +1,6 @@
 #include "MacroDaemon.hpp"
 #include "Daemon.hpp"
+#include "XDG.hpp"
 #include <iostream>
 #if MESON_COMPILE
 #include <hawck_config.h>
@@ -25,6 +26,7 @@ int main(int argc, char *argv[]) {
         "  -h, --help  Display this help information.\n"
         "  --version   Display version and exit.\n"
     ;
+    XDG xdg("hawck");
 
     //daemonize("/var/log/hawck-input/log");
     static struct option long_options[] =
@@ -83,15 +85,9 @@ int main(int argc, char *argv[]) {
 
     cout << "hawck-macrod v" MACROD_VERSION " forking ..." << endl;
 
+    xdg.mkpath(0700, XDG_DATA_HOME, "logs");
     if (!no_fork) {
-        const char *home_cstring = getenv("HOME");
-        if (home_cstring == nullptr) {
-            cout << "Unable to find home directory" << endl;
-            daemonize("/dev/null");
-        } else {
-            string HOME(home_cstring);
-            daemonize(HOME + "/.local/share/hawck/macrod.log");
-        }
+        daemonize(xdg.path(XDG_DATA_HOME, "logs", "macrod.log"));
     }
 
     MacroDaemon daemon;

@@ -16,8 +16,8 @@ LuaConfig::LuaConfig(const std::string& fifo_path,
     : FIFOWatcher(fifo_path, ofifo_path),
       luacfg_path(luacfg_path)
 {
-    XDG xdg;
-    ChDir cd(xdg["DATA_HOME"] + "/hawck/scripts/LLib");
+    XDG xdg("hawck");
+    ChDir cd(xdg.path(XDG_DATA_HOME, "scripts", "LLib"));
     lua.from("./config.lua");
     lua.call("loadConfig", luacfg_path);
 }

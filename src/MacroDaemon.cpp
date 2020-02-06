@@ -45,6 +45,7 @@ extern "C" {
 #include "utils.hpp"
 #include "Permissions.hpp"
 #include "LuaConfig.hpp"
+#include "XDG.hpp"
 
 using namespace Lua;
 using namespace Permissions;
@@ -72,6 +73,8 @@ static inline void initEventStrs()
 MacroDaemon::MacroDaemon()
     : kbd_srv("/var/lib/hawck-input/kbd.sock")
 {
+    XDG xdg("hawck");
+
     notify_on_err = true;
     stop_on_err = false;
     eval_keydown = true;
@@ -85,9 +88,8 @@ MacroDaemon::MacroDaemon()
     chmod("/var/lib/hawck-input/kbd.sock", 0660);
     initEventStrs();
     notify_init("Hawck");
-    string HOME(getenv("HOME"));
-    home_dir = HOME + "/.local/share/hawck";
-    initScriptDir(home_dir + "/scripts-enabled");
+    xdg.mkpath(0700, XDG_DATA_HOME, "scripts-enabled");
+    initScriptDir(xdg.path(XDG_DATA_HOME, "scripts-enabled"));
 }
 
 void MacroDaemon::getConnection() {
@@ -200,10 +202,6 @@ extern "C" void viewSource(NotifyNotification *n, char *action, script_error_inf
     fflush(stderr);
 }
 #endif
-
-void f(void *) {
-    fprintf(stderr, "GOT EM\n"); fflush(stderr);
-}
 
 void MacroDaemon::notify(string title, string msg) {
     NotifyNotification *n;
