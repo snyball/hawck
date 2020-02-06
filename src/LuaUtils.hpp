@@ -344,8 +344,17 @@ namespace Lua {
         }
     };
 
+    inline void checkStack(lua_State *L, int n) noexcept {
+        if (lua_checkstack(L, n) != LUA_OK) {
+            std::cout << "Unable to allocate enough Lua stack space (FATAL OOM)"
+                      << std::endl;
+            abort();
+        }
+    }
+
     template <class T>
     T *newUserdata(lua_State *L) {
+        checkStack(L, 1);
         T *ptr = reinterpret_cast<T *>(lua_newuserdata(L, sizeof(T)));
         if (ptr == nullptr) {
             std::cout << "lua_newuserdata returned NULL (FATAL OOM)" << std::endl;
@@ -537,6 +546,7 @@ namespace Lua {
         }
 
         inline void provide(lua_State *L) {
+            checkStack(L, 1);
             auto *ud =
                 reinterpret_cast<UncheckedLuaPtr *>(
                     lua_newuserdata(L, sizeof(UncheckedLuaPtr)));
@@ -583,6 +593,7 @@ namespace Lua {
 
     template <class T>
     inline void LuaPtr<T>::provide(lua_State *L) const {
+        checkStack(L, 1);
         UncheckedLuaPtr *ud =
             (struct UncheckedLuaPtr *) lua_newuserdata(L, sizeof(UncheckedLuaPtr));
         if (ud == nullptr) {
@@ -708,32 +719,6 @@ namespace Lua {
             return lua_type(L, idx) == LUA_TBOOLEAN;
         }
 
-        // XXX: luaGetVal is deprecated in favor of LuaVal<T>::get(lua_State, int)
-        #if 0
-        inline int luaGetVal(int idx, int) noexcept {
-            return lua_tonumber(L, idx);
-        }
-
-        inline bool luaGetVal(int idx, bool) noexcept {
-            return lua_toboolean(L, idx);
-        }
-
-        template <class P>
-        inline P* luaGetVal(int idx, P *) noexcept {
-            return ((LuaPtr<P>) UncheckedLuaPtr(L, idx)).ptr;
-        }
-
-        inline const char *luaGetVal(int idx, const char *) noexcept {
-            return lua_tostring(L, idx);
-        }
-
-        inline const std::string luaGetVal(int idx, const std::string&) noexcept {
-            size_t len;
-            char *str_p = lua_tolstring(L, &len, idx);
-            return std::string(str_p, len);
-        }
-        #endif
-
         static inline constexpr int varargLength() noexcept {
             return 0;
         }
@@ -759,14 +744,16 @@ namespace Lua {
          */
         template <class R, class Fn>
         inline std::function<int()> callFromLuaFunction(int, Fn f) noexcept {
-            return [f, this]() -> int {
-                if constexpr (std::is_void<R>::value) {
-                    (void) this;
-                    f();
-                    return 0;
-                } else
-                    return luaPush(L, f());
-            };
+            if constexpr (std::is_void<R>::value) {
+                return [f]() -> int {
+                            f();
+                            return 0;
+                        };
+            } else {
+                return [f, this]() -> int {
+                           return luaPush(L, f());
+                       };
+            }
         }
 
         /** Recurse downwards creating lambda functions along the way that
@@ -904,7 +891,7 @@ namespace Lua {
         virtual ~LuaIface() {}
 
         virtual void luaPush(lua_State *L) {
-            lua_checkstack(L, 4);
+            checkStack(L, 4);
 
             // Provide pointer to Lua
             lua_ptr.provide(L);
@@ -1016,6 +1003,8 @@ namespace Lua {
 
         virtual void luaPush(lua_State *L) {
             ++*rc;
+
+            checkStack(L, 6);
 
             iface->luaPush(L);
 
@@ -1185,13 +1174,16 @@ namespace Lua {
         std::tuple<T...> call(std::string name, Arg... args) {
             TimeoutHook hook(L, SCRIPT_TIMEOUT);
 
+            constexpr int nres = countT<T...>();
+            constexpr int nargs = countT<Arg...>();
+            checkStack(L, nargs + 1);
+
             lua_pushcfunction(L, hwk_lua_error_handler_callback);
             lua_getglobal(L, name.c_str());
             if (!isCallable(L, -1))
                 throw LuaError("Unable to retrieve " + name +
                                 " function from Lua state");
-            int nargs = call_r(0, args...);
-            constexpr int nres = countT<T...>();
+            call_r(0, args...);
 
             // -n-nargs is the position of hwk_lua_error_handler_callback
             // on the Lua stack.
