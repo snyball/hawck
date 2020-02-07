@@ -10,8 +10,12 @@
 #include <regex>
 
 extern "C" {
-    #include <unistd.h>
+    #include <fcntl.h>
+    #include <sys/stat.h>
+    #include <sys/types.h>
     #include <syslog.h>
+    #include <unistd.h>
+    #include <sys/file.h>
 }
 
 #include "SystemError.hpp"
@@ -115,6 +119,55 @@ public:
                SystemError::getErrorString().c_str());
         syslog(LOG_EMERG, "Will now abort!");
         abort();
+    }
+};
+
+/**
+ * Flocka; I go hard in the paint, but only when I've synchronized access to the
+ * file with the flock() system call.
+ *
+ * Usage:
+ * {
+ *   int thing;
+ *   {
+ *     Flocka flock("file.txt");
+ *     ifstream stream("file.txt");
+ *     stream >> thing;
+ *   }
+ * }
+ */
+class Flocka {
+    int fd;
+
+public:
+    /**
+     * Throws SystemError if the file cannot be opened.
+     */
+    inline Flocka(std::string path) noexcept(false) {
+        fd = ::open(path.c_str(), O_RDWR | O_CREAT, 0644);
+        if (fd == -1) {
+            throw SystemError("Unable to open file: ", errno);
+        }
+
+        if (flock(fd, LOCK_SH) == -1) {
+            throw SystemError("Unable to acquire shared lock: ", errno);
+        }
+
+        if (flock(fd, LOCK_EX) == -1) {
+            throw SystemError("Unable to acquire exclusive lock: ", errno);
+        }
+    }
+
+    /**
+     * Will throw a SystemError if unable to unlock the file.
+     *
+     * NOTE: You should probaby not catch this error, consider it fatal.
+     */
+    inline ~Flocka() noexcept(false) {
+        if (flock(fd, LOCK_UN) == -1) {
+            throw SystemError("Unable to release lock: ", errno);
+        }
+        close(fd);
     }
 };
 
