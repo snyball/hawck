@@ -5,13 +5,19 @@ extern "C" {
     #include <stdlib.h>
     #include <stdio.h>
     #include <sys/stat.h>
+    #include <signal.h>
+    #include <sys/types.h>
+    #include <syslog.h>
+    #include <limits.h>
 }
 
 #include <string>
+#include <fstream>
 #include <memory>
 
 #include "SystemError.hpp"
 #include "Daemon.hpp"
+#include "utils.hpp"
 
 #if MESON_COMPILE
 #include <hawck_config.h>
@@ -82,6 +88,49 @@ void daemonize(const string &logfile_path) {
         close(fd);
 
     dup_streams(logfile_path, logfile_path);
+}
+
+/**
+ * Get path to the executable
+ */
+static std::string pidexe(pid_t pid) {
+    char buf[PATH_MAX];
+    // The documentation for readlink wasn't clear on whether it would
+    // write an empty string on error.
+    if (readlink(pathJoin("/proc", pid, "exe").c_str(), buf, sizeof(buf)) == -1)
+        buf[0] = '\0';
+    return std::string(buf);
+}
+
+void killPretender(std::string pid_file) {
+    Flocka flock(pid_file);
+    int old_pid; {
+        std::ifstream pidfile(pid_file);
+        pidfile >> old_pid;
+    }
+    std::string old_exe = pidexe(old_pid);
+    if (pathBasename(old_exe) == pathBasename(pidexe(getpid()))) {
+        syslog(LOG_WARNING, "Killing previous %s instance ...",
+               old_exe.c_str());
+        kill(old_pid, SIGTERM);
+    } else {
+        syslog(LOG_INFO, "Outdated pid file with exe '%s', continuing ...",
+               old_exe.c_str());
+    }
+    std::ofstream pidfile_out(pid_file);
+    pidfile_out << getpid() << std::endl;
+}
+
+void clearPidFile(std::string pid_file) {
+    Flocka flock(pid_file);
+    int pid; {
+        std::ifstream pidfile(pid_file);
+        pidfile >> pid;
+    }
+    if (pid == getpid()) {
+        std::ofstream pidfile(pid_file);
+        pidfile << std::endl;
+    }
 }
 
 void daemonize() {

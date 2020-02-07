@@ -188,3 +188,36 @@ inline std::string realpath_safe(const std::string& path) {
                                                               &free);
     return std::string(rpath_chars.get());
 }
+
+class StringJoiner {
+private:
+    std::string sep;
+
+public:
+    inline StringJoiner(std::string sep) : sep(sep) {}
+
+    template <class... Ts>
+    inline std::string join(Ts... parts) {
+        std::stringstream sstream;
+        return _join(&sstream, parts...);
+    }
+
+private:
+    template <class T>
+    inline std::string _join(std::stringstream *stream, T arg) {
+        (*stream) << arg;
+        return stream->str();
+    }
+
+    template <class T, class... Ts>
+    inline std::string _join(std::stringstream *stream, T arg, Ts... rest) {
+        (*stream) << arg << sep;
+        return _join(stream, rest...);
+    }
+};
+
+template <class... Ts>
+static inline std::string pathJoin(Ts... parts) {
+    StringJoiner joiner("/");
+    return joiner.join(parts...);
+}

@@ -95,26 +95,10 @@ int main(int argc, char *argv[]) {
         daemonize(xdg.path(XDG_DATA_HOME, "logs", "macrod.log"));
     }
 
-    {
-        int old_pid;
-        string pidpath = xdg.path(XDG_RUNTIME_DIR, "macrod.pid");
-        Flocka flock(pidpath);
-        std::ifstream pidfile(pidpath);
-        pidfile >> old_pid;
-        char buf[PATH_MAX];
-        readlink(XDG::pathJoin("/proc", old_pid, "exe").c_str(),
-                 buf, sizeof(buf));
-        std::cout << buf << std::endl;
-        if (pathBasename(std::string(buf)) == "hawck-macrod") {
-            syslog(LOG_WARNING, "Killing previous hawck-macrod instance ...");
-            kill(old_pid, SIGTERM);
-        } else {
-            syslog(LOG_INFO, "Outdated pid file with exe '%s', continuing ...",
-                   buf);
-        }
-        std::ofstream pidfile_out(pidpath);
-        pidfile_out << getpid() << std::endl;
-    }
+    // Kill any alread-running instance of macrod and write the new pid to the
+    // pidfile.
+    string pid_file = xdg.path(XDG_RUNTIME_DIR, "macrod.pid");
+    killPretender(pid_file);
 
     MacroDaemon daemon;
     try {
@@ -122,6 +106,7 @@ int main(int argc, char *argv[]) {
     } catch (exception &e) {
         cout << e.what() << endl;
         syslog(LOG_CRIT, "MacroD: %s", e.what());
+        clearPidFile(pid_file);
         throw;
     }
 }

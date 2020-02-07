@@ -32,7 +32,7 @@ private:
     }
 
 public:
-    inline void printBacktrace() {
+    inline void printBacktrace() const {
         backtrace_symbols_fd(stack + 1, stack_sz - 1, fileno(stderr));
     }
 

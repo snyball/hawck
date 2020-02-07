@@ -141,19 +141,12 @@ public:
 
     template <class... Ts>
     inline std::string path(XDGDir basedir, Ts... rest) noexcept {
-        std::stringstream sstream;
-        return join(&sstream, dirs[basedir], this->appname, rest...);
+        return pathJoin(dirs[basedir], this->appname, rest...);
     }
 
     template <class... Ts>
     inline void mkpath(mode_t um, XDGDir basedir,  Ts... rest) noexcept {
         mkPathIfNotExists(path(basedir, rest...), um);
-    }
-
-    template <class... Ts>
-    static inline std::string pathJoin(Ts... parts) {
-        std::stringstream sstream;
-        return join(&sstream, parts...);
     }
 
     template <class... Ts>
@@ -164,18 +157,5 @@ public:
     template <class... Ts>
     inline void mkfifo(Ts... parts) {
         ::mkfifo(path(XDG_RUNTIME_DIR, parts...).c_str(), 0700);
-    }
-
-private:
-    template <class T>
-    static inline std::string join(std::stringstream *stream, T arg) {
-        (*stream) << arg;
-        return stream->str();
-    }
-
-    template <class T, class... Ts>
-    static inline std::string join(std::stringstream *stream, T arg, Ts... rest) {
-        (*stream) << arg << "/";
-        return join(stream, rest...);
     }
 };

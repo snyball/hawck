@@ -151,8 +151,6 @@ int main(int argc, char *argv[]) {
         exit(0);
     }
 
-    remove("/var/lib/hawck-input/pid");
-
     cout << "Starting Hawck InputD v" INPUTD_VERSION " on:" << endl;
     for (const auto& dev : kbd_devices)
         cout << "  - <" << dev << ">" << endl;
@@ -162,29 +160,22 @@ int main(int argc, char *argv[]) {
         daemonize("/tmp/hawck-inputd.log");
     }
 
-    // Write pid
-    try {
-        ofstream ostream("/var/lib/hawck-input/pid");
-        ostream << getpid();
-    } catch (const exception &e) {
-        throw SystemError("Unable to write pid: ", errno);
-    }
+    const string pid_file = "/var/lib/hawck-input/pid";
+    killPretender(pid_file);
 
     try {
-        cout << "Settin up daemon ..." << endl;
         KBDDaemon daemon;
-        cout << "Adding devices ..." << endl;
         for (const auto& dev : kbd_devices)
             daemon.addDevice(dev);
         daemon.setEventDelay(udev_event_delay);
         daemon.setSocketTimeout(socket_timeout);
         syslog(LOG_INFO, "Running Hawck InputD ...");
-        cout << "Running ..." << endl;
         daemon.run();
-    } catch (const exception &e) {
+    } catch (const SystemError &e) {
         syslog(LOG_CRIT, "Abort due to exception: %s", e.what());
         cout << "Error: " << e.what() << endl;
-        remove("/var/lib/hawck-input/pid");
+        e.printBacktrace();
+        clearPidFile(pid_file);
         throw;
     }
 }
