@@ -60,6 +60,15 @@ extern "C" {
     #include <libgen.h>
 }
 
+extern "C" {
+    #undef _GNU_SOURCE
+    #include <string.h>
+    #define _GNU_SOURCE
+    #include <execinfo.h>
+    #include <stdio.h>
+    #include <syslog.h>
+}
+
 /** FIXME: This library is NOT THREAD SAFE!!!
  *
  * The problem lies with LuaMethod.setState().
@@ -345,9 +354,13 @@ namespace Lua {
     };
 
     inline void checkStack(lua_State *L, int n) noexcept {
-        if (lua_checkstack(L, n) != LUA_OK) {
+        if (!lua_checkstack(L, n)) {
             std::cout << "Unable to allocate enough Lua stack space (FATAL OOM)"
                       << std::endl;
+            constexpr int elems = 100;
+            void *stack[elems];
+            size_t size = backtrace(stack, elems);
+            backtrace_symbols_fd(stack + 1, size - 1, fileno(stderr));
             abort();
         }
     }
