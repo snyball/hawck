@@ -158,15 +158,9 @@ public:
         }
     }
 
-    /**
-     * Will throw a SystemError if unable to unlock the file.
-     *
-     * NOTE: You should probaby not catch this error, consider it fatal.
-     */
-    inline ~Flocka() noexcept(false) {
-        if (flock(fd, LOCK_UN) == -1) {
-            throw SystemError("Unable to release lock: ", errno);
-        }
+    inline ~Flocka() {
+        // Did not find any failure conditions for LOCK_UN in the documentation.
+        flock(fd, LOCK_UN);
         close(fd);
     }
 };
