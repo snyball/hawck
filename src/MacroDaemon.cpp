@@ -53,6 +53,8 @@ using namespace std;
 
 static const char *event_str[EV_CNT];
 
+static bool macrod_main_loop_running = true;
+
 static inline void initEventStrs()
 {
     event_str[EV_SYN      ] = "SYN"       ;
@@ -239,12 +241,10 @@ void MacroDaemon::notify(string title, string msg) {
 }
 
 static void handleSigPipe(int) {
-    // fprintf(stderr, "MacroD aborting due to SIGPIPE\n");
-    // abort();
 }
 
 static void handleSigTerm(int) {
-    exit(0);
+    macrod_main_loop_running = false;
 }
 
 bool MacroDaemon::runScript(Lua::Script *sc, const struct input_event &ev) {
@@ -287,8 +287,11 @@ void MacroDaemon::reloadAll() {
 void MacroDaemon::run() {
     syslog(LOG_INFO, "Setting up MacroDaemon ...");
 
+    macrod_main_loop_running = true;
+    // FIXME: Need to handle socket timeouts before I can use this SIGTERM handler.
+    //signal(SIGTERM, handleSigTerm);
+
     signal(SIGPIPE, handleSigPipe);
-    signal(SIGTERM, handleSigTerm);
 
     KBDAction action;
     struct input_event &ev = action.ev;
@@ -336,11 +339,9 @@ void MacroDaemon::run() {
 
     getConnection();
 
-    cout << "Running MacroD mainloop ..." << endl;
-
     syslog(LOG_INFO, "Starting main loop");
 
-    for (;;) {
+    while (macrod_main_loop_running) {
         try {
             bool repeat = true;
 
@@ -369,4 +370,6 @@ void MacroDaemon::run() {
             getConnection();
         }
     }
+
+    syslog(LOG_INFO, "macrod exiting ...");
 }
