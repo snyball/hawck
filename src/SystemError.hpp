@@ -16,12 +16,15 @@ extern "C" {
 #include <iostream>
 
 static std::mutex strerror_mtx;
+static constexpr size_t STACK_MAX_ELEMS = 100;
 
 class SystemError : public std::exception {
 private:
     std::string expl;
+    void *stack[STACK_MAX_ELEMS];
+    size_t stack_sz;
 
-    inline void printBacktrace() {
+    inline void _printBacktrace() {
         constexpr int elems = 100;
         void *stack[elems];
         size_t size = backtrace(stack, elems);
@@ -29,7 +32,13 @@ private:
     }
 
 public:
-    explicit SystemError(const std::string &expl) : expl(expl) {}
+    inline void printBacktrace() {
+        backtrace_symbols_fd(stack + 1, stack_sz - 1, fileno(stderr));
+    }
+
+    explicit SystemError(const std::string &expl) : expl(expl) {
+        stack_sz = backtrace(stack, STACK_MAX_ELEMS);
+    }
 
     inline SystemError(const std::string &expl, int errnum) : expl(expl) {
         this->expl += getErrorString(errnum);
