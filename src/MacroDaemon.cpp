@@ -71,10 +71,9 @@ static inline void initEventStrs()
 }
 
 MacroDaemon::MacroDaemon()
-    : kbd_srv("/var/lib/hawck-input/kbd.sock")
+    : kbd_srv("/var/lib/hawck-input/kbd.sock"),
+      xdg("hawck")
 {
-    XDG xdg("hawck");
-
     notify_on_err = true;
     stop_on_err = false;
     eval_keydown = true;
@@ -146,7 +145,7 @@ void MacroDaemon::loadScript(const std::string &rel_path) {
         return;
     }
 
-    ChDir cd(home_dir + "/scripts");
+    auto chdir = xdg.cd(XDG_DATA_HOME, "scripts");
 
     char *rpath_chars = realpath(rel_path.c_str(), nullptr);
     if (rpath_chars == nullptr)
@@ -244,6 +243,10 @@ static void handleSigPipe(int) {
     // abort();
 }
 
+static void handleSigTerm(int) {
+    exit(0);
+}
+
 bool MacroDaemon::runScript(Lua::Script *sc, const struct input_event &ev) {
     bool repeat = true;
 
@@ -265,7 +268,7 @@ bool MacroDaemon::runScript(Lua::Script *sc, const struct input_event &ev) {
 
 void MacroDaemon::reloadAll() {
     lock_guard<mutex> lock(scripts_mtx);
-    ChDir cd(home_dir + "/scripts");
+    auto chdir = xdg.cd(XDG_DATA_HOME, "scripts");
     for (auto &[_, sc] : scripts) {
         (void) _;
         try {
@@ -282,13 +285,21 @@ void MacroDaemon::reloadAll() {
 }
 
 void MacroDaemon::run() {
+    syslog(LOG_INFO, "Setting up MacroDaemon ...");
+
     signal(SIGPIPE, handleSigPipe);
+    signal(SIGTERM, handleSigTerm);
 
     KBDAction action;
     struct input_event &ev = action.ev;
 
     // Setup/start LuaConfig
-    LuaConfig conf(home_dir + "/lua-comm.fifo", home_dir + "/json-comm.fifo", home_dir + "/cfg.lua");
+    xdg.mkfifo("lua-comm.fifo");
+    xdg.mkfifo("json-comm.fifo");
+
+    LuaConfig conf(xdg.path(XDG_RUNTIME_DIR, "lua-comm.fifo"),
+                   xdg.path(XDG_RUNTIME_DIR, "json-comm.fifo"),
+                   xdg.path(XDG_DATA_HOME, "cfg.lua"));
     conf.addOption("notify_on_err", &notify_on_err);
     conf.addOption("stop_on_err", &stop_on_err);
     conf.addOption("eval_keydown", &eval_keydown);
@@ -326,6 +337,8 @@ void MacroDaemon::run() {
     getConnection();
 
     cout << "Running MacroD mainloop ..." << endl;
+
+    syslog(LOG_INFO, "Starting main loop");
 
     for (;;) {
         try {
