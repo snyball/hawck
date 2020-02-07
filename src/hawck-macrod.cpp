@@ -2,6 +2,8 @@
 #include "Daemon.hpp"
 #include "XDG.hpp"
 #include <iostream>
+#include <fstream>
+#include "utils.hpp"
 #if MESON_COMPILE
 #include <hawck_config.h>
 #else
@@ -9,8 +11,10 @@
 #endif
 
 extern "C" {
-    #include <syslog.h>
     #include <getopt.h>
+    #include <signal.h>
+    #include <sys/types.h>
+    #include <syslog.h>
 }
 
 using namespace std;
@@ -83,11 +87,33 @@ int main(int argc, char *argv[]) {
         }
     } while (true);
 
-    cout << "hawck-macrod v" MACROD_VERSION " forking ..." << endl;
+    umask(0022);
 
-    xdg.mkpath(0700, XDG_DATA_HOME, "logs");
     if (!no_fork) {
+        cout << "hawck-macrod v" MACROD_VERSION " forking ..." << endl;
+        xdg.mkpath(0700, XDG_DATA_HOME, "logs");
         daemonize(xdg.path(XDG_DATA_HOME, "logs", "macrod.log"));
+    }
+
+    {
+        int old_pid;
+        string pidpath = xdg.path(XDG_RUNTIME_DIR, "macrod.pid");
+        Flocka flock(pidpath);
+        std::ifstream pidfile(pidpath);
+        pidfile >> old_pid;
+        char buf[PATH_MAX];
+        readlink(XDG::pathJoin("/proc", old_pid, "exe").c_str(),
+                 buf, sizeof(buf));
+        std::cout << buf << std::endl;
+        if (pathBasename(std::string(buf)) == "hawck-macrod") {
+            syslog(LOG_WARNING, "Killing previous hawck-macrod instance ...");
+            kill(old_pid, SIGTERM);
+        } else {
+            syslog(LOG_INFO, "Outdated pid file with exe '%s', continuing ...",
+                   buf);
+        }
+        std::ofstream pidfile_out(pidpath);
+        pidfile_out << getpid() << std::endl;
     }
 
     MacroDaemon daemon;

@@ -57,6 +57,7 @@ extern "C" {
 #include "RemoteUDevice.hpp"
 #include "FSWatcher.hpp"
 #include "FIFOWatcher.hpp"
+#include "XDG.hpp"
 
 /** Macro daemon.
  *
@@ -71,7 +72,7 @@ private:
     std::unordered_map<std::string, Lua::Script *> scripts;
     RemoteUDevice remote_udev;
     FSWatcher fsw;
-    std::string home_dir;
+    XDG xdg;
 
     std::atomic<bool> notify_on_err;
     std::atomic<bool> stop_on_err;
