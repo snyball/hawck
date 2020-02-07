@@ -3,6 +3,7 @@
 #include <string>
 #include <unordered_map>
 #include "Permissions.hpp"
+#include "utils.hpp"
 
 extern "C" {
     #include <stdlib.h>
@@ -149,15 +150,31 @@ public:
         mkPathIfNotExists(path(basedir, rest...), um);
     }
 
+    template <class... Ts>
+    static inline std::string pathJoin(Ts... parts) {
+        std::stringstream sstream;
+        return join(&sstream, parts...);
+    }
+
+    template <class... Ts>
+    inline ChDir cd(XDGDir basedir, Ts... parts) {
+        return ChDir(path(basedir, parts...));
+    }
+
+    template <class... Ts>
+    inline void mkfifo(Ts... parts) {
+        ::mkfifo(path(XDG_RUNTIME_DIR, parts...).c_str(), 0700);
+    }
+
 private:
     template <class T>
-    inline std::string join(std::stringstream *stream, T arg) {
+    static inline std::string join(std::stringstream *stream, T arg) {
         (*stream) << arg;
         return stream->str();
     }
 
     template <class T, class... Ts>
-    inline std::string join(std::stringstream *stream, T arg, Ts... rest) {
+    static inline std::string join(std::stringstream *stream, T arg, Ts... rest) {
         (*stream) << arg << "/";
         return join(stream, rest...);
     }
