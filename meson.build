@@ -18,6 +18,7 @@ add_global_arguments('-Wno-parentheses', language : 'cpp')
 add_global_arguments('-Wno-reorder', language : 'cpp')
 add_global_arguments('-Wall', language : 'cpp')
 add_global_arguments('-Wextra', language : 'cpp')
+add_global_arguments('-g', language : 'cpp')
 
 if get_option('debug_hawck')
   # add_global_arguments('-Wshadow', language : 'cpp')
