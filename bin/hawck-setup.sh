@@ -60,6 +60,8 @@ for src in src/scripts/*.sh src/scripts/*.awk; do
     echo "\$ install -m 755 '$src' '$HAWCK_BIN/$name'"
     install -m 755 "$src" "$HAWCK_BIN/$name"
 done
+install -m 755 src/tools/lskbd.rb "$HAWCK_BIN/lskbd"
+
 chown -R root:root "$HAWCK_BIN"
 
 ## TODO: Move __UNSAFE_MODE.csv into here:
