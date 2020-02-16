@@ -40,6 +40,36 @@ using namespace std::chrono;
 
 namespace Lua {
     /**
+     * Print the stack contents to a stringstream.
+     */
+    void printStack(lua_State *L, stringstream *stream) {
+        (*stream) << "Lua stack trace:" << std::endl;
+        for (int i = lua_gettop(L); i > 0; i--) {
+            switch (lua_type(L, i)) {
+                case LUA_TBOOLEAN:
+                    (*stream) << "    " << i << ": " << lua_toboolean(L, i) << std::endl;
+                break;
+
+                case LUA_TSTRING:
+                    (*stream) << "    " << i << ": " << lua_tostring(L, i) << std::endl;
+                break;
+
+                case LUA_TNUMBER:
+                    (*stream) << "    " << i << ": " << lua_tonumber(L, i) << std::endl;
+                break;
+
+                case LUA_TUSERDATA:
+                    (*stream) << "    " << i << ": " << lua_getuservalue(L, i) << std::endl;
+                break;
+
+                default:
+                    (*stream) << "    " << i << ": " << luaL_typename(L, i) << std::endl;
+                break;
+            }
+        }
+    }
+
+    /**
      * Implementation of isCallable
      */
     static bool isCallableHelper(lua_State *L, int idx, int depth) {
@@ -98,14 +128,6 @@ namespace Lua {
         L = luaL_newstate();
         luaL_openlibs(L);
     }
-
-    /*
-    void Script::sandboxFrom(const std::string& path) {
-        from("sandbox.lua");
-        call("init", realpath_safe(path), "__match");
-        auto src = call<string>("getSource");
-    }
-    */
 
     void Script::from(const std::string& path) {
         if (luaL_loadfile(L, path.c_str()) != LUA_OK) {

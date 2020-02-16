@@ -1210,7 +1210,9 @@ namespace Lua {
                 throw err;
             }
 
-            return ret_r<-nres, T...>();
+            auto tup = ret_r<-nres, T...>();
+            lua_pop(L, 1 + nres);
+            return tup;
         }
 
         /** Retrieve a global Lua value. */
