@@ -75,7 +75,3 @@ executable('luatest',
            include_directories : conf_inc,
            install : false)
 
-executable('lsinput',
-           'tools/lsinput.cpp',
-           install : true,
-          )
