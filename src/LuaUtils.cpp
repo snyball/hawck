@@ -38,6 +38,36 @@ using namespace std;
 
 namespace Lua {
     /**
+     * Print the stack contents to a stringstream.
+     */
+    void printStack(lua_State *L, stringstream *stream) {
+        (*stream) << "Lua stack trace:" << std::endl;
+        for (int i = lua_gettop(L); i > 0; i--) {
+            switch (lua_type(L, i)) {
+                case LUA_TBOOLEAN:
+                    (*stream) << "    " << i << ": " << lua_toboolean(L, i) << std::endl;
+                break;
+
+                case LUA_TSTRING:
+                    (*stream) << "    " << i << ": " << lua_tostring(L, i) << std::endl;
+                break;
+
+                case LUA_TNUMBER:
+                    (*stream) << "    " << i << ": " << lua_tonumber(L, i) << std::endl;
+                break;
+
+                case LUA_TUSERDATA:
+                    (*stream) << "    " << i << ": " << lua_getuservalue(L, i) << std::endl;
+                break;
+
+                default:
+                    (*stream) << "    " << i << ": " << luaL_typename(L, i) << std::endl;
+                break;
+            }
+        }
+    }
+
+    /**
      * Implementation of isCallable
      */
     static bool isCallableHelper(lua_State *L, int idx, int depth) {
