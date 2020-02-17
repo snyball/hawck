@@ -1,9 +1,5 @@
 #!/usr/bin/ruby
 
-require "docopt"
-require "yaml"
-require "json"
-
 doc = <<DOCOPT
 lskbd
 
@@ -119,14 +115,6 @@ def lskbd()
   end
 end
 
-begin
-  require "pp"
-  opt = Docopt::docopt(doc)
-rescue Docopt::Exit => e
-  puts e.message
-  exit 1
-end
-
 def listify_object(obj)
   obj.to_a.map do |pair|
     u, v = pair
@@ -156,16 +144,33 @@ def print_devs(devs)
   end
 end
 
-if opt["--list-kbd"]
-  print_devs(lskbd)
-elsif opt["--list-all"]
-  print_devs(lsinput)
-elsif opt["--list-all-json"]
-  print JSON.dump(lsinput)
-elsif opt["--list-kbd-json"]
-  print JSON.dump(lskbd)
-elsif opt["--hawck-args"]
+if ARGV.length == 0
   lskbd.each do |dev|
-    dev["events"].each { |ev| print "--kbd-device #{ev} " }
+    dev["events"].each { |ev| puts "#{ev}" }
+  end
+else
+  require "docopt"
+  require "yaml"
+  require "json"
+
+  begin
+    opt = Docopt::docopt(doc)
+  rescue Docopt::Exit => e
+    puts e.message
+    exit 1
+  end
+
+  if opt["--list-kbd"]
+    print_devs(lskbd)
+  elsif opt["--list-all"]
+    print_devs(lsinput)
+  elsif opt["--list-all-json"]
+    print JSON.dump(lsinput)
+  elsif opt["--list-kbd-json"]
+    print JSON.dump(lskbd)
+  elsif opt["--hawck-args"]
+    lskbd.each do |dev|
+      dev["events"].each { |ev| print "--kbd-device #{ev} " }
+    end
   end
 end
