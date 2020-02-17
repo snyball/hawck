@@ -4,22 +4,17 @@ doc = <<DOCOPT
 lskbd
 
 Usage:
-  #{__FILE__} --list-kbd | -k
-  #{__FILE__} --list-kbd-json | -K
-  #{__FILE__} --list-all | -l
-  #{__FILE__} --list-all-json | -L
-  #{__FILE__} --hawck-args
+  #{__FILE__} --list-kbd | -k [--json | -j]
+  #{__FILE__} --list-all | -a [--json | -j]
   #{__FILE__} -h | --help
   #{__FILE__} --version
 
 Options:
-  -h --help             Show this screen.
-  --version             Show version.
-  --hawck-args          Print out arguments for hawck-inputd.
-  --list-kbd -k         List all keyboards.
-  --list-kbd-json -K    List all keyboards in JSON format.
-  --list-all -l         List all input devices.
-  --list-all-json -L    List all input devices in JSON format.
+  -h --help      Show this screen.
+  --version      Show version.
+  --list-kbd -k  List all keyboards.
+  --list-all -a  List all input devices.
+  --json -j      Output JSON
 
 DOCOPT
 
@@ -89,6 +84,11 @@ def lsinput
       end
       dev_input
     end
+    dev["ID"] = (dev["Vendor"].to_i.to_s +
+                 ":" +
+                 dev["Product"].to_i.to_s +
+                 ":" +
+                 dev["Name"].gsub(/ /, "_"))
     devices << dev
   end
 
@@ -96,19 +96,6 @@ def lsinput
 end
 
 def lskbd()
-  ## $ date -I
-  ## 2020-02-10
-  ## $ fd 'kbd' linux-master
-  # kbd_drivers = ["hid-holtek-kbd", "jornada680_kbd", "parkbd",
-  #                "hilkbd", "opencores-kbd", "amikbd",
-  #                "atakbd", "hpps2atkbd", "q40kbd",
-  #                "locomokbd", "ioc3kbd", "rpckbd",
-  #                "xtkbd", "jornada720_kbd", "hil_kbd",
-  #                "lkkbd", "atkbd", "newtonkbd",
-  #                "sunkbd", "usbkbd", "atarikbd", "nvec_kbd"]
-  ## All the keyboard drivers appear to end in "kbd", so kbd_drivers isn't used,
-  ## but it stays here as justification for why i do `drv.match(/kbd$/)`.
-
   lsinput.filter do |dev|
     drv = dev["uevent"]["DRIVER"]
     drv and drv.match(/kbd$/)
@@ -161,16 +148,16 @@ else
   end
 
   if opt["--list-kbd"]
-    print_devs(lskbd)
+    if opt["--json"]
+      print JSON.dump(lskbd)
+    else
+      print_devs(lskbd)
+    end
   elsif opt["--list-all"]
-    print_devs(lsinput)
-  elsif opt["--list-all-json"]
-    print JSON.dump(lsinput)
-  elsif opt["--list-kbd-json"]
-    print JSON.dump(lskbd)
-  elsif opt["--hawck-args"]
-    lskbd.each do |dev|
-      dev["events"].each { |ev| print "--kbd-device #{ev} " }
+    if opt["--json"]
+      print JSON.dump(lsinput)
+    else
+      print_devs(lsinput)
     end
   end
 end
