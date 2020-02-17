@@ -175,7 +175,7 @@ private:
             auto exc = SystemError("", errno);
             // Only print the error if it changed.
             if (errno != last_errno) {
-                fprintf(stderr, "Could not connect to '%s': %s\n", addr.c_str(), exc.what());
+                //fprintf(stderr, "Could not connect to '%s': %s\n", addr.c_str(), exc.what());
                 last_errno = errno;
             }
             usleep(250000);
