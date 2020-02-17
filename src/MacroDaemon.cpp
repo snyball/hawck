@@ -31,8 +31,8 @@
 #define DEBUG_LOG_KEYS 0
 
 extern "C" {
-    #include <gtk/gtk.h>
-    #include <glib.h>
+    // #include <gtk/gtk.h>
+    // #include <glib.h>
     #include <libnotify/notify.h>
     #include <unistd.h>
     #include <sys/stat.h>
@@ -248,10 +248,19 @@ static void handleSigTerm(int) {
 }
 
 bool MacroDaemon::runScript(Lua::Script *sc, const struct input_event &ev) {
+    static bool had_stack_leak_warning = false;
     bool repeat = true;
 
     try {
         auto [succ] = sc->call<bool>("__match", (int)ev.value, (int)ev.code, (int)ev.type);
+        if (lua_gettop(sc->getL()) != 0) {
+            if (!had_stack_leak_warning) {
+                syslog(LOG_WARNING, "API misuse causing Lua stack leak of %d elements.", lua_gettop(sc->getL()));
+                // Don't spam system logs:
+                had_stack_leak_warning = true;
+            }
+            lua_settop(sc->getL(), 0);
+        }
         repeat = !succ;
     } catch (const LuaError &e) {
         if (stop_on_err)
