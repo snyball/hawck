@@ -18,7 +18,7 @@ struct KBDAction {
      *  events. */
     uint8_t done : 1;
     /** The source keyboard for this event. */
-    uint8_t kbd : 7;
+    struct input_id dev_id;
     /** The event that was emitted, or should be emitted
      *  from the InputD UDevice. */
     struct input_event ev;
