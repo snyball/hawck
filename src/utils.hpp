@@ -16,6 +16,7 @@ extern "C" {
     #include <syslog.h>
     #include <unistd.h>
     #include <sys/file.h>
+    #include <limits.h>
 }
 
 #include "SystemError.hpp"
@@ -56,11 +57,43 @@ inline std::shared_ptr<T> mkshr(T *p, const std::function<void(T *p)>& fn) {
 using sstream = std::stringstream;
 
 /**
+ * Wrapper around the POSIX ::basename(char *) function.
+ *
+ * @param path The path to get the basename of.
+ * @return Result of basename(path).
+ */
+inline std::string pathBasename(const std::string& path) {
+    const char *full = path.c_str();
+    // Basename will return a pointer to somewhere inside `full`
+    // We can safely cast it to (char *) as long as we make the
+    // return value const.
+    const char *bn = basename((char *) full);
+    if (bn == nullptr)
+        return std::string("");
+    return std::string(bn);
+}
+
+
+/**
  * Change directory in RAII fashion.
+ *
+ * NOTE: Generally it is best to just always use absolute paths, however there
+ * will always be the occasional library, or the occasional use-case for
+ * changing the working directory and operating from there.
+ *
+ * ChDir lets you work with the PWD similar to how `pushd/popd` work in a shell,
+ * except you usually never have to bother with the `popd`.
+ *
+ * Review each usage of ChDir carefully to see if calling `popd` and handling
+ * errors manually is worthwhile.
+ *
+ * If you can, run your programs from paths like "/" and "$HOME", if they ever
+ * disappear suddenly then you have bigger problems.
  */
 class ChDir {
 private:
     std::string olddir;
+    int fd;
     bool done = false;
 
 public:
@@ -76,6 +109,8 @@ public:
         if (cur_path == nullptr)
             throw SystemError("Unable to get current directory");
         olddir = std::string(cur_path.get());
+        if ((fd = open(".", O_RDONLY)) == -1)
+            throw SystemError("Unable to open current directory");
         if (chdir(path.c_str()) == -1)
             throw SystemError("Unable to chdir() to: " + path);
     }
@@ -88,37 +123,39 @@ public:
      *                     directory.
      */
     void popd() {
+        if (done) return;
         done = true;
 
-        if (chdir(olddir.c_str()) == -1)
-            throw SystemError("Unable to chdir() back to: " + olddir);
+        for (int i = 0; i < 1000; i++) {
+            if (fchdir(fd) != -1) {
+                close(fd);
+                return;
+            }
+
+            switch (errno) {
+                case EIO:
+                case EINTR:
+                    break;
+
+                default:
+                    goto loop_end;
+            }
+        } loop_end:
+
+        throw SystemError("Unable to chdir() back to '" + olddir + "': ", errno);
     }
 
     /**
-     * Go back to the original directory.
-     *
-     * If it can't go back to the original directory, it will attempt
-     * to move into root (/). If it can't move into the system root,
-     * the program will call abort().
-     *
-     * Errors are logged with syslog.
+     * Go back to the original directory, errors result in abort() here.
      */
     ~ChDir() {
-        if (done || chdir(olddir.c_str()) != -1)
-            return;
-
-        syslog(LOG_ALERT, "Unable to chdir() back to \"%s\": %s",
-               olddir.c_str(), SystemError::getErrorString().c_str());
-
-        if (chdir("/") != -1) {
-            syslog(LOG_WARNING, "Moved into system root due to chdir() failure.");
-            return;
+        try {
+            popd();
+        } catch (const SystemError &e) {
+            e.printBacktrace();
+            syslog(LOG_CRIT, "Aborting due to: %s", e.what());
+            abort();
         }
-
-        syslog(LOG_EMERG, "Unable to move into system root: %s",
-               SystemError::getErrorString().c_str());
-        syslog(LOG_EMERG, "Will now abort!");
-        abort();
     }
 };
 
@@ -165,28 +202,19 @@ public:
     }
 };
 
-/**
- * Wrapper around the POSIX ::basename(char *) function.
- * 
- * @param path The path to get the basename of.
- * @return Result of basename(path).
- */
-inline std::string pathBasename(const std::string& path) {
-    const char *full = path.c_str();
-    // Basename will return a pointer to somewhere inside `full`
-    // We can safely cast it to (char *) as long as we make the
-    // return value const.
-    const char *bn = basename((char *) full);
-    if (bn == nullptr)
-        return std::string("");
-    return std::string(bn);
-}
-
 inline std::string realpath_safe(const std::string& path) {
     auto rpath_chars = std::unique_ptr<char, decltype(&free)>(realpath(path.c_str(),
                                                                        nullptr),
                                                               &free);
     return std::string(rpath_chars.get());
+}
+
+inline std::string readlink(const std::string& path) {
+    char link_path[PATH_MAX];
+    if (readlink(path.c_str(), link_path, sizeof(link_path)) == -1) {
+        throw SystemError("Unable to read link: ", errno);
+    }
+    return std::string(link_path);
 }
 
 class StringJoiner {
