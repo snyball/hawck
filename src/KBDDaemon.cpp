@@ -219,7 +219,6 @@ void KBDDaemon::loadPassthrough(FSEvent *ev) {
         syslog(LOG_ERR, "Invalid permissions for '%s', require rw-r--r-- hawck-input:*, "
                         "but was: %s",
                ev->path.c_str(), perm_str.c_str());
-
     }
 }
 
@@ -267,7 +266,6 @@ void KBDDaemon::run() {
         (void) grpbuf;
         input_gid = grp->gr_gid;
     }
-
 
     input_fsw.asyncWatch([this, input_gid](FSEvent &ev) {
                         // Don't react to the directory itself.
@@ -374,6 +372,7 @@ void KBDDaemon::run() {
         if (!had_key)
             continue;
 
+        // Check if the key is listed in the passthrough set.
         KeyVisibility key_vis;
         if (action.ev.code >= KEY_MAX) {
             syslog(LOG_ERR, "Received key was out of range: %d", action.ev.code);
@@ -382,7 +381,6 @@ void KBDDaemon::run() {
             key_vis = key_visibility[action.ev.code];
         }
 
-        // Check if the key is listed in the passthrough set.
         if (key_vis == KEY_SHOW) {
             input_event orig_ev = action.ev;
 
