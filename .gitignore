@@ -4,6 +4,7 @@ __pycache__
 *.o
 unused/*
 *~
+#*#
 .#*
 .~*
 build/*
@@ -20,3 +21,12 @@ compile_commands.json
 .projectile
 *.strace
 *.out
+GPATH
+GRTAGS
+GTAGS
+.ninja_deps
+.ninja_log
+build.ninja
+*.bak
+*.bak.old
+traces/*
