@@ -41,30 +41,6 @@ extern "C" {
 
 using namespace std;
 
-/** Size of buffers given to ioctl. */
-constexpr size_t ioctl_get_bufsz = 512;
-
-/**
- * Retrieve a string from a device using ioctl,
- *
- * @param _fd File descriptor of ioctl
- * @param _what A macro taking a length argument, should be one of
- *              the EVIOCG* function-like macros from <linux/uinput.h>.
- */
-#define ioctlGetString(_fd, _what) \
-    _ioctlGetString((_fd), _what(ioctl_get_bufsz))
-
-/**
- * @see ioctlGetString(_fd, _what)
- */
-static inline string _ioctlGetString(int fd, unsigned long what) {
-    char buf[ioctl_get_bufsz];
-    ssize_t sz;
-    if ((sz = ioctl(fd, what, buf)) == -1)
-        return "";
-    return string(buf);
-}
-
 Keyboard::Keyboard(const char *path) {
     syslog(LOG_INFO, "Opening device: '%s' ...", path);
     fd = open(path, O_RDONLY);
@@ -81,16 +57,34 @@ Keyboard::Keyboard(const char *path) {
     uniq_id = ioctlGetString(fd, EVIOCGUNIQ);
     phys = ioctlGetString(fd, EVIOCGPHYS);
     if (ioctl(fd, EVIOCGID, &dev_id) == -1) {
+        syslog(LOG_ERR, "Unable to get ID for keyboard: %s", name.c_str());
         memset(&dev_id, 0, sizeof(dev_id));
     }
-    // Not a 32-bit integer actually is input_id, a 64 bit struct.
-    // num_id = ioctlGetInt(fd, EVIOCGID);
+    syslog(LOG_INFO, "Initialized keyboard: %s", getID().c_str());
 }
 
 Keyboard::~Keyboard() {
     if (locked)
         unlock();
     close(fd);
+}
+
+std::string Keyboard::getID() noexcept {
+    std::stringstream ss;
+    ss << dev_id.vendor << ":" << dev_id.product << ":";
+    for (char c : name) {
+        if (c == ' ') ss << '_';
+        else          ss << c;
+    }
+    return ss.str();
+}
+
+bool Keyboard::isKeyboard(std::string path) {
+    std::stringstream sstream("/sys/class/input/");
+    sstream << pathBasename(path) << "/device/device/driver";
+    std::string drv_path = readlink(sstream.str());
+    size_t len = drv_path.size();
+    return (len > 3 && drv_path.substr(len-3, len) == "kbd");
 }
 
 bool Keyboard::isMe(const char *path) const {
@@ -105,7 +99,6 @@ bool Keyboard::isMe(const char *path) const {
 
     return (name == ioctlGetString(new_fd, EVIOCGNAME) &&
             uniq_id == ioctlGetString(new_fd, EVIOCGUNIQ) &&
-            // phys == ioctlGetString(new_fd, EVIOCGPHYS) &&
             !memcmp(&this->dev_id, &dev_id, sizeof(dev_id)));
 }
 
@@ -124,25 +117,26 @@ int Keyboard::numDown() const {
 
 void Keyboard::lockSync() {
     int grab = 1;
-    struct input_event ev;
+    KBDAction action;
+    struct input_event *ev = &action.ev;
     int down = numDown(), up = 0;
 
     cout << "\033[32;1;4mKBD READY\033[0m" << endl;
 
     // Wait for keyup
     do {
-        get(&ev);
-        if (ev.code == 0)
+        get(&action);
+        if (ev->code == 0)
             continue;
-        if (ev.value == 0)
+        if (ev->value == 0)
             up++;
-        if (ev.value == 1)
+        if (ev->value == 1)
             down++;
-        if (ev.value != 2)
-            fprintf(stderr, "\rdown = %d, up = %d; GOT EVENT %d\n", down, up, ev.value);
+        if (ev->value != 2)
+            fprintf(stderr, "\rdown = %d, up = %d; GOT EVENT %d\n", down, up, ev->value);
         else
             fprintf(stderr, "\r");
-    } while (ev.type != EV_KEY || ev.value != 0 || down > up);
+    } while (ev->type != EV_KEY || ev->value != 0 || down > up);
 
     if (ioctl(fd, EVIOCGRAB, &grab) == -1)
         throw SystemError("Unable to lock keyboard: ", errno);
@@ -174,13 +168,14 @@ void Keyboard::unlock() {
     state = KBDState::OPEN;
 }
 
-void Keyboard::get(struct input_event *ev) {
+void Keyboard::get(KBDAction *action) {
     ssize_t n;
-    if ((n = read(fd, ev, sizeof(*ev))) != sizeof(*ev)) {
+    if ((n = read(fd, &action->ev, sizeof(action->ev))) != sizeof(action->ev)) {
         stringstream err("read() failed, returned: ");
         err << n << ": " << strerror(errno);
         throw KeyboardError(err.str());
     }
+    action->dev_id = this->dev_id;
 
     // Wait until key down events have been eliminated.
     if (state == KBDState::LOCKING && !numDown()) {

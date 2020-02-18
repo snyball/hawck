@@ -343,7 +343,7 @@ void KBDDaemon::run() {
             int idx = kbdMultiplex(kbds, 64);
             if (idx != -1) {
                 kbd = kbds[idx];
-                kbd->get(&action.ev);
+                kbd->get(&action);
 
                 // Throw away the key if the keyboard isn't locked yet.
                 if (kbd->getState() == KBDState::LOCKED)

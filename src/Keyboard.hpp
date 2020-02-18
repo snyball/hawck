@@ -48,11 +48,36 @@ extern "C" {
 }
 
 #include "FSWatcher.hpp"
+#include "KBDAction.hpp"
 
 class KeyboardError : public std::runtime_error {
 public:
     explicit inline KeyboardError(std::string&& msg) : std::runtime_error(msg) {}
 };
+
+/** Size of buffers given to ioctl. */
+static constexpr size_t ioctl_get_bufsz = 512;
+
+/**
+ * Retrieve a string from a device using ioctl,
+ *
+ * @param _fd File descriptor of ioctl
+ * @param _what A macro taking a length argument, should be one of
+ *              the EVIOCG* function-like macros from <linux/uinput.h>.
+ */
+#define ioctlGetString(_fd, _what) \
+    _ioctlGetString((_fd), _what(ioctl_get_bufsz))
+
+/**
+ * @see ioctlGetString(_fd, _what)
+ */
+static inline std::string _ioctlGetString(int fd, unsigned long what) {
+    char buf[ioctl_get_bufsz];
+    ssize_t sz;
+    if ((sz = ioctl(fd, what, buf)) == -1)
+        return "";
+    return std::string(buf);
+}
 
 /** Keyboard state, used in the locking process */
 enum KBDState {
@@ -118,6 +143,18 @@ public:
     /** Disable the keyboard. */
     void disable() noexcept;
 
+    /** Format the Keyboard ID */
+    std::string getID() noexcept;
+
+    /**
+     * Specifically this checks if the driver for the input device file ends in
+     * `kbd`
+     *
+     * @param path Path to keyboard device, e.g `/dev/input/event{n}`, but can
+     *             also just be `event{n}`
+     */
+    static bool isKeyboard(std::string path);
+
     /** Check whether or not the keyboard has been disabled,
      * this happens if disable() is called, usually as a result
      * of the get() function throwing a KeyboardException.
@@ -144,7 +181,7 @@ public:
      *
      * This call will block until a key is pressed.
      */
-    void get(struct input_event *ev);
+    void get(KBDAction *action);
 
     /** Get human-readable name of the keyboard device.
      *
