@@ -56,18 +56,17 @@ executable('hawck-inputd',
            install : true,
           )
 
-luatest_src = [
-  'UDevice.cpp',
-  'Keyboard.cpp',
-  'FSWatcher.cpp',
-  'CSV.cpp',
-  'Permissions.cpp',
-  'LuaUtils.cpp',
-  'LuaTest.cpp',
-]
-executable('luatest',
-           luatest_src,
-           dependencies : [pthreaddep, luadep],
-           include_directories : conf_inc,
-           install : false)
-
+# luatest_src = [
+#   'UDevice.cpp',
+#   'Keyboard.cpp',
+#   'FSWatcher.cpp',
+#   'CSV.cpp',
+#   'Permissions.cpp',
+#   'LuaUtils.cpp',
+#   'LuaTest.cpp',
+# ]
+# executable('luatest',
+#            luatest_src,
+#            dependencies : [pthreaddep, luadep],
+#            include_directories : conf_inc,
+#            install : false)
