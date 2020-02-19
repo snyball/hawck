@@ -87,27 +87,31 @@ master branch.
 
 Install dependencies:
 
-    # Debian/Ubuntu
-    $ pkexec xargs apt -y install < bin/dependencies/debian-deps.txt
+```bash
+# Debian/Ubuntu
+$ pkexec xargs apt -y install < bin/dependencies/debian-deps.txt
 
-    # Arch/Manjaro
-    $ pacman -Sy libnotify lua ruby zenity gawk python gzip kbd \
-                 meson gcc pkg-config wget catch2 ninja git
-    # On Arch/Manjaro, if you use a minimal WM
-    $ pacman -Sy polkit-gnome
+# Arch/Manjaro
+$ pacman -Sy libnotify lua ruby zenity gawk python gzip kbd \
+              meson gcc pkg-config wget catch2 ninja git
+# On Arch/Manjaro, if you use a minimal WM
+$ pacman -Sy polkit-gnome
+```
 
 Then:
 
-    $ git clone https://github.com/snyball/Hawck.git
-    $ cd Hawck
-    $ mkdir build
-    $ cd build
-    $ meson ..
-    $ ninja
-    $ sudo ninja install
-    $ cd ..
-    $ sudo bash -c ". bin/hawck-git.install; post_install"
-    $ bin/hawck-user-setup.sh
+```bash
+$ git clone https://github.com/snyball/Hawck.git
+$ cd Hawck
+$ mkdir build
+$ cd build
+$ meson ..
+$ ninja
+$ sudo ninja install
+$ cd ..
+$ sudo bash -c ". bin/hawck-git.install; post_install"
+$ bin/hawck-user-setup.sh
+```
     
 The user setup script will prompt you for your password, it has to add your user
 to the `hawck-input-share` group. You'll have to log out and back in again after
@@ -116,12 +120,15 @@ reboot is required.)
 
 When you've started the computer back up again, run the following commands:
 
-    $ sudo systemctl start hawck-inputd
-    $ hawck-macrod
-    # Open up the example script in your preferred editor
-    $ vim ~/.local/share/hawck/scripts/example.hwk
-    # Enable the script
-    $ hawck-add ~/.local/share/hawck/scripts/example.hwk
+```bash
+$ sudo systemctl start hawck-inputd
+$ hawck-macrod
+# Open up the example script in your preferred editor
+$ vim ~/.local/share/hawck/scripts/example.hwk
+# Enable the script
+$ hawck-add ~/.local/share/hawck/scripts/example.hwk
+```
+
 
 ## Security
 
