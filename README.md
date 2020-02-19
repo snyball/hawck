@@ -240,39 +240,36 @@ easy to implement is what I went with in Hawck.
   - Currently the only supported platform, as input-grabbing in this
     way is very platform specific.
     
-If `UDevice.cpp` and `Keyboard.cpp` were to be ported everything
-else should run just fine under Mac OS X or BSD.
+Porting it to Mac OSX is a non-starter because there are far superior tools
+available there already.
 
-### Dependencies:
+Porting to BSD is possible, but requires alternate implementations of the
+following classes/functions/scripts:
+- `Keyboard`
+  - Access to raw keyboard input.
+- `UDevice`
+  - Virtual keyboard devices for outputting keys.
+- `KBDInfo`/`KBDB`
+  - Gathers info about a keyboard from `sysfs`
+- `pidexe(pid_t)`
+  - Used to find the executable behind a process id
+- `lskbd.rb`
+  - Used for debugging
+- `FSWatcher.cpp`
+  - Used **a lot**
 
-- Lua 5.3
-- Python 3.6
-- nlohmann::json
-- Catch2
-- C++17 compiler
-  - Compiles under both `gcc 8.1.0` and `clang 6.0.1`
+I personally don't use BSD on the desktop, so I have no plans of porting it.
 
 ## GUI
 
-#### Edit scripts
+Hawck used to have a more actively maintained GUI, but as of now it is in a
+frozen state, I currently don't recommend using it.
 
-<img src="./images/hawck_ui_screenshot_edit_scripts_success.png"/>
+Use `hawck-add` and your preferred editor from the terminal instead.
 
-In the edit scripts section you can perform quick edits
-on your scripts, and enable/disable them.
-
-After editing the script just click on "Use" to send
-the script to the daemon. The interface will then let
-you know whether or not the installation went smoothly.
-
-<img src="./images/hawck_ui_screenshot_edit_scripts_error.png"/>
-
-## View logs
-
-<!-- <img src="./images/"/> -->
-
-On the log page you can view errors that have been emitted from
-your scripts.
+In the future I may start working on the GUI again, to implement key-remapping
+for non-advanced users who don't wish to use either the terminal or a scripting
+language. But currently that use case just doesn't exist for Hawck.
 
 ## FAQ
 
