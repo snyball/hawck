@@ -35,6 +35,7 @@ mode("Caps => Ctrl mode", down + key "f7") + -up => {
 - Replace a key, but only on a specific keyboard (not in v0.6, use master branch
   for this)
 ```lua
+-- Run `src/tools/lskbd.rb -k` and look for "ID" in the output to find keyboard IDs.
 fromkbd "1:1:AT_Translated_Set_2_keyboard" + key "F7" => say "Hello"
 ```
 - Paste into a tty, or another program which does not support pasting
