@@ -27,6 +27,7 @@ GTAGS
 .ninja_deps
 .ninja_log
 build.ninja
+*.strace
 *.bak
 *.bak.old
 traces/*
