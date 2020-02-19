@@ -25,14 +25,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * =====================================================================================
  */
+
 #include <thread>
 #include <iostream>
 
-#define DEBUG_LOG_KEYS 0
-
 extern "C" {
-    // #include <gtk/gtk.h>
-    // #include <glib.h>
     #include <libnotify/notify.h>
     #include <unistd.h>
     #include <sys/stat.h>
@@ -192,19 +189,6 @@ struct script_error_info {
     char path[];
 };
 
-#if 0
-// FIXME: See FIXME in MacroDaemon::notify
-// TODO: My idea for this would be to run "gedit $info->path +$info->ar.currentline",
-//       then figure out what other editors support opening a file on a specific line
-//       and let the user choose which editor to use.
-extern "C" void viewSource(NotifyNotification *n, char *action, script_error_info *info) {
-    pid_t pid;
-    fprintf(stderr, "Line nr: %d\n", info->ar.currentline);
-    fprintf(stderr, "path: %s\n", info->path);
-    fflush(stderr);
-}
-#endif
-
 void MacroDaemon::notify(string title, string msg) {
     NotifyNotification *n;
     char cwd[PATH_MAX];
@@ -215,29 +199,10 @@ void MacroDaemon::notify(string title, string msg) {
     notify_notification_set_timeout(n, 12000);
     notify_notification_set_urgency(n, NOTIFY_URGENCY_CRITICAL);
     notify_notification_set_app_name(n, "Hawck");
-
-    // FIXME: The viewSource callback is not executed.
-    // Apparently I need to call g_main_loop_run, I tried it and nothing
-    // happened, I have no idea how to get this working.
-    // Furthermore g_main_loop_run is a blocking call so I'd have to
-    // restructure this so that the notification stuff happens in another
-    // thread.
-    #if 0
-    script_error_info *info =
-        (script_error_info *) malloc(sizeof(script_error_info) + script->abs_src.size() + 1);
-    memcpy(&info->ar, ar, sizeof(info->ar));
-    strcpy(info->path, script->abs_src.c_str());
-    notify_notification_add_action(n,
-                                   "view_source",
-                                   "View source",
-                                   NOTIFY_ACTION_CALLBACK(viewSource),
-                                   info,
-                                   free);
-    g_signal_connect(n, "closed", free, info);
-    #endif
+    syslog(LOG_INFO, "%s", msg.c_str());
 
     if (!notify_notification_show(n, nullptr)) {
-        fprintf(stderr, "Failed to show notification: %s\n", msg.c_str());
+        syslog(LOG_INFO, "Notifications cannot be shown.");
     }
 }
 
