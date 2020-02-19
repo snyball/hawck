@@ -2,7 +2,7 @@ project('Hawck', 'cpp',
         version : '0.6',
         license : 'BSD-2',
         meson_version : '>=0.45.0',
-        default_options : ['c_std=c11',
+        default_options : ['c_std=c18',
                            'cpp_std=c++17',
                           ])
 
@@ -16,9 +16,6 @@ add_global_arguments('-Wno-parentheses', language : 'cpp')
 
 ## This option is on a completely different level of pedantically ridiculous.
 add_global_arguments('-Wno-reorder', language : 'cpp')
-add_global_arguments('-Wall', language : 'cpp')
-add_global_arguments('-Wextra', language : 'cpp')
-add_global_arguments('-g', language : 'cpp')
 
 if get_option('debug_hawck')
   # add_global_arguments('-Wshadow', language : 'cpp')
