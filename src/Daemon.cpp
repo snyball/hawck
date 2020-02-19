@@ -97,14 +97,14 @@ static std::string pidexe(pid_t pid) {
     char buf[PATH_MAX];
     // The documentation for readlink wasn't clear on whether it would
     // write an empty string on error.
-    if (readlink(pathJoin("/proc", pid, "exe").c_str(), buf, sizeof(buf)) == -1)
-        buf[0] = '\0';
+    memset(buf, '\0', sizeof(buf));
+    readlink(pathJoin("/proc", pid, "exe").c_str(), buf, sizeof(buf));
     return std::string(buf);
 }
 
 void killPretender(std::string pid_file) {
     Flocka flock(pid_file);
-    int old_pid; {
+    int old_pid = 0; {
         std::ifstream pidfile(pid_file);
         pidfile >> old_pid;
     }
