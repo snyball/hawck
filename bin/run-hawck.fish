@@ -6,7 +6,7 @@
 ## You need fish shell to run it.
 ##
 
-set ttl 5
+set ttl 10
 
 cd (dirname (status -f))
 while [ (basename $PWD) != "Hawck" ]
@@ -21,9 +21,16 @@ if ! ninja
     exit 1
 end
 
-mkdir -p macrod-test/hawck/scripts
-if ! [ -L macrod-test/hawck/scripts/LLib ]
-    ln -s (realpath ../src/Lua macrod-test/hawck/scripts/LLib)
+set HWKDIR macrod-test/hawck/scripts
+mkdir -p $HWKDIR
+if ! [ -L $HWKDIR/LLib ]
+    ln -s (realpath ../src/Lua $HWKDIR/LLib)
+end
+if ! [ -L $HWKDIR/init.lua ]
+    ln -s (realpath ../src/Lua/init.lua $HWKDIR/init.lua)
+end
+if ! [ -L $HWKDIR/keymaps ]
+    ln -s (realpath ../keymaps $HWKDIR/keymaps)
 end
 if ! [ -L macrod-test/hawck/cfg.lua ]
     ln -s (realpath ../bin/cfg.lua macrod-test/hawck/cfg.lua)
@@ -41,8 +48,8 @@ for device in (lskbd)
     set -a inputd_args $device
 end
 
-sudo systemctl stop hawck-inputd.service
 killall hawck-macrod
+sudo systemctl stop hawck-inputd.service
 
 echo "Killing in $ttl seconds"
 
@@ -51,7 +58,7 @@ sudo runuser -u hawck-input -- ./hawck-inputd $inputd_args
 ./hawck-macrod --no-fork &
 
 sleep $ttl
-kill -9 (jobs -p)
+kill (jobs -p)
 sudo killall hawck-inputd
 echo "---------------------------[DONE]--------------------------"
 
