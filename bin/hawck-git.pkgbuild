@@ -3,12 +3,13 @@ pkgname=hawck-git
 _pkgname=Hawck
 pkgver=20200219
 pkgrel=1
-pkgdesc="Keyboard macro/rebinding daemon."
+pkgdesc="Keyboard macro/rebinding daemon"
 arch=("x86_64")
 url="https://github.com/snyball/Hawck"
 license=('BSD')
 depends=("libnotify" "lua" "ruby" "zenity" "gawk" "python" "gzip" "kbd")
-makedepends=("meson" "gcc" "pkg-config" "wget" "catch2" "ninja")
+makedepends=("meson" "gcc" "pkg-config" "catch2" "ninja")
+optdepends=("doxygen")
 install=$pkgname.install
 source=("git+https://github.com/snyball/Hawck.git")
 md5sums=("SKIP")
@@ -32,5 +33,5 @@ build() {
 
 package() {
     cd "$_pkgname/build"
-    env DESTDIR="$(realpath "$pkgdir")" ninja install
+    DESTDIR="$(realpath "$pkgdir")" ninja install
 }
