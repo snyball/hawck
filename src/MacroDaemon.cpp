@@ -365,7 +365,6 @@ void MacroDaemon::run() {
 
             kbd_com->recv(&action);
             string kbd_hid = kbdb.getID(&action.dev_id);
-            cout << "Received from: " << kbd_hid << endl;
 
             if (!( (!eval_keydown && ev.value == 1) ||
                    (!eval_keyup && ev.value == 0) ) && !disabled)

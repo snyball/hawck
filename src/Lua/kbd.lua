@@ -115,14 +115,19 @@ function kbd:press(code)
   udev:flush()
 end
 
+function kbd:from(kbd_hid)
+  return self.event_kbd == kbd_hid
+end
+
 --- Prepare the keyboard by retrieving values from MacroD
-function kbd:prepare(ev_value, ev_code, ev_type, pkbd)
-  self.event_value = ev_value
-  self.event_code = ev_code
-  self.event_type = ev_type
+function kbd:prepare(ev_value, ev_code, ev_type, kbd_hid)
+  self.event_value = math.floor(ev_value)
+  self.event_code = math.floor(ev_code)
+  self.event_type = math.floor(ev_type)
+  self.event_kbd = kbd_hid
 
   if self.event_type ~= Event.KEY then
-    error("Event is not a key event.")
+    return
   end
 
   if self.event_value == KeyMode.DOWN then

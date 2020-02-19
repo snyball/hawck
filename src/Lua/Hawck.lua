@@ -141,6 +141,10 @@ up = Cond.new(function ()
     return kbd:hadKeyUp()
 end)
 
+fromkbd = LazyCondF.new(function (kbd_hid)
+    return kbd:from(kbd_hid)
+end)
+
 modkeys = {
   shift_r = "Shift_R",
   shift_l = "Shift",
