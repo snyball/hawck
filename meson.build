@@ -42,7 +42,4 @@ subdir('tests')
 subdir('hawck-ui')
 subdir('docs')
 
-if get_option('use_meson_install')
-  meson.add_install_script('bin/hawck-setup.sh')
-endif
-
+meson.add_install_script('bin/hawck-install.sh')
