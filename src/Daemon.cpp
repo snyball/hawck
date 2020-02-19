@@ -98,7 +98,8 @@ static std::string pidexe(pid_t pid) {
     // The documentation for readlink wasn't clear on whether it would
     // write an empty string on error.
     memset(buf, '\0', sizeof(buf));
-    (void) readlink(pathJoin("/proc", pid, "exe").c_str(), buf, sizeof(buf));
+    if (readlink(pathJoin("/proc", pid, "exe").c_str(), buf, sizeof(buf)) == -1)
+        (void) 0; // Ignore
     return std::string(buf);
 }
 
