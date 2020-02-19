@@ -30,25 +30,32 @@
 ########################################################################################
 
 HAWCKD_INPUT_USER=hawck-input
-SCRIPTS_DIR="$HOME/.local/share/hawck/scripts/"
+SCRIPTS_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/hawck/scripts/"
+ACTIVE_SCRIPTS_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/hawck/scripts-enabled/"
+
+if [ $# != 1 ]; then
+    echo "Usage: $(basename "$0") <script>"
+    exit 1
+fi
 
 script_path="$1"
-name=$(basename "$script_path" | sed -r 's/\.[^.]+$//')
+name="$(basename "$script_path" | sed -r 's/\.[^.]+$//')"
 keys_filename="$name.csv"
 real_keys="/var/lib/hawck-input/keys/$keys_filename"
 
 ## Transpile hwk script to Lua
-hwk_out=$(hwk2lua "$script_path")
+hwk_out="$(hwk2lua "$script_path")"
 if [ $? != 0 ]; then
     echo "!ERROR: $hwk_out" >&2
     exit 1
 fi
 
 ## Move script into the script directory
-script_path=$(realpath "$SCRIPTS_DIR/$name.lua")
+script_path="$(realpath "$SCRIPTS_DIR/$name.lua")"
 echo "Installing script to: $script_path" >&2
 echo "$hwk_out" > "$script_path"
 chmod 744 "$script_path"
+ln -s "$(realpath "$SCRIPTS_DIR/$name.lua")" "$(realpath "$ACTIVE_SCRIPTS_DIR/$name.lua")"
 
 cd "$SCRIPTS_DIR"
 
@@ -59,7 +66,7 @@ if ! lua5.3 -l init "$script_path" >&2; then
 fi
 
 ## Create CSV file with proper header and permissions
-tmp_keys=$(mktemp)
+tmp_keys="$(mktemp)"
 chmod 644 "$tmp_keys"
 echo "key_name,key_code" > "$tmp_keys"
 
@@ -80,14 +87,6 @@ end
 
 ## Either the files are different or the $real_keys file does not exist.
 if ! cmp "$real_keys" "$tmp_keys" >&2; then
-    ## Check if we can execute the copy command:
-    if [ "$(whoami)" = "$HAWCKD_INPUT_USER" ]; then
-       cp "$tmp_keys" "$real_keys"
-       chmod 644 "$real_keys"
-    else
-        ## Send key requests to the input daemon.
-        notify-send -a "Hawck install" "Require authentication as hawck-input" &>/dev/null
-        echo -n "$tmp_keys"
-        exit 123
-    fi
+    echo "New keys added, require authentication for whitelisting them ..."
+    command sudo --user="$HAWCKD_INPUT_USER" -- install -m 644 "$tmp_keys" "$real_keys"
 fi

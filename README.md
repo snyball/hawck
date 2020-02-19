@@ -79,47 +79,49 @@ bit of a hack, and the scripts take inspiration from the pattern-matching style
 of the AWK programming language (plus, hawks are pretty cool I guess.)
 </small>
 
-## For package maintainers
-
-See the `install.sh` script for how Hawck should be installed, it contains
-a few notes for package maintainers.
-
-To anyone considering or having created a package for Hawck, please consider
-typing out an issue for it (with instructions for your distribution) so that
-it may be added to this README.
-
 ## How do I install it?
 
-Download the latest [release](https://github.com/snyball/Hawck/releases), and
-run the `install.sh` program from the command line. This script has been tested
-for Ubuntu 18.04 LTS.
+For `v0.6`, click Branch\>Tags\>Master\>`v0.6.1` and follow the instructions in
+the `README` files for that version. The rest of this section will apply to the
+master branch.
 
-You will need to reboot the computer after running the installer, because it
-needs to add your user to a new group (with Ubuntu it seems like logging out and
-back in isn't enough.)
+Install dependencies:
+
+    # Debian/Ubuntu
+    $ pkexec xargs apt -y install < bin/dependencies/debian-deps.txt
+
+    # Arch/Manjaro
+    $ pacman -Sy libnotify lua ruby zenity gawk python gzip kbd \
+                 meson gcc pkg-config wget catch2 ninja git
+    # On Arch/Manjaro, if you use a minimal WM
+    $ pacman -Sy polkit-gnome
+
+Then:
+
+    $ git clone https://github.com/snyball/Hawck.git
+    $ cd Hawck
+    $ mkdir build
+    $ cd build
+    $ meson ..
+    $ ninja
+    $ sudo ninja install
+    $ cd ..
+    $ sudo bash -c ". bin/hawck-git.install; post_install"
+    $ bin/hawck-user-setup.sh
+    
+The user setup script will prompt you for your password, it has to add your user
+to the `hawck-input-share` group. You'll have to log out and back in again after
+your user has been added to the group (on some distributions, e.g Ubuntu, a
+reboot is required.)
 
 When you've started the computer back up again, run the following commands:
 
     $ sudo systemctl start hawck-inputd
     $ hawck-macrod
-    $ hawck-ui
-
->PS: There is a known bug that sometimes causes `hawck-ui` to hang on startup, in
->that case, try again.
-
->Important note for people using sway, i3, openbox and similar minimal WMs: You
->need to have a [Polkit Authentication Agent](https://wiki.archlinux.org/index.php/Polkit#Authentication_agents)
->running to use the UI.
-
-Move over to the settings tab, and change your keymap (this will hopefully be
-done automatically soon.)
-
-You can now move on to the "Edit scripts" tab and attempt to edit/enable the
-default test script.
-
-If you want to keep using Hawck, and want to have it start up automatically,
-move over to Settings and click the autostart toggle button, you will be
-prompted for your password.
+    # Open up the example script in your preferred editor
+    $ vim ~/.local/share/hawck/scripts/example.hwk
+    # Enable the script
+    $ hawck-add ~/.local/share/hawck/scripts/example.hwk
 
 ## Security
 

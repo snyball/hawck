@@ -25,6 +25,7 @@ function setup-files() {
 
     BIN="$DESTDIR/usr/local/bin/"
 
+    install -m 755 src/scripts/install-hwk-script.sh "$BIN/hawck-add"
     install -m 755 src/hwk2lua/hwk2lua.py "$BIN/hwk2lua"
 
     ## Copy icons
