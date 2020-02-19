@@ -75,7 +75,7 @@ static inline void runTestsCMD(FSWatcher *w, vector<string>& paths, vector<strin
 }
 
 static inline vector<string> mkTestFiles(int num_files, bool create) {
-    system("rm -r /tmp/hwk-tests");
+    system_s("rm -r /tmp/hwk-tests");
     system_s("mkdir -p /tmp/hwk-tests");
 
     vector<string> paths;

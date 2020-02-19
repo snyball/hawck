@@ -326,7 +326,7 @@ namespace Lua {
         std::string fmtTraceback() const noexcept {
             std::stringstream err_ss;
             int lv = 0;
-            bool in_c;
+            bool in_c = false;
             for (const auto& ar : trace) {
                 if (!strcmp(ar.what, "C")) {
                     in_c = true;

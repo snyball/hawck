@@ -34,8 +34,11 @@ void FIFOWatcher::reply(std::string buf, Milliseconds timeout) {
     for (int time = 0, ofd = -1; time < timeout.count(); time++) {
         if ((ofd = ::open(opath.c_str(), O_WRONLY | O_NONBLOCK)) != -1) {
             uint32_t bufsz = buf.size();
-            ::write(ofd, &bufsz, sizeof(bufsz));
-            ::write(ofd, buf.c_str(), bufsz);
+            if (::write(ofd, &bufsz, sizeof(bufsz)) == -1 ||
+                ::write(ofd, buf.c_str(), bufsz) == -1)
+            {
+                throw SystemError("Unable to write to out-fifo \"" + opath + "\": ", errno);
+            }
             return;
         }
 

@@ -83,8 +83,10 @@ MacroDaemon::MacroDaemon()
 
     auto [grp, grpbuf] = getgroup("hawck-input-share");
     (void) grpbuf;
-    chown("/var/lib/hawck-input/kbd.sock", getuid(), grp->gr_gid);
-    chmod("/var/lib/hawck-input/kbd.sock", 0660);
+    if (chown("/var/lib/hawck-input/kbd.sock", getuid(), grp->gr_gid) == -1)
+        throw SystemError("Unable to chown kbd.sock: ", errno);
+    if (chmod("/var/lib/hawck-input/kbd.sock", 0660) == -1)
+        throw SystemError("Unable to chmod kbd.sock: ", errno);
     initEventStrs();
     notify_init("Hawck");
     xdg.mkpath(0700, XDG_DATA_HOME, "scripts-enabled");
@@ -190,12 +192,8 @@ struct script_error_info {
 };
 
 void MacroDaemon::notify(string title, string msg) {
-    NotifyNotification *n;
-    char cwd[PATH_MAX];
-    getcwd(cwd, sizeof(cwd));
-    string fire_icon_path(cwd);
-    fire_icon_path += "/icons/fire.svg";
-    n = notify_notification_new(title.c_str(), msg.c_str(), fire_icon_path.c_str());
+    // AFAIK you don't have to free the memory manually, but I could be wrong.
+    NotifyNotification *n = notify_notification_new(title.c_str(), msg.c_str(), "hawck");
     notify_notification_set_timeout(n, 12000);
     notify_notification_set_urgency(n, NOTIFY_URGENCY_CRITICAL);
     notify_notification_set_app_name(n, "Hawck");
@@ -209,9 +207,11 @@ void MacroDaemon::notify(string title, string msg) {
 static void handleSigPipe(int) {
 }
 
+#if 0
 static void handleSigTerm(int) {
     macrod_main_loop_running = false;
 }
+#endif
 
 bool MacroDaemon::runScript(Lua::Script *sc, const struct input_event &ev, string kbd_hid) {
     static bool had_stack_leak_warning = false;
