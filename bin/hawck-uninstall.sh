@@ -15,7 +15,7 @@ function ok() {
     echo -e "$WHITEB""OK: $GREENB$1$NC"
 }
 
-sytemctl stop hawck-input
+systemctl disable --now hawck-input
 kill $(pidof hawck-macrod)
 ok "Stopped daemon"
 
@@ -45,12 +45,11 @@ ok "Removed hawck-ui"
 ## Users and groups
 userdel hawck-input
 groupdel hawck-input-share
-groupdel hawck-uinput
-chown root:hawck-uinput /dev/uinput
+# groupdel uinput
+# chown root:uinput /dev/uinput
 chmod 600 /dev/uinput
 ok "Removed users/groups"
 
 ## SystemD service file
-systemctl disable hawck-input
 rm '/etc/systemd/system/hawck-input.service'
 ok "Removed SystemD service"

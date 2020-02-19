@@ -1,1 +1,1 @@
-SUBSYSTEM=="misc", KERNEL=="uinput", GROUP="hawck-uinput", MODE="0660"
+SUBSYSTEM=="misc", KERNEL=="uinput", GROUP="uinput", MODE="0660"

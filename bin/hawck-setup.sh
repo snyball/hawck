@@ -10,10 +10,10 @@ WHITEB="\033[1;37m"
 GREENB="\033[1;32m"
 NC="\033[0m"
 
-export SPID=$$
+export _HAWCK_SETUP_PID=$$
 function die() {
     echo -e "$REDB""Setup error: $1$NC"
-    kill $SPID
+    kill $_HAWCK_SETUP_PID
 }
 
 function ok() {
@@ -32,8 +32,8 @@ function setup-users() {
     usermod --home /var/lib/hawck-input hawck-input
     groupadd hawck-input-share
     usermod -aG hawck-input-share hawck-input
-    groupadd hawck-uinput
-    usermod -aG hawck-uinput hawck-input
+    groupadd uinput
+    usermod -aG uinput hawck-input
 
     chown hawck-input:hawck-input-share /var/lib/hawck-input
     chmod 770 /var/lib/hawck-input
@@ -44,7 +44,7 @@ function setup-users() {
 
     ## Make sure that hawck-input can create virtual input devices.
     ## After a reboot this will be done by the 99-hawck-input.rules file.
-    chown root:hawck-uinput /dev/uinput
+    chown root:uinput /dev/uinput
     chmod 660 /dev/uinput
 }
 
@@ -57,9 +57,9 @@ HAWCK_BIN="$HAWCK_SHARE/bin"
 mkdir -p "$HAWCK_BIN"
 for src in src/scripts/*.sh src/scripts/*.awk; do
     name="$(basename "$src")"
-    echo "\$ install -m 755 '$src' '$HAWCK_BIN/$name'"
     install -m 755 "$src" "$HAWCK_BIN/$name"
 done
+install -m 755 bin/hawck-user-setup.sh "$HAWCK_BIN/hawck-user-setup"
 install -m 755 src/tools/lskbd.rb "$HAWCK_BIN/lskbd"
 
 chown -R root:root "$HAWCK_BIN"
@@ -103,7 +103,7 @@ done
 popd &>/dev/null
 gtk-update-icon-cache /usr/share/icons/hicolor/ && ok "Updated icon cache"
 
-## Install rules to make /dev/uinput available to hawck-uinput users
+## Install rules to make /dev/uinput available to uinput users
 cp bin/99-hawck-input.rules /etc/udev/rules.d/
 chown root:root /etc/udev/rules.d/99-hawck-input.rules
 chmod 644 /etc/udev/rules.d/99-hawck-input.rules
@@ -114,13 +114,11 @@ chmod 644 /etc/udev/rules.d/99-hawck-input.rules
 echo uinput > /etc/modules-load.d/hawck-uinput.conf
 
 ## Hawck desktop integration.
-cp bin/hawck-ui.desktop /usr/share/applications/
-chmod 644 /usr/share/applications/hawck-ui.desktop
+# cp bin/hawck-ui.desktop /usr/share/applications/
+# chmod 644 /usr/share/applications/hawck-ui.desktop
 
 cp bin/hawck-inputd.service /etc/systemd/system/
-
-## Default keyboards to listen on.
-cp bin/keyboards.txt /var/lib/hawck-input/
+# TODO: Copy hawck-macrod.service
 
 popd &>/dev/null ## Done installing files
 
