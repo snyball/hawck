@@ -32,6 +32,11 @@ mode("Caps => Ctrl mode", down + key "f7") + -up => {
     key "caps" => replace "control"
 }
 ```
+- Replace a key, but only on a specific keyboard (not in v0.6, use master branch
+  for this)
+```lua
+fromkbd "1:1:AT_Translated_Set_2_keyboard" + key "F7" => say "Hello"
+```
 - Paste into a tty, or another program which does not support pasting
 ```lua
 function getClipboard()
