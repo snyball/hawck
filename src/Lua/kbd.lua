@@ -116,7 +116,7 @@ function kbd:press(code)
 end
 
 --- Prepare the keyboard by retrieving values from MacroD
-function kbd:prepare(ev_value, ev_code, ev_type)
+function kbd:prepare(ev_value, ev_code, ev_type, pkbd)
   self.event_value = ev_value
   self.event_code = ev_code
   self.event_type = ev_type

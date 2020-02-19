@@ -89,9 +89,10 @@ private:
      *
      * @param sc Script to be executed.
      * @param ev Event to pass on to the script.
+     * @param kbd_hid Human readable keyboard ID.
      * @return True if the key event should be repeated.
      */
-    bool runScript(Lua::Script *sc, const struct input_event &ev);
+    bool runScript(Lua::Script *sc, const struct input_event &ev, std::string kbd_hid);
 
     /** Load a Lua script. */
     void loadScript(const std::string &path);

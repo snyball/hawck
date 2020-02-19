@@ -46,6 +46,7 @@ extern "C" {
 #include "Permissions.hpp"
 #include "LuaConfig.hpp"
 #include "XDG.hpp"
+#include "KBDB.hpp"
 
 using namespace Lua;
 using namespace Permissions;
@@ -247,15 +248,21 @@ static void handleSigTerm(int) {
     macrod_main_loop_running = false;
 }
 
-bool MacroDaemon::runScript(Lua::Script *sc, const struct input_event &ev) {
+bool MacroDaemon::runScript(Lua::Script *sc, const struct input_event &ev, string kbd_hid) {
     static bool had_stack_leak_warning = false;
     bool repeat = true;
 
     try {
-        auto [succ] = sc->call<bool>("__match", (int)ev.value, (int)ev.code, (int)ev.type);
+        auto [succ] = sc->call<bool>("__match",
+                                     (int)ev.value,
+                                     (int)ev.code,
+                                     (int)ev.type,
+                                     kbd_hid);
         if (lua_gettop(sc->getL()) != 0) {
             if (!had_stack_leak_warning) {
-                syslog(LOG_WARNING, "API misuse causing Lua stack leak of %d elements.", lua_gettop(sc->getL()));
+                syslog(LOG_WARNING,
+                       "API misuse causing Lua stack leak of %d elements.",
+                       lua_gettop(sc->getL()));
                 // Don't spam system logs:
                 had_stack_leak_warning = true;
             }
@@ -346,6 +353,8 @@ void MacroDaemon::run() {
         return true;
     });
 
+    KBDB kbdb;
+
     getConnection();
 
     syslog(LOG_INFO, "Starting main loop");
@@ -355,6 +364,8 @@ void MacroDaemon::run() {
             bool repeat = true;
 
             kbd_com->recv(&action);
+            string kbd_hid = kbdb.getID(&action.dev_id);
+            cout << "Received from: " << kbd_hid << endl;
 
             if (!( (!eval_keydown && ev.value == 1) ||
                    (!eval_keyup && ev.value == 0) ) && !disabled)
@@ -363,7 +374,7 @@ void MacroDaemon::run() {
                 // Look for a script match.
                 for (auto &[_, sc] : scripts) {
                     (void) _;
-                    if (sc->isEnabled() && !(repeat = runScript(sc, ev)))
+                    if (sc->isEnabled() && !(repeat = runScript(sc, ev, kbd_hid)))
                         break;
                 }
             }

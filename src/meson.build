@@ -32,6 +32,7 @@ macrod_src = [
   'FIFOWatcher.cpp',
   'LuaConfig.cpp',
   'XDG.cpp',
+  'KBDB.cpp',
 ]
 executable('hawck-macrod',
            macrod_src,

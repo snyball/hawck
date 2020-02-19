@@ -249,3 +249,21 @@ static inline std::string pathJoin(Ts... parts) {
     StringJoiner joiner("/");
     return joiner.join(parts...);
 }
+
+/**
+ * Check if string `a` ends with string `b`.
+ * NOTE: This is a strict ends with, so it will return false if a == b
+ * TODO: Remove this when C++20 lands.
+ */
+static inline bool stringEndsWith(std::string a, std::string b) {
+    return a.size() > b.size() && a.substr(a.size() - b.size()) == b;
+}
+
+/**
+ * Check if string `a` starts with string `b`.
+ * NOTE: This is a strict starts with, so it will return false if a == b.
+ * TODO: Remove this when C++20 lands.
+ */
+static inline bool stringStartsWith(std::string a, std::string b) {
+    return a.size() > b.size() && a.substr(0, b.size()) == b;
+}
