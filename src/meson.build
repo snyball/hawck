@@ -3,10 +3,7 @@ if not luadep.found()
   luadep = dependency('lua5.3', version : '>=5.3')
 endif
 
-gtkdep = dependency('gtk+-3.0', version: '>=3.6')
 dbusdep = dependency('dbus-1')
-gobjectdep = dependency('gobject-2.0')
-glibdep = dependency('glib-2.0')
 pthreaddep = dependency('threads')
 notifydep = dependency('libnotify')
 
@@ -36,9 +33,7 @@ macrod_src = [
 ]
 executable('hawck-macrod',
            macrod_src,
-           dependencies : [luadep, gtkdep, dbusdep,
-                           gobjectdep, glibdep, pthreaddep,
-                           notifydep],
+           dependencies : [luadep, dbusdep, pthreaddep, notifydep],
            include_directories : conf_inc,
            install : true,
           )
