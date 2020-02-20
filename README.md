@@ -85,17 +85,19 @@ For `v0.6`, click Branch\>Tags\>Master\>`v0.6.1` and follow the instructions in
 the `README` files for that version. The rest of this section will apply to the
 master branch.
 
+### Arch/Manjaro
+
+Install the [hawck-git](https://aur.archlinux.org/packages/hawck-git/) AUR package.
+
+Remember to run `/usr/share/hawck/bin/hawck-user-setup` after install (you
+should run this script with your personal user account, not as root.)
+
+### Debian/Ubuntu
 Install dependencies:
 
 ```bash
 # Debian/Ubuntu
 $ pkexec xargs apt -y install < bin/dependencies/debian-deps.txt
-
-# Arch/Manjaro
-$ pacman -Sy libnotify lua ruby zenity gawk python gzip kbd \
-              meson gcc pkg-config wget catch2 ninja git
-# On Arch/Manjaro, if you use a minimal WM
-$ pacman -Sy polkit-gnome
 ```
 
 Then:

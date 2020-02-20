@@ -2,6 +2,7 @@
 
 if [ "$(whoami)" = "root" ]; then
     echo "Will not run as root."
+    echo "You should run this setup script as the desktop user."
     exit 1
 fi
 

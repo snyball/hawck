@@ -21,6 +21,8 @@ post_install() {
     ## After a reboot this will be done by the 99-hawck-input.rules file.
     chown root:uinput /dev/uinput
     chmod 660 /dev/uinput
+
+    echo "Installed, now run /usr/share/hawck/bin/hawck-user-setup"
 }
 
 pre_remove() {
