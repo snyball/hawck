@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
 
     unordered_map<string, function<void(const string& opt)>> long_handlers = {
         {"version", [&](const string&) {
-                        cout << "Hawck InputD v" MACROD_VERSION << endl;
+                        cout << "Hawck MacroD v" MACROD_VERSION << endl;
                         exit(0);
                     }},
     };

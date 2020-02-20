@@ -17,7 +17,8 @@ function setup-files() {
     install -m 644 -D bin/__UNSAFE_MODE.csv  "$HAWCK_SHARE/keys/__UNSAFE_MODE.csv"
     install -m 644 -D bin/hawck-macrod.desktop "$HAWCK_SHARE/bin/hawck-macrod.desktop"
     install -m 644 -D bin/cfg.lua "$DESTDIR/etc/hawck/cfg.lua"
-    install -m 644 -D bin/macro-scripts/example.hwk "$DESTDIR/etc/hawck/scripts/example.hwk"
+    install -m 644 -D src/macro-scripts/example.hwk "$DESTDIR/etc/hawck/scripts/example.hwk"
+    install -m 644 -D bin/hawck-macrod.service "$DESTDIR/usr/lib/systemd/user/hawck-macrod.service"
 
     for lib in src/Lua/*.lua; do
         install -m 755 -D "$lib" "$HAWCK_SHARE/LLib/$(basename "$lib")"
