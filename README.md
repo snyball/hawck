@@ -242,25 +242,25 @@ easy to implement is what I went with in Hawck.
   - Currently the only supported platform, as input-grabbing in this
     way is very platform specific.
     
-Porting it to Mac OSX is a non-starter because there are far superior tools
-available there already.
+Porting to FreeBSD is possible, but requires the installation of shims, or
+porting of the following classes/functions.
 
-Porting to BSD is possible, but requires alternate implementations of the
-following classes/functions/scripts:
 - `Keyboard`
   - Access to raw keyboard input.
+  - shim: https://www.freshports.org/devel/evdev-proto/
+  - Requires: `ioctl(fd, EVIOCGRAB, ...)` for exclusive keyboard lock.
 - `UDevice`
   - Virtual keyboard devices for outputting keys.
+  - shim: https://www.freshports.org/devel/evdev-proto/
 - `KBDInfo`/`KBDB`
   - Gathers info about a keyboard from `sysfs`
+  - Can this be retrieved using `sysctl` on FreeBSD?
 - `pidexe(pid_t)`
   - Used to find the executable behind a process id
-- `lskbd.rb`
-  - Used for debugging
+  - Single line of code change.
 - `FSWatcher.cpp`
-  - Used **a lot**
-
-I personally don't use BSD on the desktop, so I have no plans of porting it.
+  - File system notifications
+  - shim: https://github.com/libinotify-kqueue/libinotify-kqueue
 
 ## GUI
 
