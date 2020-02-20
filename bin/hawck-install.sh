@@ -9,7 +9,7 @@ function setup-files() {
 
     HAWCK_SHARE="$DESTDIR/usr/share/hawck"
     HAWCK_BIN="$HAWCK_SHARE/bin"
-    for src in src/scripts/*.sh src/scripts/*.awk; do
+    for src in src/scripts/*.sh; do
         install -m 755 -D "$src" "$HAWCK_BIN/$(basename "$src")"
     done
     install -m 755 -D bin/hawck-user-setup.sh "$HAWCK_BIN/hawck-user-setup"
