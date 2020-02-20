@@ -131,6 +131,27 @@ $ vim ~/.local/share/hawck/scripts/example.hwk
 $ hawck-add ~/.local/share/hawck/scripts/example.hwk
 ```
 
+### BSD
+
+Porting to FreeBSD is possible, but requires the installation of shims, or
+porting of the following classes/functions.
+
+- `Keyboard`
+  - Access to raw keyboard input.
+  - shim: https://www.freshports.org/devel/evdev-proto/
+  - Requires: `ioctl(fd, EVIOCGRAB, ...)` for exclusive keyboard lock.
+- `UDevice`
+  - Virtual keyboard devices for outputting keys.
+  - shim: https://www.freshports.org/devel/evdev-proto/
+- `KBDInfo`/`KBDB`
+  - Gathers info about a keyboard from `sysfs`
+  - Can this be retrieved using `sysctl` on FreeBSD?
+- `pidexe(pid_t)`
+  - Used to find the executable behind a process id
+  - Single line of code change.
+- `FSWatcher.cpp`
+  - File system notifications
+  - shim: https://github.com/libinotify-kqueue/libinotify-kqueue
 
 ## Security
 
@@ -235,32 +256,6 @@ in an overengineered language requiring a lot of maintenance.
 This is why Lua, with a single extra operator that was
 easy to implement is what I went with in Hawck.
 </small>
-
-### Supported platforms
-
-- Linux
-  - Currently the only supported platform, as input-grabbing in this
-    way is very platform specific.
-    
-Porting to FreeBSD is possible, but requires the installation of shims, or
-porting of the following classes/functions.
-
-- `Keyboard`
-  - Access to raw keyboard input.
-  - shim: https://www.freshports.org/devel/evdev-proto/
-  - Requires: `ioctl(fd, EVIOCGRAB, ...)` for exclusive keyboard lock.
-- `UDevice`
-  - Virtual keyboard devices for outputting keys.
-  - shim: https://www.freshports.org/devel/evdev-proto/
-- `KBDInfo`/`KBDB`
-  - Gathers info about a keyboard from `sysfs`
-  - Can this be retrieved using `sysctl` on FreeBSD?
-- `pidexe(pid_t)`
-  - Used to find the executable behind a process id
-  - Single line of code change.
-- `FSWatcher.cpp`
-  - File system notifications
-  - shim: https://github.com/libinotify-kqueue/libinotify-kqueue
 
 ## GUI
 
