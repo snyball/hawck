@@ -48,9 +48,7 @@ function setup-files() {
     ## Make sure the uinput module is loaded, this isn't necessary on
     ## some systems, but is required on Arch Linux. If this isn't done
     ## the 99-hawck-input.rules file will have no effect.
-    MODDIR="$DESTDIR/etc/modules-load.d"
-    [ -d "$MODDIR" ] || mkdir -p "$MODDIR"
-    echo uinput > "$MODDIR/hawck-uinput.conf"
+    install -m 644 -D bin/hawck-uinput.conf "/etc/modules-load.d/hawck-uinput.conf"
 
     install -m 644 -D bin/hawck-inputd.service "$DESTDIR/etc/systemd/system/hawck-inputd.service"
     # TODO: Copy hawck-macrod.service
