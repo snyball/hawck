@@ -1,7 +1,7 @@
 <img src="./icons/alt_hawck_logo_v2_red_with_text.png"/>
 
 ![License: BSD-2](https://img.shields.io/badge/license-BSD--2-brightgreen.svg)
-![Version: 0.6](https://img.shields.io/badge/version-0.6-blue.svg)
+![Version: 0.7](https://img.shields.io/badge/version-0.7-blue.svg)
 
 ## A key-rebinding daemon
 
@@ -32,7 +32,7 @@ mode("Caps => Ctrl mode", down + key "f7") + -up => {
     key "caps" => replace "control"
 }
 ```
-- Replace a key, but only on a specific keyboard (not in v0.6, use master branch
+- Replace a key, but only on a specific keyboard (not in `v0.6`, use master branch
   for this)
 ```lua
 -- Run `src/tools/lskbd.rb -k` and look for "ID" in the output to find keyboard IDs.
