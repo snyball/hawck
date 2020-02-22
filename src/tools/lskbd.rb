@@ -45,7 +45,7 @@ def lsinput
   end
 
   info_line_rx = /^([A-Z]): (.*)$/
-  i_rx = /Bus=(\d*) Vendor=(\d*) Product=(\d*) Version=(\h*)$/
+  i_rx = /Bus=(\h+) Vendor=(\h+) Product=(\h+) Version=(\h+)$/
   n_rx = /^Name="(.*)"$/
   g_rx = /^([A-Za-z]+)=(.*)$/
   devices = []
@@ -54,7 +54,7 @@ def lsinput
     dev_lines.each do |line|
       _, t, info = info_line_rx.match(line).to_a
       if t == "I" then
-        _, dev["Bus"], dev["Vendor"], dev["Product"], dev["Version"] = i_rx.match(info).to_a
+        _, dev["Bus"], dev["Vendor"], dev["Product"], dev["Version"] = i_rx.match(info).to_a.map {|v| v.to_i(16)}
       else
         u, v = case t
                  when "N"
