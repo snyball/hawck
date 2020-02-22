@@ -6,7 +6,10 @@
 ## You need fish shell to run it.
 ##
 
-set ttl 10
+set ttl 7
+if [ (count $argv) -gt 0 ]
+    set ttl $argv[1]
+end
 
 cd (dirname (status -f))
 while [ (basename $PWD) != "Hawck" ]
@@ -42,16 +45,13 @@ end
 set -x XDG_DATA_HOME (realpath macrod-test)
 
 pushd src
-set inputd_args
-for device in (lskbd)
-    set -a inputd_args "--kbd-device"
-    set -a inputd_args $device
-end
+set kbd (find /dev/input/by-path/ -type l | grep -E "platform-i8042.*-event-kbd\$")
+set inputd_args --no-hotplug --kbd-device $kbd
 
-killall hawck-macrod
 sudo systemctl stop hawck-inputd.service
+killall hawck-macrod
 
-echo "Killing in $ttl seconds"
+echo "Killing in $ttl second(s)"
 
 echo "--------------------------[hawck]--------------------------"
 sudo runuser -u hawck-input -- ./hawck-inputd $inputd_args
@@ -60,6 +60,7 @@ sudo runuser -u hawck-input -- ./hawck-inputd $inputd_args
 sleep $ttl
 kill (jobs -p)
 sudo killall hawck-inputd
+echo
 echo "---------------------------[DONE]--------------------------"
 
 popd

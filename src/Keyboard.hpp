@@ -116,8 +116,7 @@ private:
 public:
     /** Keyboard constructor.
      *
-     * Tip: If you don't know which path you want, try using or looking
-     *      into the lsinput program (part of Hawck.)
+     * Tip: If you don't know which path you want, try running the `lskbd.rb` script.
      *
      * @param path Path to the character device file of the device,
      *             this should be in /dev/input/.

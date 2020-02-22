@@ -1,5 +1,6 @@
 #include <string>
 #include <fstream>
+#include <filesystem>
 
 #include "KBDDaemon.hpp"
 #include "Daemon.hpp"
@@ -18,6 +19,7 @@ extern "C" {
 }
 
 using namespace std;
+namespace fs = std::filesystem;
 
 static void handleSigPipe(int) {
     // cout << "KBDDaemon aborting due to SIGPIPE" << endl;
@@ -57,12 +59,16 @@ int main(int argc, char *argv[]) {
     signal(SIGPIPE, handleSigPipe);
 
     string HELP =
-        "Usage: hawck-inputd [--udev-event-delay <us>] [--no-fork] [--socket-timeout] -k <device>\n"
+        "Usage: hawck-inputd [--udev-event-delay <us>] [--no-fork] [--socket-timeout]\n"
+        "                    [--kbd-device <device>] [--no-hotplug]\n"
         "\n"
         "Examples:\n"
-        "  hawck-inputd --kbd-device /dev/input/event13            Listen on a single device.\n\n"
-        "  hawck-inputd -k{/dev/input/event13,/dev/input/event15}  Listen on multiple devices.\n\n"
-        "  hawck-inputd $(/usr/share/hawck/bin/get-kbd-args.sh)    Listen on all keyboard devices.\n\n"
+        "  Listen on a single device:\n"
+        "    hawck-inputd --kbd-device /dev/input/event13 --no-hotplug\n\n"
+        "  Listen on multiple devices:\n"
+        "    hawck-inputd -k{/dev/input/event13,/dev/input/event15}\n\n"
+        "  Listen on all keyboard devices automatically:\n"
+        "    hawck-inputd\n\n"
         "Options:\n"
         "  --no-fork           Don't daemonize/fork.\n"
         "  -h, --help          Display this help information.\n"
@@ -70,13 +76,15 @@ int main(int argc, char *argv[]) {
         "  -k, --kbd-device    Add a keyboard to listen to.\n"
         "  --udev-event-delay  Delay between events sent on the udevice in us.\n"
         "  --socket-timeout    Time in milliseconds until timeout on sockets.\n"
+        "  --no-hotplug        Only listen to devices that were explicitly added with --kbd-device\n"
     ;
 
-    //daemonize("/var/log/hawck-input/log");
+    int no_hotplug = false;
     static struct option long_options[] =
         {
             /* These options set a flag. */
             {"no-fork", no_argument,       &no_fork, 1},
+            {"no-hotplug", no_argument,       &no_hotplug, 1},
             {"udev-event-delay", required_argument,       0, 0},
             {"socket-timeout", required_argument,       0, 0},
             {"version", no_argument, 0, 0},
@@ -146,9 +154,22 @@ int main(int argc, char *argv[]) {
         }
     } while (true);
 
+    // If no devices were specified, we listen to all of them
     if (kbd_devices.size() == 0) {
-        cout << "Unable to start Hawck InputD without any keyboard devices." << endl;
-        exit(0);
+        // FIXME: All the "is this a keyboard" detection done in Hawck is very
+        //        brittle, and I should probably do a deep-dive into whatever
+        //        documentation I can find on this to develop a better method.
+
+        for (auto d : fs::directory_iterator("/dev/input/by-id"))
+            if (KBDDaemon::byIDIsKeyboard(d.path()))
+                kbd_devices.push_back(realpath_safe(d.path()));
+
+        for (auto d : fs::directory_iterator("/dev/input/by-path")) {
+            string rpath = realpath_safe(d.path());
+            bool already_added = find(kbd_devices.begin(), kbd_devices.end(), rpath) != kbd_devices.end();
+            if (!already_added && stringStartsWith(pathBasename(d.path()), "platform-i8042") && stringEndsWith(d.path(), "-event-kbd"))
+                kbd_devices.push_back(rpath);
+        }
     }
 
     cout << "Starting Hawck InputD v" INPUTD_VERSION " on:" << endl;
@@ -165,6 +186,7 @@ int main(int argc, char *argv[]) {
 
     try {
         KBDDaemon daemon;
+        daemon.setHotplug(!no_hotplug);
         for (const auto& dev : kbd_devices)
             daemon.addDevice(dev);
         daemon.setEventDelay(udev_event_delay);

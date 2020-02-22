@@ -180,7 +180,7 @@ public:
     /**
      * Throws SystemError if the file cannot be opened.
      */
-    inline Flocka(std::string path) noexcept(false) {
+    inline Flocka(const std::string& path) noexcept(false) {
         fd = ::open(path.c_str(), O_RDWR | O_CREAT, 0644);
         if (fd == -1) {
             throw SystemError("Unable to open file: ", errno);
@@ -203,9 +203,10 @@ public:
 };
 
 inline std::string realpath_safe(const std::string& path) {
-    auto rpath_chars = std::unique_ptr<char, decltype(&free)>(realpath(path.c_str(),
-                                                                       nullptr),
-                                                              &free);
+    char *rpath_raw = realpath(path.c_str(), nullptr);
+    if (rpath_raw == nullptr)
+        return "";
+    auto rpath_chars = std::unique_ptr<char, decltype(&free)>(rpath_raw, &free);
     return std::string(rpath_chars.get());
 }
 
@@ -255,7 +256,7 @@ static inline std::string pathJoin(Ts... parts) {
  * NOTE: This is a strict ends with, so it will return false if a == b
  * TODO: Remove this when C++20 lands.
  */
-static inline bool stringEndsWith(std::string a, std::string b) {
+static inline bool stringEndsWith(const std::string& a, const std::string& b) {
     return a.size() > b.size() && a.substr(a.size() - b.size()) == b;
 }
 
@@ -264,6 +265,6 @@ static inline bool stringEndsWith(std::string a, std::string b) {
  * NOTE: This is a strict starts with, so it will return false if a == b.
  * TODO: Remove this when C++20 lands.
  */
-static inline bool stringStartsWith(std::string a, std::string b) {
+static inline bool stringStartsWith(const std::string& a, const std::string& b) {
     return a.size() > b.size() && a.substr(0, b.size()) == b;
 }

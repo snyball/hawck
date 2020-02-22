@@ -32,6 +32,7 @@
 #include <set>
 #include <mutex>
 #include <thread>
+#include <regex>
 
 #include "KBDConnection.hpp"
 #include "UNIXSocket.hpp" 
@@ -88,6 +89,10 @@ private:
     FSWatcher keys_fsw;
     /** Watcher for /dev/input/ hotplug */
     FSWatcher input_fsw;
+    /** Controls whether or not /unseen/ keyboards may be added when they are
+     * plugged in. Keyboards that were added on startup with --kbd-device
+     * arguments will always be reconnected on hotplug. */
+    bool allow_hotplug = true;
 
 public:
     explicit KBDDaemon(const char *device);
@@ -143,6 +148,23 @@ public:
      * @param delay Delay in µs.
      */
     void setEventDelay(int delay);
+
+    inline void setHotplug(bool val) {
+        allow_hotplug = val;
+    }
+
+    /**
+     * @param path A file path or file name from /dev/input/by-id
+     * @return True iff the ID represents a keyboard.
+     */
+    static inline bool byIDIsKeyboard(const std::string& path) {
+        const static std::regex input_if_rx("^.*-if[0-9]+-event-kbd$");
+        const static std::regex event_kbd("^.*-event-kbd$");
+        // Keyboard devices in /dev/input/by-id have filenames that end in
+        // "-event-kbd", but they may also have extras that are available from
+        // files ending in "-ifxx-event-kbd"
+        return std::regex_match(path, event_kbd) && !std::regex_match(path, input_if_rx);
+    }
 
     /** Set timeout for read() on sockets. */
     inline void setSocketTimeout(int time) {

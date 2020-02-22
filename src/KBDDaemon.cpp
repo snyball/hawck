@@ -30,6 +30,7 @@
 #include <iostream>
 #include <string>
 #include <chrono>
+#include <regex>
 
 extern "C" {
     #include <syslog.h>
@@ -61,6 +62,7 @@ KBDDaemon::KBDDaemon() :
 }
 
 void KBDDaemon::addDevice(const std::string& device) {
+    lock_guard<mutex> lock(kbds_mtx);
     kbds.push_back(new Keyboard(device.c_str()));
 }
 
@@ -231,10 +233,61 @@ void KBDDaemon::initPassthrough() {
 }
 
 void KBDDaemon::updateAvailableKBDs() {
+    lock_guard<mutex> lock1(available_kbds_mtx);
+    lock_guard<mutex> lock2(kbds_mtx);
+
     available_kbds.clear();
     for (auto &kbd : kbds)
         if (!kbd->isDisabled())
             available_kbds.push_back(kbd);
+}
+
+/**
+ * Loop until the file has the correct permissions, when immediately added
+ * /dev/input/ files seem to be owned by root:root or by root:input with
+ * restrictive permissions. We expect it to be root:input with the input group
+ * being able to read and write.
+ *
+ * @return True iff the device is ready to be opened.
+ */
+static bool waitForDevice(const string& path) {
+    const int wait_inc_us = 100;
+
+    gid_t input_gid; {
+        auto [grp, grpbuf] = getgroup("input");
+        (void) grpbuf;
+        input_gid = grp->gr_gid;
+    }
+
+    struct stat stbuf;
+    unsigned grp_perm;
+    int ret;
+    int wait_time = 0;
+    do {
+        usleep(wait_inc_us);
+        ret = stat(path.c_str(), &stbuf);
+        grp_perm = stbuf.st_mode & S_IRWXG;
+
+        // Check if it is a character device, test is
+        // done here because permissions might not allow
+        // for even stat()ing the file.
+        if (ret != -1 && !S_ISCHR(stbuf.st_mode)) {
+            // Not a character device, return
+            syslog(LOG_WARNING, "File %s is not a character device", path.c_str());
+            return false;
+        }
+
+        if ((wait_time += wait_inc_us) > FSW_MAX_WAIT_PERMISSIONS_US) {
+            syslog(LOG_ERR,
+                   "Could not aquire permissions rw with group input on '%s'",
+                   path.c_str());
+            // Skip this file
+            return false;
+        }
+    } while (ret != -1 && !(4 & grp_perm && grp_perm & 2) &&
+             stbuf.st_gid != input_gid);
+
+    return true;
 }
 
 void KBDDaemon::run() {
@@ -257,80 +310,60 @@ void KBDDaemon::run() {
                        return true;
                    });
 
-    input_fsw.add("/dev/input");
-    input_fsw.setWatchDirs(true);
-    input_fsw.setAutoAdd(false);
+    FSWatcher watcher;
+    watcher.add("/dev/input/by-id");
+    watcher.setWatchDirs(true);
+    watcher.setAutoAdd(false);
+    watcher.asyncWatch([this](FSEvent &ev) {
+                           // Don't react to the directory itself.
+                           if (ev.path == "/dev/input/by-id")
+                               return true;
 
-    gid_t input_gid; {
-        auto [grp, grpbuf] = getgroup("input");
-        (void) grpbuf;
-        input_gid = grp->gr_gid;
-    }
+                           string event_path = realpath_safe(ev.path);
 
-    input_fsw.asyncWatch([this, input_gid](FSEvent &ev) {
-                        // Don't react to the directory itself.
-                        if (ev.path == "/dev/input")
-                            return true;
+                           syslog(LOG_INFO, "Hotplug event on %s -> %s", ev.path.c_str(), event_path.c_str());
 
-                        syslog(LOG_INFO, "Input device hotplug event on: %s",
-                               ev.path.c_str());
+                           if (!waitForDevice(event_path))
+                               return true;
 
-                        lock_guard<mutex> lock(pulled_kbds_mtx);
+                           {
+                               lock_guard<mutex> lock(pulled_kbds_mtx);
+                               for (auto it = pulled_kbds.begin(); it != pulled_kbds.end(); it++) {
+                                   auto kbd = *it;
+                                   if (kbd->isMe(ev.path.c_str())) {
+                                       syslog(LOG_INFO, "Keyboard was plugged back in: %s",
+                                              kbd->getName().c_str());
+                                       kbd->reset(ev.path.c_str());
+                                       kbd->lock();
+                                       {
+                                           lock_guard<mutex> lock(available_kbds_mtx);
+                                           available_kbds.push_back(kbd);
+                                       }
+                                       pulled_kbds.erase(it);
+                                       break;
+                                   }
+                               }
+                           }
 
-                        for (auto it = pulled_kbds.begin(); it != pulled_kbds.end(); it++) {
-                            auto kbd = *it;
+                           if (!allow_hotplug)
+                               return true;
 
-                            int wait_inc_us = 100;
-                            int wait_time = 0;
-                            // Loop until the file has the correct permissions,
-                            // when immediately added /dev/input/* files seem
-                            // to be owned by root:root or by root:input with
-                            // restrictive permissions.
-                            // We expect it to be root:input with the input group
-                            // being able to read and write.
-                            struct stat stbuf;
-                            unsigned grp_perm;
-                            int ret;
-                            do {
-                                usleep(wait_inc_us);
-                                ret = stat(ev.path.c_str(), &stbuf);
-                                grp_perm = stbuf.st_mode & S_IRWXG;
+                           // If the keyboard is not in pulled_kbds, we want to
+                           // make sure that it actually is a keyboard.
+                           if (!KBDDaemon::byIDIsKeyboard(ev.path))
+                               return true;
 
-                                // Check if it is a character device, test is
-                                // done here because permissions might not allow
-                                // for even stat()ing the file.
-                                if (ret != -1 && !S_ISCHR(stbuf.st_mode)) {
-                                    // Not a character device, return
-                                    syslog(LOG_WARNING, "File %s is not a character device",
-                                           ev.path.c_str());
-                                    return true;
-                                }
+                           {
+                               lock_guard<mutex> lock(kbds_mtx);
+                               Keyboard *kbd = new Keyboard(event_path.c_str());
+                               kbds.push_back(kbd);
+                               syslog(LOG_INFO, "New keyboard plugged in: %s", kbd->getID().c_str());
+                               kbd->lock();
+                           }
+                           updateAvailableKBDs();
 
-                                if ((wait_time += wait_inc_us) > FSW_MAX_WAIT_PERMISSIONS_US) {
-                                    syslog(LOG_ERR,
-                                           "Could not aquire permissions rw with group input on '%s'",
-                                           ev.path.c_str());
-                                    // Skip this file
-                                    return true;
-                                }
-                            } while (ret != -1 && !(4 & grp_perm && grp_perm & 2) && stbuf.st_gid != input_gid);
-
-                            if (kbd->isMe(ev.path.c_str())) {
-                                syslog(LOG_INFO,
-                                       "Keyboard was plugged in: %s",
-                                       kbd->getName().c_str());
-                                kbd->reset(ev.path.c_str());
-                                kbd->lock();
-                                {
-                                    lock_guard<mutex> lock(available_kbds_mtx);
-                                    available_kbds.push_back(kbd);
-                                }
-                                pulled_kbds.erase(it);
-                                break;
-                            }
-                        }
-                        return true;
-                    });
+                           return true;
+                       });
 
     Keyboard *kbd = nullptr;
     for (;;) {
@@ -398,9 +431,6 @@ void KBDDaemon::run() {
                 }
                 // Flush received keys and continue on.
                 udev.flush();
-                // Skip emission of the original key if everything went OK
-                if (count == 0)
-                    cout << "MacroD swallowed event" << endl;
                 continue;
             } catch (const SocketError &e) {
                 lock_guard<mutex> lock(available_kbds_mtx);
