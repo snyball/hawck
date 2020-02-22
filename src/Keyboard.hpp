@@ -146,15 +146,6 @@ public:
     /** Format the Keyboard ID */
     std::string getID() noexcept;
 
-    /**
-     * Specifically this checks if the driver for the input device file ends in
-     * `kbd`
-     *
-     * @param path Path to keyboard device, e.g `/dev/input/event{n}`, but can
-     *             also just be `event{n}`
-     */
-    static bool isKeyboard(std::string path);
-
     /** Check whether or not the keyboard has been disabled,
      * this happens if disable() is called, usually as a result
      * of the get() function throwing a KeyboardException.

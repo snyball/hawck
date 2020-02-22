@@ -79,14 +79,6 @@ std::string Keyboard::getID() noexcept {
     return ss.str();
 }
 
-bool Keyboard::isKeyboard(std::string path) {
-    std::stringstream sstream("/sys/class/input/");
-    sstream << pathBasename(path) << "/device/device/driver";
-    std::string drv_path = readlink(sstream.str());
-    size_t len = drv_path.size();
-    return (len > 3 && drv_path.substr(len-3, len) == "kbd");
-}
-
 bool Keyboard::isMe(const char *path) const {
     errno = 0;
     int new_fd = open(path, O_RDONLY);

@@ -8,6 +8,8 @@
 using namespace std;
 namespace fs = std::filesystem;
 
+// As of 2020-02-22 input_id is a vector of 4 __u16 integers.
+// We make assumptions based on that.
 static_assert(is_same<decltype(((struct input_id*) nullptr)->bustype),
                       decltype(((struct input_id*) nullptr)->vendor)>::value);
 static_assert(is_same<decltype(((struct input_id*) nullptr)->vendor),
@@ -60,7 +62,7 @@ std::string KBDInfo::getID() noexcept {
   return ss.str();
 }
 
-void KBDInfo::initFrom(std::string path) noexcept(false) {
+void KBDInfo::initFrom(const std::string& path) noexcept(false) {
   vector<pair<string, string *>> parts = {{"name", &name},
                                           {"phys", &phys},
                                           {"uevent", &uevent},

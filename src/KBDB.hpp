@@ -19,8 +19,8 @@ struct InputIDHash
 };
 
 inline bool operator==(const struct input_id &a, const struct input_id &b) {
-return (a.bustype == b.bustype) && (a.product == b.product) &&
-        (a.vendor == b.vendor) && (a.version == b.version);
+  return (a.bustype == b.bustype) && (a.product == b.product) &&
+         (a.vendor == b.vendor) && (a.version == b.version);
 }
 
 /**
@@ -35,7 +35,7 @@ private:
     std::string dev_uevent;
     struct input_id id;
 
-    void initFrom(std::string path) noexcept(false);
+    void initFrom(const std::string& path) noexcept(false);
 
 public:
     KBDInfo(const struct input_id *id) noexcept(false);
