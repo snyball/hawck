@@ -131,14 +131,14 @@ void FSWatcher::remove(string path) {
 }
 
 vector<FSEvent> *FSWatcher::addFrom(string dir_path) {
-    DIR *dir = opendir(dir_path.c_str());
+    auto dir = shared_ptr<DIR>(opendir(dir_path.c_str()), &closedir);
     if (dir == nullptr) {
         throw SystemError("Error in opendir() for dir_path: " + dir_path);
     }
     add(dir_path);
     struct dirent *entry;
     auto added = new vector<FSEvent>();
-    while ((entry = readdir(dir)) != nullptr) {
+    while ((entry = readdir(dir.get())) != nullptr) {
         stringstream ss;
         ss << dir_path << "/" << entry->d_name;
         string path = ss.str();
@@ -157,7 +157,6 @@ vector<FSEvent> *FSWatcher::addFrom(string dir_path) {
             added->push_back(FSEvent(path));
         }
     }
-    closedir(dir);
     return added;
 }
 
