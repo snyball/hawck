@@ -292,6 +292,7 @@ static bool waitForDevice(const string& path) {
 
 void KBDDaemon::run() {
     KBDAction action;
+    memset(&action, '\0', sizeof(action));
 
     for (auto& kbd : kbds) {
         syslog(LOG_INFO, "Attempting to get lock on device: %s @ %s",

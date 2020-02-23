@@ -65,7 +65,7 @@ class KBDDaemon {
 
     using Milliseconds = std::chrono::milliseconds;
 private:
-    Milliseconds timeout = Milliseconds(1024);
+    Milliseconds timeout = Milliseconds(2048);
     std::atomic<KeyVisibility> key_visibility[KEY_MAX];
     std::string home_path = "/var/lib/hawck-input";
     std::unordered_map<std::string, std::string> data_dirs = {
