@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Create man pages using help2man.
+## Create man pages using pandoc.
 ##
 
 if [ "$#" -lt 1 ]; then
@@ -10,7 +10,4 @@ if [ "$#" -lt 1 ]; then
 fi
 
 PROG="$1"
-PROGNAME=$(basename "$PROG")
-help2man "$PROG" -i "$PROGNAME.h2m" -N > "$PROGNAME.1.err"
-./help2man_fixup.py "$PROGNAME.1.err" "$PROGNAME.h2m" "$PROG" > "$PROGNAME.1"
-rm "$PROGNAME.1.err"
+pandoc --from=markdown --standalone "$PROG.md" --to=man -o "$PROG.1"
