@@ -19,6 +19,7 @@ extern "C" {
 #include <string.h>
 #include <stdio.h>
 #include <stdexcept>
+#include <vector>
 #include "IUDevice.hpp"
 
 // Methods to export to Lua
@@ -38,9 +39,7 @@ private:
     int dfd;
     int ev_delay = 3800;
     uinput_setup usetup;
-    size_t evbuf_len;
-    size_t evbuf_top;
-    input_event *evbuf;
+    std::vector<struct input_event> events;
 
     LUA_METHOD_COLLECT(UDevice_lua_methods);
 
@@ -49,7 +48,7 @@ public:
 
     ~UDevice();
 
-    virtual void emit(const input_event *send_event) override;
+    virtual void emit(const struct input_event *send_event) override;
 
     virtual void emit(int type, int code, int val) override;
 

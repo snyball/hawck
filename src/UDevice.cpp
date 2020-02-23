@@ -1,8 +1,3 @@
-//
-// Mostly taken from examples given here:
-//   https://www.kernel.org/doc/html/v4.12/input/uinput.html
-//
-
 #include <functional>
 #include <type_traits>
 #include <iostream>
@@ -18,29 +13,25 @@ extern "C" {
 #include "SystemError.hpp"
 #include "UDevice.hpp"
 #include "utils.hpp"
+#include <filesystem>
 
-const char hawck_udev_name[] = "Hawck virtual keyboard device";
+const char hawck_udev_name[] = "Hawck Virtual Keyboard";
+static_assert(sizeof(hawck_udev_name) < UINPUT_MAX_NAME_SIZE,
+              "Length of uinput device name is too long.");
 
 using namespace std;
+namespace fs = std::filesystem;
 
 static int getDevice(const string &by_name) {
-    char buf[256];
+    char buf[NAME_MAX];
     string devdir = "/dev/input";
-    auto dir = shared_ptr<DIR>(opendir(devdir.c_str()), &closedir);
-    if (dir == nullptr)
-        throw SystemError("Unable to open directory: ", errno);
 
-    struct dirent *entry;
-    while ((entry = readdir(dir.get()))) {
-        int fd, ret;
-        sstream ss;
-        ss << devdir << "/" << entry->d_name;
-        fd = open(ss.str().c_str(), O_RDWR | O_CLOEXEC | O_NONBLOCK);
-        // fd = open(ss.str().c_str(), O_RDONLY);
+    for (auto &entry : fs::directory_iterator(devdir)) {
+        int fd = open(entry.path().c_str(), O_RDWR | O_CLOEXEC | O_NONBLOCK);
         if (fd < 0)
             continue;
 
-        ret = ioctl(fd, EVIOCGNAME(sizeof(buf)), buf);
+        int ret = ioctl(fd, EVIOCGNAME(sizeof(buf)), buf);
         string name(ret > 0 ? buf : "");
         if (name == by_name)
             return fd;
@@ -53,6 +44,9 @@ static int getDevice(const string &by_name) {
 UDevice::UDevice()
     : LuaIface(this, UDevice_lua_methods)
 {
+    // UDevice initialization taken from this guide:
+    //   https://www.kernel.org/doc/html/v4.12/input/uinput.html
+
     fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
 
     if (fd < 0)
@@ -64,20 +58,12 @@ UDevice::UDevice()
 
     memset(&usetup, 0, sizeof(usetup));
     usetup.id.bustype = BUS_USB;
-    usetup.id.vendor = 0x1234; /* sample vendor */
-    usetup.id.product = 0x5678; /* sample product */
-    strcpy(usetup.name, hawck_udev_name);
+    usetup.id.vendor = 0x420b;
+    usetup.id.product = 0x1a2e;
+    strncpy(usetup.name, hawck_udev_name, UINPUT_MAX_NAME_SIZE);
 
     ioctl(fd, UI_DEV_SETUP, &usetup);
     ioctl(fd, UI_DEV_CREATE);
-
-    evbuf = (input_event*)calloc(evbuf_len = evbuf_start_len,
-                                 sizeof(evbuf[0]));
-    if (!evbuf) {
-        fprintf(stderr, "Unable to allocate memory");
-        abort();
-    }
-    evbuf_top = 0;
 
     int errors = 0;
     while ((dfd = getDevice(usetup.name)) < 0) {
@@ -90,69 +76,29 @@ UDevice::UDevice()
 UDevice::~UDevice() {
     ioctl(fd, UI_DEV_DESTROY);
     close(fd);
-    free(evbuf);
 }
 
 void UDevice::emit(const input_event *send_event) {
-    if (evbuf_top >= evbuf_len &&
-        !(evbuf = (input_event*)realloc(evbuf,
-                                        (evbuf_len *= 2) * sizeof(evbuf[0]))))
-    {
-        fprintf(stderr, "Unable to allocate memory: evbuf_len=%ld, evbuf_top=%ld\n", evbuf_len, evbuf_top);
-        abort();
-    }
-
-    input_event *ie = &evbuf[evbuf_top++];
-
-    ie->time.tv_sec = 0;
-    ie->time.tv_usec = 0;
-    gettimeofday(&ie->time, NULL);
-
-    memcpy(ie, send_event, sizeof(*ie));
+    events.push_back(*send_event);
 }
 
 void UDevice::emit(int type, int code, int val) {
-    input_event ie;
-    ie.type = type;
-    ie.code = code;
-    ie.value = val;
-    emit(&ie);
+    struct input_event ev;
+    memset(&ev, '\0', sizeof(ev));
+    gettimeofday(&ev.time, NULL);
+    ev.type = type;
+    ev.code = code;
+    ev.value = val;
+    events.push_back(ev);
 }
 
 void UDevice::flush() {
-    if (evbuf_top == 0)
-        return;
-
-    input_event *bufp = evbuf;
-    for (size_t i = 0; i < evbuf_top; i++) {
-        if (write(fd, bufp++, sizeof(*bufp)) != sizeof(*bufp))
+    for (struct input_event& ev : this->events) {
+        if (write(fd, &ev, sizeof(ev)) != sizeof(ev))
             throw SystemError("Error in write(): ", errno);
-
-        // FIXME FIXME FIXME: This shit is ridiculous but I can't find any documentation
-        //                    on how to handle this.
-        // Quick-fix until I manage to receive events when keys are pressed
-        // too fast
-        // UPDATE: The bug is specific to GNOME Wayland, no SYN_DROPPED messages
-        // are sent back on the virtual device. Wayland X11 applications work
-        // just fine.
-        // TTYs also seem to not be dropping any keys.
-        // GNOME Wayland applications will drop modifier keys resulting in borked
-        // macros.
-        // UPDATE: XWayland also drops keys, but just not as badly as with
-        //         Wayland clients. I'll have to test this on X11.
-        //         X clients are fine with 500µs of sleep between events,
-        //         while Wayland clients need 3800µs between events.
-        //         It's also worth noting that this is a problem that
-        //         appeared quite suddenly, probably as a result of
-        //         an update.
-        //         There appears to be nothing I can do on my end,
-        //         the clients need to handle SYN_DROPPED events and
-        //         they don't seem to be doing that properly.
-
         usleep(ev_delay);
     }
-
-    evbuf_top = 0;
+    this->events.clear();
 }
 
 void UDevice::done() {
