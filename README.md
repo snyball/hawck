@@ -28,7 +28,7 @@ key "caps" => replace "control"
 ```lua
 -- Pressing F7 will activate the replacement, and pressing F7
 -- again will disable it.
-mode("Caps => Ctrl mode", down + key "f7") + -up => {
+mode("Caps => Ctrl mode", down + key "f7") => {
     key "caps" => replace "control"
 }
 ```
