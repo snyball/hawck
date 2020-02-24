@@ -69,8 +69,8 @@ shift + alt + key "p" => write(seals_pasta)
 ```
 - Run .desktop application actions, and generally launch programs
 ```lua
-shift + alt + key "f" => app("firefox"):new_window("https://youtube.com")
-shift + alt + key "w" => app("firefox"):new_private_window("( ͡° ͜ʖ ͡°)")
+shift + alt + key "f" => app("firefox"):new_window("http://man7.org/linux/man-pages/man1/yes.1.html")
+shift + alt + key "w" => app("firefox"):new_private_window("https://www.youtube.com/watch?v=V4MF2s6MLxY")
 ```
 
 <small>
@@ -210,7 +210,7 @@ As an example, here is a hawk script:
 -- It is only run when a key is not being released (-up)
 mode("Programming mode", down + key "f7") + -up => {
     -- When caps-lock is pressed, substitute with escape
-    key "caps" => replace "escape"
+    key "caps" => insert "escape"
     shift => {
         key "ø" => insert "["
         key "æ" => insert "]"
@@ -418,6 +418,3 @@ the current hack.
 - Outputting keys too quickly:
   - GNOME Wayland has a bug where it will drop a lot of keys
   - Workaround: run hawck-inputd with the --udev-event-delay flag set to 3800 (µs)
-- hawck-ui will sometimes fail to start
-  - It ends up waiting on a FIFO forever.
-  - Workaround: Kill it and run it again
