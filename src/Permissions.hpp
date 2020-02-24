@@ -52,36 +52,44 @@ struct Collection {
     /**
      * The description string has the following format (expressed as a regex):
      *
-     *              <---------------------[PERMISSIONS]------------------------>
-     *   <-[TYPE]>   <-----[USER]----->  <----[GROUP]----->  <-----[ALL]------>     <--[USER]--->   <--[GRP]-->
-     *  ([dpbclsf])(([r\.-][w\.-][x\.-])([r\.-][w\.-][x\.-])([r\.-][w\.-][x\.-])) +(~|\*|[a\.-z]+):(\*|[a\.-z]+)
+     *                  <---------------------[PERMISSIONS]------------------------>
+     *       <-[TYPE]>   <-----[USER]----->  <----[GROUP]----->  <-----[ALL]------>     <--[USER]--->   <--[GRP]-->
+     *      ([dpbclsf])(([r\.-][w\.-][x\.-])([r\.-][w\.-][x\.-])([r\.-][w\.-][x\.-])) +(~|\*|[a\.-z]+):(\*|[a\.-z]+)
      *
      * Type:
-     *   (d)irectory
-     *   (p)ipe, FIFO
-     *   (b)lock
-     *   (c)har
-     *   (l)ink
-     *   (s)ocket
-     *   (f)ile
+     *
+     *     (d)irectory
+     *     (p)ipe, FIFO
+     *     (b)lock
+     *     (c)har
+     *     (l)ink
+     *     (s)ocket
+     *     (f)ile
      *
      * Permissions:
-     *    (r)ead
-     *    (w)rite
-     *   e(x)ecute
-     *    (.): Anything
+     *
+     *      (r)ead
+     *      (w)rite
+     *     e(x)ecute
+     *      (.): Anything
+     *      (-): Unset
      *
      * User:
-     *   ~: User running the program.
-     *   *: Any user
+     *
+     *     ~: User running the program.
+     *     *: Any user
      *
      * Group:
-     *   *: Any group
+     *
+     *     *: Any group
      *  
      * Examples:
-     *   drwx...--- root:root (A directory owned by root, only rwx by root.)
-     *   frwxr-xr-x user:user (An executable/readable file by all, owned and
-     *                         writeable by user.)
+     *
+     *     drwx...--- root:root (A directory owned by root, only rwx by root.)
+     *     frwxr-xr-x user:user (An executable/readable file by all, owned and
+     *                           writeable by user.)
+     *     frw------- ~:*       (A file readable and writeable, but only by the
+     *                           user running the program.)
      */
     Collection(const std::string& description);
 
