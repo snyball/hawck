@@ -3,7 +3,6 @@ extern "C" {
 }
 
 #include "LuaConfig.hpp"
-#include "Dir.hpp"
 #include "XDG.hpp"
 #include <vector>
 
