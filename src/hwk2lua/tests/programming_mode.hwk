@@ -21,6 +21,38 @@ mode("Programming mode", down + key "f7") + -up => {
     key "æ" => insert "}"
 }
 
+s = [===[
+  string
+mode("Programming mode", down + key "f7") + -up => {
+    -- When caps-lock is pressed, substitute with escape
+    key "caps" => insert "escape"
+    shift => {
+        key "f" => function ()
+            local obj = {
+               a = {
+                 1
+               }
+            }
+            u.puts(obj)
+        end
+        -- When shift is held, turn ø/æ into [/]
+        key "ø" => insert "["
+        key "æ" => insert "]"
+    }
+    -- Turn ø/æ into {/}
+    key "ø" => insert "{"
+    key "æ" => insert "}"
+}
+]===]
+
+--[[
+  comment => b
+--]]
+
+--[=[
+  this => that
+--]=]
+
 key "f2" => insert "s"
 --key "f2" => insert "s"
 

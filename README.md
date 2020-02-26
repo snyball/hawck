@@ -402,17 +402,6 @@ not be used:
 Asynchronous lock solves this problem by simply waiting until
 every key has been released before the keyboard is locked.
 
-#### The hwk2lua script is terrible and you should be ashamed.
-
-Yes, it's a quick-and-dirty script and has a few edge cases.
-For example this string syntax is not supported `[==[strings]==]`
-if it contains any `=>` operators.
-
-I think it works well enough for what it is used for, but I have
-definitely considered replacing it with a more robust Haskell/Parsec
-parser, but only if I find myself running into too many issues with
-the current hack.
-
 ## Known Bugs:
 
 - Outputting keys too quickly:
