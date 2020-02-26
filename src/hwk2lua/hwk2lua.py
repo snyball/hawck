@@ -26,17 +26,17 @@ def hwk2lua(text):
     ## Edit the segments into outputs
     last = ""
     scopes = []
-    cscopes = []
+    lcomment = None
     in_comment = False
     for s in segments:
-        if s == "{" and not in_comment and not cscopes:
+        if s == "{" and not in_comment and not lcomment:
             scopes.append(last == "=>")
             out.append("MatchScope.new(function (__match)" if scopes[-1] else "{")
-        elif s == "}" and not in_comment and not cscopes:
+        elif s == "}" and not in_comment and not lcomment:
             if not scopes:
                 raise Exception("Unbalenced curly braces (too many: '}')")
             out.append("end)" if scopes.pop() else "}")
-        elif s == "=>" and not in_comment and not cscopes:
+        elif s == "=>" and not in_comment and not lcomment:
             ## Pop from output until an empty string (represents newline) is found.
             pops = (out.pop() for _ in range(len(out)))
             match = "".join(reversed(list(takewhile(lambda x: x, pops))))
@@ -50,11 +50,10 @@ def hwk2lua(text):
         elif s == "--":
             in_comment = True
 
-        if cmnt_begin.match(s):
-            cscopes.append((s.startswith("--"), s.count("=")))
-        elif cmnt_end.match(s):
-            if (s.startswith("--"), s.count("=")) != cscopes.pop():
-                raise Exception(f"Mismatched long-comments/long-strings.")
+        if cmnt_begin.match(s) and not lcomment:
+            lcomment = (s.startswith("--"), s.count("="))
+        elif cmnt_end.match(s) and (s.startswith("--"), s.count("=")) == lcomment:
+            lcomment = None
 
         if not s.isspace():
             last = s

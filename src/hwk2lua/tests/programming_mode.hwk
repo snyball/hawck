@@ -23,6 +23,11 @@ mode("Programming mode", down + key "f7") + -up => {
 
 s = [===[
   string
+[[ [[ ]] [[ ]]
+[====[
+[=]
+]=]
+[========[
 mode("Programming mode", down + key "f7") + -up => {
     -- When caps-lock is pressed, substitute with escape
     key "caps" => insert "escape"
