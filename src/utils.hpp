@@ -189,10 +189,12 @@ public:
         }
 
         if (flock(fd, LOCK_SH) == -1) {
+            close(fd);
             throw SystemError("Unable to acquire shared lock: ", errno);
         }
 
         if (flock(fd, LOCK_EX) == -1) {
+            close(fd);
             throw SystemError("Unable to acquire exclusive lock: ", errno);
         }
     }
