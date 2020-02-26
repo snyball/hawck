@@ -22,7 +22,6 @@ def hwk2lua(text):
         segments.append(m.group())
         last = end
     segments.append(text[last:])
-    print(segments)
 
     ## Edit the segments into outputs
     last = ""
