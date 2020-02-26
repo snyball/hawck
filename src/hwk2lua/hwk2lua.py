@@ -1,16 +1,13 @@
 #!/usr/bin/python3
 
-##
-## Simple prototype for hwk2lua
-##
-
 ## TODO: Handle strings like this: [[ string ]]
 
-from re import MULTILINE, compile as rec
+from re import MULTILINE, compile
+from itertools import takewhile
 import sys
 
-ws_rx = rec(" +")
-op_rx = rec('(^|\-\-|".*?"|\'.*?\'|=>|{|})', MULTILINE)
+ws_rx = compile(r"^[\t ]*")
+op_rx = compile('(^|\-\-|".*?"|\'.*?\'|=>|{|})', MULTILINE)
 
 def hwk2lua(text):
     out = []
@@ -28,52 +25,41 @@ def hwk2lua(text):
 
     ## Edit the segments into outputs
     last = ""
-    scope = 0
     scopes = []
     in_comment = False
     for s in segments:
         if s.strip() == "{" and not in_comment:
-            if last == "=>":
-                out.append("MatchScope.new(function (__match)")
-                scopes.append(scope)
-            else:
-                out.append("{")
-            scope += 1
+            scopes.append(last == "=>")
+            out.append("MatchScope.new(function (__match)" if scopes[-1] else "{")
         elif s.strip() == "}" and not in_comment:
-            scope -= 1
-            if scope < 0:
-                raise Exception("Unabalenced curly braces (closed too many.)")
-            if scopes and scopes.pop() == scope:
-                out.append("end)")
+            if not scopes:
+                raise Exception("Unbalenced curly braces (too many: '}')")
+            out.append("end)" if scopes.pop() else "}")
         elif s.strip() == "=>" and not in_comment:
-            items, item = [], True
-            while item:
-                item = out.pop()
-                items.append(item)
-            items.append(item)
-            match = "".join(reversed(items))
-            ws = ws_rx.match(match)
-            _, ws_end = ws.span() if ws else (0, 0)
-            out.append(f"{match[:ws_end]}__match[{match[ws_end:]}] =")
+            ## Pop from output until an empty string ("") is found.
+            pops = (out.pop() for _ in range(len(out)))
+            match = "".join(reversed(list(takewhile(lambda x: x, pops))))
+            _, ws_end = ws_rx.match(match).span()
+            out.append(f"{match[:ws_end]}__match[{match.strip()}] =")
         else:
             if s == "":
                 in_comment = False
-                # out.append("##")
             elif s.strip().startswith("--"):
                 in_comment = True
             out.append(s)
         if not s.isspace():
             last = s
-    if scope > 0:
-        raise Exception("Unabalenced curly braces (not closed.)")
-
-    ## Assemble pieces
+    if scopes:
+        raise Exception("Unbalenced curly braces (too many: '{')")
     return "".join(out)
 
 if __name__ == "__main__":
-    if len(sys.argv) >= 2:
+    try:
         with open(sys.argv[1]) as f:
             print(hwk2lua(f.read()))
-    else:
+        sys.exit(0)
+    except IndexError:
         print("Usage: hwk2lua <file>")
-        sys.exit(1)
+    except Exception as e:
+        print(str(e))
+    sys.exit(1)
