@@ -28,27 +28,30 @@ def hwk2lua(text):
     scopes = []
     in_comment = False
     for s in segments:
-        if s.strip() == "{" and not in_comment:
+        if s == "{" and not in_comment:
             scopes.append(last == "=>")
             out.append("MatchScope.new(function (__match)" if scopes[-1] else "{")
-        elif s.strip() == "}" and not in_comment:
+        elif s == "}" and not in_comment:
             if not scopes:
                 raise Exception("Unbalenced curly braces (too many: '}')")
             out.append("end)" if scopes.pop() else "}")
-        elif s.strip() == "=>" and not in_comment:
-            ## Pop from output until an empty string ("") is found.
+        elif s == "=>" and not in_comment:
+            ## Pop from output until an empty string (represents newline) is found.
             pops = (out.pop() for _ in range(len(out)))
             match = "".join(reversed(list(takewhile(lambda x: x, pops))))
             _, ws_end = ws_rx.match(match).span()
             out.append(f"{match[:ws_end]}__match[{match.strip()}] =")
         else:
-            if s == "":
-                in_comment = False
-            elif s.strip().startswith("--"):
-                in_comment = True
             out.append(s)
+
+        if s == "":
+            in_comment = False
+        elif s == "--":
+            in_comment = True
+
         if not s.isspace():
             last = s
+
     if scopes:
         raise Exception("Unbalenced curly braces (too many: '{')")
     return "".join(out)
