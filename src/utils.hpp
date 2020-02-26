@@ -111,8 +111,10 @@ public:
         olddir = std::string(cur_path.get());
         if ((fd = open(".", O_RDONLY)) == -1)
             throw SystemError("Unable to open current directory");
-        if (chdir(path.c_str()) == -1)
+        if (chdir(path.c_str()) == -1) {
+            close(fd);
             throw SystemError("Unable to chdir() to: " + path);
+        }
     }
 
     /**
