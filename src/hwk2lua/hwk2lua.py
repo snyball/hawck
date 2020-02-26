@@ -5,7 +5,7 @@ from itertools import takewhile
 import sys
 
 ws_rx = compile(r"^[\t ]*")
-op_rx = compile('(^|(--)?\[=*\[|(--)?\]=*\]|--|".*?"|\'.*?\'|=>|{|})', MULTILINE)
+op_rx = compile(r"(^|(--)?\[=*\[|(--)?\]=*\]|--|\".*?\"|\'.*?\'|=>|{|})", MULTILINE)
 cmnt_begin = compile(r"(--)?\[(=*)\[")
 cmnt_end = compile(r"(--)?\](=*)\]")
 
