@@ -9,16 +9,14 @@ Popen::~Popen() {
 }
 
 string Popen::readOnce() {
-    std::stringstream sstream("");
+    stringstream sstream;
     char buf[8192];
     int nb, status;
 
     do {
-        nb = ::read(stdout.io[0], buf, sizeof(buf) - 1);
-        if (nb == -1)
+        if ((nb = ::read(stdout.io[0], buf, sizeof(buf))) == -1)
             throw SystemError("Unable to read: ", errno);
-        buf[nb] = '\0';
-        sstream << buf;
+        sstream.write(buf, nb);
     } while (waitpid(pid, &status, WNOHANG) != -1);
 
     if (status != 0)
@@ -27,16 +25,14 @@ string Popen::readOnce() {
 }
 
 string Pipe::read(int idx) {
-    std::stringstream sstream("");
-    char buf[1024];
+    stringstream sstream;
+    char buf[8192];
     int nb;
 
     do {
-        nb = ::read(io[idx], buf, sizeof(buf) - 1);
-        if (nb == -1)
+        if ((nb = ::read(io[idx], buf, sizeof(buf))) == -1)
             throw SystemError("Unable to read(): ", errno);
-        buf[nb] = '\0';
-        sstream << buf;
+        sstream.write(buf, nb);
     } while (nb > 0);
 
     return sstream.str();
