@@ -151,7 +151,7 @@ vector<FSEvent> *FSWatcher::addFrom(string dir_path) {
             try {
                 add(path);
             } catch (SystemError &e) {
-                cout << "FSWatcher error: " << e.what() << endl;
+                syslog(LOG_ERR, "Unable to add path '%s': %s", path.c_str(), e.what());
                 continue;
             }
             added->push_back(FSEvent(path));
@@ -266,7 +266,7 @@ void FSWatcher::watch(const function<bool(FSEvent &ev)> &callback) {
                 }
             }
         } catch (const exception &e) {
-            cout << "Error: " << e.what() << endl;
+            syslog(LOG_ERR, "Error: %s", e.what());
         }
     }
 

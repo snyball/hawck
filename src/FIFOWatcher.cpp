@@ -50,7 +50,7 @@ void FIFOWatcher::reply(std::string buf, Milliseconds timeout) {
 }
 
 void FIFOWatcher::reset() {
-    cout << "Resetting FIFO." << endl;
+    syslog(LOG_DEBUG, "Resetting fifo");
 
     if (fd != -1)
         close(fd);
@@ -67,7 +67,6 @@ void FIFOWatcher::watch() {
 
     for (;;) {
         try {
-            cout << "Waiting for buffer size ..." << endl;
             recvAll(fd, &sz);
             if (sz >= max_recv || sz == 0) {
                 reset();
@@ -75,11 +74,8 @@ void FIFOWatcher::watch() {
             }
             auto buf = unique_ptr<char[]>(new char[sz + 1]);
             buf.get()[sz] = 0;
-            cout << "Waiting for buffer ..." << endl;
             recvAll(fd, buf.get(), sz, std::chrono::milliseconds(256));
             auto ret = handleMessage(buf.get(), sz);
-
-            cout << "Sending back buffer ..." << endl;
             reply(ret, Milliseconds(256));
         } catch (const SocketError& e) {
             reset();
@@ -89,17 +85,15 @@ void FIFOWatcher::watch() {
     }
 }
 
+// Example implementation
 std::string FIFOWatcher::handleMessage(const char *buf, size_t) {
-    cout << "Got message: " << buf << endl;
+    syslog(LOG_DEBUG, "Got message: %s", buf);
     return "";
 }
 
 void FIFOWatcher::start() {
-    cout << "####### BEGIN #######" << endl;
     thread t0([this]() {
                   watch();
               });
     t0.detach();
-    cout << "###### DETACHED #####" << endl;
 }
-

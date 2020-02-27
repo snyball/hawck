@@ -113,29 +113,22 @@ void Keyboard::lockSync() {
     struct input_event *ev = &action.ev;
     int down = numDown(), up = 0;
 
-    cout << "\033[32;1;4mKBD READY\033[0m" << endl;
+    syslog(LOG_INFO, "Locking keyboard synchronously ...");
 
     // Wait for keyup
     do {
         get(&action);
-        if (ev->code == 0)
-            continue;
-        if (ev->value == 0)
-            up++;
-        if (ev->value == 1)
-            down++;
-        if (ev->value != 2)
-            fprintf(stderr, "\rdown = %d, up = %d; GOT EVENT %d\n", down, up, ev->value);
-        else
-            fprintf(stderr, "\r");
+        if (ev->code == 0) continue;
+        if (ev->value == 0) up++;
+        if (ev->value == 1) down++;
     } while (ev->type != EV_KEY || ev->value != 0 || down > up);
 
     if (ioctl(fd, EVIOCGRAB, &grab) == -1)
         throw SystemError("Unable to lock keyboard: ", errno);
 
-    state = KBDState::LOCKED;
+    syslog(LOG_INFO, "Got lock!");
 
-    cout << "\033[31;1;4mKBD LOCKED\033[0m" << endl;
+    state = KBDState::LOCKED;
 }
 
 void Keyboard::lock() {
