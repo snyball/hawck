@@ -133,82 +133,6 @@ void KBDDaemon::loadPassthrough(std::string rel_path) {
     }
 }
 
-// FIXME: This is pretty much an exact copy of MacroDaemon::loadScript. You should
-//        probably make loadScript into a free function.
-void KBDDaemon::loadScript(const std::string &rel_path) {
-    string bn = pathBasename(rel_path);
-    if (!goodLuaFilename(bn)) {
-        cout << "Wrong filename, not loading: " << bn << endl;
-        return;
-    }
-
-    ChDir cd(scripts_dir);
-
-    char *rpath_chars = realpath(rel_path.c_str(), nullptr);
-    if (rpath_chars == nullptr)
-        throw SystemError("Error in realpath: ", errno);
-    string path(rpath_chars);
-    free(rpath_chars);
-
-    cout << "Preparing to load script: " << rel_path << endl;
-
-    struct stat stbuf;
-    if (stat(path.c_str(), &stbuf) == -1) {
-        cout << "Warning: unable to stat(), not loading." << endl;
-        return;
-    }
-
-    unsigned perm = stbuf.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO);
-    // Strictly require chmod 744 on the script files.
-    if (perm != 0744 && stbuf.st_uid == getuid()) {
-        auto [pwd, pwdbuf] = getuser(getuid());
-        (void) pwdbuf;
-        string permstr = fmtPermissions(stbuf);
-        syslog(LOG_ERR, "Require rwxr-xr-x %s:* on script, but got %s on: %s",
-               pwd->pw_name, permstr.c_str(), rel_path.c_str());
-        return;
-    }
-
-    auto sc = mkuniq(new Script());
-    sc->call("require", "init");
-    sc->open(&udev, "udev");
-
-    // These functions/tables are not available in scripts that run inside KBDDaemon.
-    auto blacklist = {"io",
-                      "debug",
-                      "os",
-                      "require",
-                      "print",
-                      "package",
-                      "getmetatable",
-                      "setmetatable",
-                      "dofile",
-                      "load",
-                      "loadfile",
-                      "loadstring",
-                      "rawequal",
-                      "rawget",
-                      "rawset",
-                      "rawlen",
-                      "setfenv"};
-
-    for (auto lib : blacklist)
-        sc->set(lib, NULL);
-
-    sc->from(path);
-
-    string name = pathBasename(rel_path);
-
-    if (scripts.find(name) != scripts.end()) {
-        // Script already loaded, reload it
-        delete scripts[name];
-        scripts.erase(name);
-    }
-
-    cout << "Loaded script: " << name << endl;
-    scripts[name] = sc.release();
-}
-
 void KBDDaemon::loadPassthrough(FSEvent *ev) {
     unsigned perm = ev->stbuf.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO);
 
@@ -436,7 +360,7 @@ void KBDDaemon::run() {
             } catch (const SocketError &e) {
                 lock_guard<mutex> lock(available_kbds_mtx);
 
-                cout << "Resetting connection ..." << endl;
+                syslog(LOG_INFO, "Resetting connection to MacroD");
 
                 udev.emit(&orig_ev);
                 udev.upAll();
