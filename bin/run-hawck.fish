@@ -16,62 +16,52 @@ while [ (basename $PWD) != "Hawck" ]
     cd ..
 end
 
-echo "$PWD"
-
 pushd build
 if ! ninja
     echo "Build failed"
     exit 1
 end
 
-set HWKDIR macrod-test/hawck/scripts
-mkdir -p $HWKDIR
-if ! [ -L $HWKDIR/LLib ]
-    ln -s (realpath ../src/Lua $HWKDIR/LLib)
+mkdir -p macrod-test
+
+begin
+    set -l MACROD_EXE src/hawck-macrod
+    set -l INPUTD_EXE src/hawck-inputd
+    set -l XDG_ROOT (realpath macrod-test)
+    set -lx XDG_DATA_HOME $XDG_ROOT/.local/share
+    set -lx XDG_CONFIG_HOME $XDG_ROOT/.config
+    set -lx XDG_CACHE_HOME $XDG_ROOT/.cache
+
+    mkdir -p $XDG_CONFIG_HOME
+    mkdir -p $XDG_DATA_HOME
+    mkdir -p $XDG_CACHE_HOME
+
+    set SCRIPTS $XDG_DATA_HOME/hawck/scripts
+    mkdir -p $SCRIPTS
+    [ -L $SCRIPTS/LLib ]                || ln -s (realpath ../src/Lua) $SCRIPTS/LLib
+    [ -L $SCRIPTS/init.lua ]            || ln -s (realpath ../src/Lua/init.lua) $SCRIPTS/init.lua
+    [ -L $SCRIPTS/keymaps ]             || ln -s (realpath ../keymaps) $SCRIPTS/keymaps
+    [ -L $XDG_DATA_HOME/hawck/cfg.lua ] || ln -s (realpath ../bin/cfg.lua) $XDG_DATA_HOME/hawck/cfg.lua
+
+    set kbd (find /dev/input/by-path/ -type l | grep -E "platform-i8042.*-event-kbd\$")
+    set inputd_args --no-hotplug --kbd-device $kbd
+
+    sudo systemctl stop hawck-inputd.service
+    killall hawck-macrod
+
+    echo "Killing in $ttl second(s)"
+
+    echo "--------------------------[hawck]--------------------------"
+    command sudo runuser -u hawck-input -- $INPUTD_EXE $inputd_args
+    $MACROD_EXE --no-fork &
+    sleep $ttl
+    kill -9 (jobs -p)
+    sudo killall hawck-inputd
+    echo
+    echo "---------------------------[DONE]--------------------------"
 end
-if ! [ -L $HWKDIR/init.lua ]
-    ln -s (realpath ../src/Lua/init.lua $HWKDIR/init.lua)
-end
-if ! [ -L $HWKDIR/keymaps ]
-    ln -s (realpath ../keymaps $HWKDIR/keymaps)
-end
-if ! [ -L macrod-test/hawck/cfg.lua ]
-    ln -s (realpath ../bin/cfg.lua macrod-test/hawck/cfg.lua)
-end
-
-if set -q XDG_DATA_HOME
-    set OLD_XDG_DATA_HOME $XDG_DATA_HOME
-end
-set -x XDG_DATA_HOME (realpath macrod-test)
-
-pushd src
-set kbd (find /dev/input/by-path/ -type l | grep -E "platform-i8042.*-event-kbd\$")
-set inputd_args --no-hotplug --kbd-device $kbd
-
-sudo systemctl stop hawck-inputd.service
-killall hawck-macrod
-
-echo "Killing in $ttl second(s)"
-
-echo "--------------------------[hawck]--------------------------"
-sudo runuser -u hawck-input -- ./hawck-inputd $inputd_args
-./hawck-macrod --no-fork &
-
-sleep $ttl
-kill (jobs -p)
-sudo killall hawck-inputd
-echo
-echo "---------------------------[DONE]--------------------------"
 
 popd
-popd
-
-if set -q OLD_XDG_DATA_HOME
-    set -x XDG_DATA_HOME $OLD_XDG_DATA_HOME
-else
-    set -e XDG_DATA_HOME
-end
-
 echo "Restarting system Hawck"
 sudo systemctl start hawck-inputd.service
 hawck-macrod
