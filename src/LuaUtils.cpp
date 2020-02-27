@@ -138,8 +138,6 @@ namespace Lua {
             string err(lua_tostring(L, -1));
             throw Lua::LuaError("Lua error: " + err);
         }
-
-        abs_src = realpath_safe(path);
     }
 
     void Script::reset() {
@@ -148,10 +146,6 @@ namespace Lua {
         this->L = L.get();
         luaL_openlibs(L.get());
         L.release();
-    }
-
-    void Script::reload() {
-        from(abs_src);
     }
 
     Script::~Script() noexcept {
@@ -222,7 +216,6 @@ namespace Lua {
             lua_getinfo(L, "Sunl", &ar);
             traceback.push_back(ar);
         }
-        cout << "traceback size: " << traceback.size() << endl;
         lua_pushlightuserdata(L, new LuaError(errmsg, traceback));
         return 1;
     }
@@ -237,9 +230,7 @@ namespace Lua {
     {
         void *obj_ref = * (void **) lua_touserdata(L, -1);
         atomic<int> *rc = * (atomic<int> **) lua_touserdata(L, lua_upvalueindex(1));
-        cout << "[from Lua] RC: " << *rc - 1 << endl;
         if (--*rc <= 0) {
-            cout << "[from Lua] Destroying LuaObject userdata and reference-counter." << endl;
             typedef void (*Destructor)(void*);
             void (*destructor)(void*) = * (Destructor *) lua_touserdata(L, lua_upvalueindex(2));
             destructor(obj_ref);

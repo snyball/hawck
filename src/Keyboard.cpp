@@ -147,14 +147,6 @@ void Keyboard::unlock() {
 }
 
 void Keyboard::get(KBDAction *action) {
-    ssize_t n;
-    if ((n = read(fd, &action->ev, sizeof(action->ev))) != sizeof(action->ev)) {
-        stringstream err("read() failed, returned: ");
-        err << n << ": " << strerror(errno);
-        throw KeyboardError(err.str());
-    }
-    action->dev_id = this->dev_id;
-
     // Wait until key down events have been eliminated.
     if (state == KBDState::LOCKING && !numDown()) {
         int grab = 1;
@@ -163,6 +155,14 @@ void Keyboard::get(KBDAction *action) {
         state = KBDState::LOCKED;
         syslog(LOG_INFO, "Acquired lock on keyboard: %s", name.c_str());
     }
+
+    ssize_t n;
+    if ((n = read(fd, &action->ev, sizeof(action->ev))) != sizeof(action->ev)) {
+        stringstream err("read() failed, returned: ");
+        err << n << ": " << strerror(errno);
+        throw KeyboardError(err.str());
+    }
+    action->dev_id = this->dev_id;
 }
 
 void Keyboard::disable() noexcept {

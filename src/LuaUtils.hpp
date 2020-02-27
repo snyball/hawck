@@ -289,7 +289,6 @@ namespace Lua {
               trace(trace)
         {
             fmtError();
-            std::cout << "trace size: " << this->trace.size() << std::endl;
         }
 
         explicit LuaError(const std::string& expl)
@@ -471,10 +470,6 @@ namespace Lua {
                     break;
                 vec.push_back(LuaValue<T>().get(L, -1));
                 lua_pop(L, 1);
-            }
-            std::cout << "Got vector: " << std::endl;
-            for (const auto& val : vec) {
-                std::cout << "  - " << val << std::endl;
             }
             return vec;
         }
@@ -996,11 +991,7 @@ namespace Lua {
 
         virtual ~GC()
         {
-            std::cout << "[from C++] RC: " << *rc - 1 << std::endl;
             if (--*rc <= 0) {
-                std::cout <<
-                "[from C++] Destroying GC userdata and reference-counter." <<
-                std::endl;
                 delete iface;
                 delete rc;
             }
@@ -1106,7 +1097,6 @@ namespace Lua {
 
     public:
         std::string src;
-        std::string abs_src;
 
         /** Initialize a Lua state and load a script.
          *
@@ -1239,10 +1229,5 @@ namespace Lua {
         /** Reset the Lua state, will destroy all data currently
          *  held within it */
         void reset();
-
-        /** Reload from the file that the Lua state was initially
-         *  initialized with. */
-        void reload();
-
     };
 }

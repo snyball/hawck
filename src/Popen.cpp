@@ -19,6 +19,7 @@ string Popen::readOnce() {
         sstream.write(buf, nb);
     } while (waitpid(pid, &status, WNOHANG) != -1);
 
+    pid = -1;
     if (status != 0)
         throw SubprocessError(exe, stderr.read(0), status);
     return sstream.str();

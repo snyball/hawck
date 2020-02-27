@@ -137,6 +137,8 @@ class Popen {
     inline void detach() noexcept { pid = -1; }
 
     /**
+     * Read from the subprocess until it stops.
+     *
      * It is assumed that if the child process exits with a status not equal to
      * 0 this indicates an error, the error is reported as a SubprocessError exception.
      * The message in the SubprocessError exception will be the stderr output of the

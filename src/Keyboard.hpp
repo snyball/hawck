@@ -1,7 +1,7 @@
 /* =====================================================================================
  * Keyboard listening class.
  *
- * Copyright (C) 2018 Jonas Møller (no) <jonas.moeller2@protonmail.com>
+ * Copyright (C) 2018-2020 Jonas Møller (no) <jonas.moeller2@protonmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without

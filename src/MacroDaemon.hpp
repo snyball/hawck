@@ -97,8 +97,10 @@ private:
     /** Load a Lua script. */
     void loadScript(const std::string &path);
 
+    void loadHawckScript(const std::string &path);
+
     /** Unload a Lua script */
-    void unloadScript(const std::string &path);
+    void unloadScript(const std::string &path) noexcept;
 
     /** Initialize a script directory. */
     void initScriptDir(const std::string &dir_path);

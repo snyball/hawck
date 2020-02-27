@@ -28,8 +28,10 @@
 
 #include <thread>
 #include <iostream>
+#include <filesystem>
 
 extern "C" {
+    #include <sys/wait.h>
     #include <libnotify/notify.h>
     #include <unistd.h>
     #include <sys/stat.h>
@@ -44,31 +46,14 @@ extern "C" {
 #include "LuaConfig.hpp"
 #include "XDG.hpp"
 #include "KBDB.hpp"
+#include "Popen.hpp"
 
 using namespace Lua;
 using namespace Permissions;
 using namespace std;
-
-static const char *event_str[EV_CNT];
+namespace fs = std::filesystem;
 
 static bool macrod_main_loop_running = true;
-
-static inline void initEventStrs()
-{
-    event_str[EV_SYN      ] = "SYN"       ;
-    event_str[EV_KEY      ] = "KEY"       ;
-    event_str[EV_REL      ] = "REL"       ;
-    event_str[EV_ABS      ] = "ABS"       ;
-    event_str[EV_MSC      ] = "MSC"       ;
-    event_str[EV_SW       ] = "SW"        ;
-    event_str[EV_LED      ] = "LED"       ;
-    event_str[EV_SND      ] = "SND"       ;
-    event_str[EV_REP      ] = "REP"       ;
-    event_str[EV_FF       ] = "FF"        ;
-    event_str[EV_PWR      ] = "PWR"       ;
-    event_str[EV_FF_STATUS] = "FF_STATUS" ;
-    event_str[EV_MAX      ] = "MAX"       ;
-}
 
 MacroDaemon::MacroDaemon()
     : kbd_srv("/var/lib/hawck-input/kbd.sock"),
@@ -87,10 +72,9 @@ MacroDaemon::MacroDaemon()
         throw SystemError("Unable to chown kbd.sock: ", errno);
     if (chmod("/var/lib/hawck-input/kbd.sock", 0660) == -1)
         throw SystemError("Unable to chmod kbd.sock: ", errno);
-    initEventStrs();
     notify_init("Hawck");
-    xdg.mkpath(0700, XDG_DATA_HOME, "scripts-enabled");
-    initScriptDir(xdg.path(XDG_DATA_HOME, "scripts-enabled"));
+    xdg.mkpath(0755, XDG_CONFIG_HOME, "scripts");
+    initScriptDir(xdg.path(XDG_CONFIG_HOME, "scripts"));
 }
 
 void MacroDaemon::getConnection() {
@@ -106,7 +90,7 @@ void MacroDaemon::getConnection() {
             syslog(LOG_INFO, "Got a connection");
             break;
         } catch (SocketError &e) {
-            cout << "MacroDaemon accept() error: " << e.what() << endl;
+            syslog(LOG_ERR, "Error in accept(): %s", e.what());
         }
         // Wait for 0.1 seconds
         usleep(100000);
@@ -123,64 +107,52 @@ MacroDaemon::~MacroDaemon() {
 }
 
 void MacroDaemon::initScriptDir(const std::string &dir_path) {
-    auto dir = shared_ptr<DIR>(opendir(dir_path.c_str()), &closedir);
-    struct dirent *entry;
-    while ((entry = readdir(dir.get()))) {
-        stringstream path_ss;
-        path_ss << dir_path << "/" << entry->d_name;
-        string path = path_ss.str();
-
-        // Attempt to load the script:
+    for (auto entry : fs::directory_iterator(dir_path)) {
         try {
-            loadScript(path);
+            loadScript(entry.path());
         } catch (exception &e) {
-            cout << "Error: " << e.what() << endl;
+            notify("Unable to load script: %s", entry.path().c_str());
+            syslog(LOG_ERR, "Unable to load script '%s': %s", entry.path().c_str(), e.what());
         }
     }
-    auto files = mkuniq(fsw.addFrom(dir_path));
+    fsw.addFrom(dir_path);
 }
 
-void MacroDaemon::loadScript(const std::string &rel_path) {
-    string bn = pathBasename(rel_path);
-    if (!goodLuaFilename(bn)) {
-        cout << "Wrong filename, not loading: " << bn << endl;
+void MacroDaemon::loadScript(const std::string &path) {
+    if (stringStartsWith(path, ".") || !(stringEndsWith(path, ".lua") ||
+                                         stringEndsWith(path, ".hwk"))) {
+        syslog(LOG_NOTICE,
+               "Not loading: %s, filename must end in .lua or .hwk and may not start with a leading '.'",
+               path.c_str());
         return;
     }
 
-    auto chdir = xdg.cd(XDG_DATA_HOME, "scripts");
-
-    char *rpath_chars = realpath(rel_path.c_str(), nullptr);
-    if (rpath_chars == nullptr)
-        throw SystemError("Error in realpath: ", errno);
-    string path(rpath_chars);
-    free(rpath_chars);
-
-    cout << "Preparing to load script: " << rel_path << endl;
-
-    if (!checkFile(path, "frwxr-xr-x ~:*"))
+    auto rpath = realpath_safe(path);
+    if (!checkFile(rpath, "frwxr-xr-x ~:*"))
         return;
 
     auto sc = mkuniq(new Script());
+    auto chdir = xdg.cd(XDG_DATA_HOME, "scripts");
     sc->call("require", "init");
     sc->open(&remote_udev, "udev");
-    sc->from(path);
-
-    string name = pathBasename(rel_path);
-
+    if (stringEndsWith(path, ".hwk")) {
+        sc->exec((Popen("hwk2lua", path)).readOnce());
+    } else if (stringEndsWith(path, ".lua")) {
+        sc->from(path);
+    }
+    auto name = pathBasename(path);
     if (scripts.find(name) != scripts.end()) {
-        // Script already loaded, reload it
         delete scripts[name];
         scripts.erase(name);
     }
-
-    cout << "Loaded script: " << name << endl;
+    syslog(LOG_INFO, "Loaded script: %s", path.c_str());
     scripts[name] = sc.release();
 }
 
-void MacroDaemon::unloadScript(const std::string &rel_path) {
+void MacroDaemon::unloadScript(const std::string &rel_path) noexcept {
     string name = pathBasename(rel_path);
     if (scripts.find(name) != scripts.end()) {
-        cout << "delete scripts[" << name << "]" << endl;
+        syslog(LOG_INFO, "Deleting script: %s", name.c_str());
         delete scripts[name];
         scripts.erase(name);
     }
@@ -204,8 +176,7 @@ void MacroDaemon::notify(string title, string msg) {
     }
 }
 
-static void handleSigPipe(int) {
-}
+static void handleSigPipe(int) {}
 
 #if 0
 static void handleSigTerm(int) {
@@ -248,6 +219,8 @@ bool MacroDaemon::runScript(Lua::Script *sc, const struct input_event &ev, strin
 }
 
 void MacroDaemon::reloadAll() {
+    // Disabled due to restructuring of the script load process
+    #if 0
     lock_guard<mutex> lock(scripts_mtx);
     auto chdir = xdg.cd(XDG_DATA_HOME, "scripts");
     for (auto &[_, sc] : scripts) {
@@ -263,6 +236,7 @@ void MacroDaemon::reloadAll() {
             sc->setEnabled(false);
         }
     }
+    #endif
 }
 
 void MacroDaemon::run() {
@@ -295,25 +269,29 @@ void MacroDaemon::run() {
 
     fsw.setWatchDirs(true);
     fsw.setAutoAdd(false);
+    // TODO: Display desktop notifications for these syslogs.
+    //       You'll have to evaluate the thread-safety of doing that, and you
+    //       might have to push onto a shared notification queue rather than
+    //       just sending the messages directly from here.
     fsw.asyncWatch([this](FSEvent &ev) {
         lock_guard<mutex> lock(scripts_mtx);
         try {
+            cout << "File system Event: " << ev.path << " / " << ev.name << endl;
             if (ev.mask & IN_DELETE) {
-                cout << "Deleting script: " << ev.name << endl;
+                syslog(LOG_INFO, "Deleting script: %s", ev.path.c_str());
                 unloadScript(ev.name);
             } else if (ev.mask & IN_MODIFY) {
-                cout << "Reloading script: " << ev.path << endl;
+                syslog(LOG_INFO, "Reloading script: %s", ev.path.c_str());
                 if (!S_ISDIR(ev.stbuf.st_mode)) {
                     unloadScript(pathBasename(ev.path));
                     loadScript(ev.path);
                 }
             } else if (ev.mask & IN_CREATE) {
+                syslog(LOG_INFO, "Loading new script: %s", ev.path.c_str());
                 loadScript(ev.path);
-            } else {
-                cout << "Received unhandled event" << endl;
             }
         } catch (exception &e) {
-            cout << e.what() << endl;
+            syslog(LOG_ERR, "Error while loading %s: %s", ev.path.c_str(), e.what());
         }
         return true;
     });
