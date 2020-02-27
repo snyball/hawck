@@ -272,3 +272,16 @@ static inline bool stringEndsWith(const std::string& a, const std::string& b) {
 static inline bool stringStartsWith(const std::string& a, const std::string& b) {
     return a.size() > b.size() && a.substr(0, b.size()) == b;
 }
+
+
+template <int num> constexpr int countT() {
+    return num;
+}
+
+template <int num, class, class... T> constexpr int countT() {
+    return countT<num+1, T...>();
+}
+
+template <class... T> constexpr int countT() {
+    return countT<0, T...>();
+}

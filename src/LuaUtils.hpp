@@ -53,6 +53,8 @@
 #include <typeindex>
 #include <vector>
 
+#include "utils.hpp"
+
 extern "C" {
     #include <lua.h>
     #include <lauxlib.h>
@@ -1061,16 +1063,6 @@ namespace Lua {
     }
 
     bool isCallable(lua_State *L, int idx);
-
-    template <int num> constexpr int countT() {
-        return num;
-    }
-    template <int num, class, class... T> constexpr int countT() {
-        return countT<num+1, T...>();
-    }
-    template <class... T> constexpr int countT() {
-        return countT<0, T...>();
-    }
 
     class Hook {
         using Callback = void (*)(lua_State *L, lua_Debug *ar);
