@@ -25,6 +25,8 @@ if catch2dep.found()
     'FSWatcher-tests.cpp',
     'tests-main.cpp',
     'XDG-tests.cpp',
+    'Popen-tests.cpp',
+    '../src/Popen.cpp',
     '../src/FSWatcher.cpp',
     '../src/XDG.cpp',
     '../src/CSV.cpp',

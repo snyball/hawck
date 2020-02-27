@@ -29,6 +29,7 @@ macrod_src = [
   'LuaConfig.cpp',
   'XDG.cpp',
   'KBDB.cpp',
+  'Popen.cpp',
 ]
 executable('hawck-macrod',
            macrod_src,
