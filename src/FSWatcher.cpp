@@ -103,6 +103,7 @@ void FSWatcher::add(string path) {
                                IN_MODIFY
                                | IN_DELETE
                                | IN_DELETE_SELF
+                               | IN_ATTRIB
                                | IN_CREATE);
     if (wd == -1) {
         throw SystemError("Error in inotify_add_watch() for path: " + path);
@@ -182,19 +183,8 @@ FSEvent *FSWatcher::handleEvent(struct inotify_event *ev) {
             throw SystemError("Received watch descriptor for file that we are not watching.");
         }
         fs_ev = new FSEvent(ev, wd_to_path[ev->wd]);
-        //if (ev->mask & IN_DELETE) {
-        //    fs_ev->deleted = true;
-        //    if (ev->len > 0) {
-        //        //fs_ev->path += "/" + string(ev->name, ev->len);
-        //        delete fs_ev;
-        //        return nullptr;
-        //    }
-        //    //int wd = ev->wd;
-        //    //string rpath = wd_to_path[wd];
-        //    //path_to_wd.erase(rpath);
-        //    //wd_to_path.erase(wd);
-        //    //inotify_rm_watch(fd, wd);
-        //}
+    } else if (ev->mask & (IN_ATTRIB)) {
+        fs_ev = new FSEvent(ev, wd_to_path[ev->wd]);
     } else {
         return nullptr;
     }

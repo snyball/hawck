@@ -155,6 +155,8 @@ void MacroDaemon::unloadScript(const std::string &rel_path) noexcept {
         syslog(LOG_INFO, "Deleting script: %s", name.c_str());
         delete scripts[name];
         scripts.erase(name);
+    } else {
+        syslog(LOG_ERR, "Attempted to delete non-existent script: %s", name.c_str());
     }
 }
 
@@ -276,7 +278,6 @@ void MacroDaemon::run() {
     fsw.asyncWatch([this](FSEvent &ev) {
         lock_guard<mutex> lock(scripts_mtx);
         try {
-            cout << "File system Event: " << ev.path << " / " << ev.name << endl;
             if (ev.mask & IN_DELETE) {
                 syslog(LOG_INFO, "Deleting script: %s", ev.path.c_str());
                 unloadScript(ev.name);
@@ -289,6 +290,15 @@ void MacroDaemon::run() {
             } else if (ev.mask & IN_CREATE) {
                 syslog(LOG_INFO, "Loading new script: %s", ev.path.c_str());
                 loadScript(ev.path);
+            } else if (ev.mask & IN_ATTRIB) {
+                // Don't react to the directory itself.
+                if (ev.path == xdg.path(XDG_CONFIG_HOME, "scripts"))
+                    return true;
+                if (ev.stbuf.st_mode & S_IXUSR) {
+                    loadScript(ev.path);
+                } else {
+                    unloadScript(ev.path);
+                }
             }
         } catch (exception &e) {
             syslog(LOG_ERR, "Error while loading %s: %s", ev.path.c_str(), e.what());
