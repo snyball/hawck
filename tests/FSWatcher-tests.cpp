@@ -75,7 +75,9 @@ static inline void runTestsCMD(FSWatcher *w, vector<string>& paths, vector<strin
 }
 
 static inline vector<string> mkTestFiles(int num_files, bool create) {
-    system_s("rm -r /tmp/hwk-tests");
+    // This one is explicitly not checked with system_s
+    system("rm -r /tmp/hwk-tests");
+
     system_s("mkdir -p /tmp/hwk-tests");
 
     vector<string> paths;
@@ -115,7 +117,6 @@ static inline vector<string> mkRmCMDs(vector<string> &paths) {
 
 // Test whether or not we receive file change notifications
 // for a single file.
-#if 1
 TEST_CASE("Explicitly watching files, not directories.", "[FSWatcher]") {
     vector<string> paths = mkTestFiles(30, true);
     FSWatcher watcher;
@@ -124,7 +125,6 @@ TEST_CASE("Explicitly watching files, not directories.", "[FSWatcher]") {
     vector<string> cmds = mkModCMDs(paths);
     runTestsCMD(&watcher, paths, cmds);
 }
-#endif
 
 // Test whether or not new files are being watched.
 TEST_CASE("Directory file addition", "[FSWatcher]") {
@@ -150,8 +150,6 @@ TEST_CASE("Directory file addition", "[FSWatcher]") {
     runTestsCMD(&watcher, paths, cmds);
 }
 
-// Test FSWatcher::addFrom
-#if 1
 TEST_CASE("Watch whole directory", "[FSWatcher]") {
     int num_tests = 30;
     vector<string> paths = mkTestFiles(num_tests, true);
@@ -162,4 +160,3 @@ TEST_CASE("Watch whole directory", "[FSWatcher]") {
     vector<string> cmds = mkModCMDs(paths);
     runTestsCMD(&watcher, paths, cmds);
 }
-#endif
