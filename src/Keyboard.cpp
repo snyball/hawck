@@ -108,21 +108,14 @@ int Keyboard::numDown() const {
 }
 
 void Keyboard::lockSync() {
-    int grab = 1;
     KBDAction action;
-    struct input_event *ev = &action.ev;
-    int down = numDown(), up = 0;
 
     syslog(LOG_INFO, "Locking keyboard synchronously ...");
 
-    // Wait for keyup
-    do {
+    while (numDown() > 0)
         get(&action);
-        if (ev->code == 0) continue;
-        if (ev->value == 0) up++;
-        if (ev->value == 1) down++;
-    } while (ev->type != EV_KEY || ev->value != 0 || down > up);
 
+    int grab = 1;
     if (ioctl(fd, EVIOCGRAB, &grab) == -1)
         throw SystemError("Unable to lock keyboard: ", errno);
 
