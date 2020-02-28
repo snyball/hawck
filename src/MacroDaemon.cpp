@@ -147,7 +147,7 @@ void MacroDaemon::loadScript(const std::string &path) {
         scripts.erase(name);
     }
     syslog(LOG_INFO, "Loaded script: %s", path.c_str());
-    notify(pathBasename(path), "Successfully loaded");
+    notify(pathBasename(path), "<i>Loaded</i> script");
     scripts[name] = sc.release();
 }
 
@@ -157,6 +157,7 @@ void MacroDaemon::unloadScript(const std::string &rel_path) noexcept {
         syslog(LOG_INFO, "Deleting script: %s", name.c_str());
         delete scripts[name];
         scripts.erase(name);
+        notify(name, "<i>Unloaded</i> script");
     } else {
         syslog(LOG_ERR, "Attempted to delete non-existent script: %s", name.c_str());
     }
@@ -168,6 +169,10 @@ struct script_error_info {
 };
 
 void MacroDaemon::notify(string title, string msg) {
+    notify(title, msg, "hawck");
+}
+
+void MacroDaemon::notify(string title, string msg, string icon) {
     // AFAIK you don't have to free the memory manually, but I could be wrong.
     lock_guard<mutex> lock(last_notification_mtx);
     tuple<string, string> notif(title, msg);
@@ -175,7 +180,7 @@ void MacroDaemon::notify(string title, string msg) {
         return;
     last_notification = notif;
 
-    NotifyNotification *n = notify_notification_new(title.c_str(), msg.c_str(), "hawck");
+    NotifyNotification *n = notify_notification_new(title.c_str(), msg.c_str(), icon.c_str());
     notify_notification_set_timeout(n, 12000);
     notify_notification_set_urgency(n, NOTIFY_URGENCY_CRITICAL);
     notify_notification_set_app_name(n, "Hawck");
@@ -278,7 +283,7 @@ void MacroDaemon::run() {
     conf.start();
 
     fsw.setWatchDirs(true);
-    fsw.setAutoAdd(false);
+    fsw.setAutoAdd(true);
     // TODO: Display desktop notifications for these syslogs.
     //       You'll have to evaluate the thread-safety of doing that, and you
     //       might have to push onto a shared notification queue rather than
@@ -295,10 +300,8 @@ void MacroDaemon::run() {
                 unloadScript(ev.name);
             } else if (ev.mask & IN_MODIFY) {
                 syslog(LOG_INFO, "Reloading script: %s", ev.path.c_str());
-                if (!S_ISDIR(ev.stbuf.st_mode)) {
-                    unloadScript(pathBasename(ev.path));
+                if (!S_ISDIR(ev.stbuf.st_mode))
                     loadScript(ev.path);
-                }
             } else if (ev.mask & IN_CREATE) {
                 syslog(LOG_INFO, "Loading new script: %s", ev.path.c_str());
                 loadScript(ev.path);

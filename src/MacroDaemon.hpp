@@ -88,6 +88,11 @@ private:
     void notify(std::string title,
                 std::string msg);
 
+    /** Display freedesktop DBus notification. */
+    void notify(std::string title,
+                std::string msg,
+                std::string icon);
+
     /** Run a script match on an input event.
      *
      * @param sc Script to be executed.
