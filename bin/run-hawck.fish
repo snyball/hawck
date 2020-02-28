@@ -17,11 +17,7 @@ while [ (basename $PWD) != "Hawck" ]
 end
 
 pushd build
-if ! ninja
-    echo "Build failed"
-    exit 1
-end
-
+ninja || exit 1
 mkdir -p macrod-test
 
 begin

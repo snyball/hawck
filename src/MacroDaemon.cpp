@@ -147,6 +147,7 @@ void MacroDaemon::loadScript(const std::string &path) {
         scripts.erase(name);
     }
     syslog(LOG_INFO, "Loaded script: %s", path.c_str());
+    notify(pathBasename(path), "Successfully loaded");
     scripts[name] = sc.release();
 }
 
@@ -168,6 +169,12 @@ struct script_error_info {
 
 void MacroDaemon::notify(string title, string msg) {
     // AFAIK you don't have to free the memory manually, but I could be wrong.
+    lock_guard<mutex> lock(last_notification_mtx);
+    tuple<string, string> notif(title, msg);
+    if (notif == last_notification)
+        return;
+    last_notification = notif;
+
     NotifyNotification *n = notify_notification_new(title.c_str(), msg.c_str(), "hawck");
     notify_notification_set_timeout(n, 12000);
     notify_notification_set_urgency(n, NOTIFY_URGENCY_CRITICAL);
@@ -279,6 +286,10 @@ void MacroDaemon::run() {
     fsw.asyncWatch([this](FSEvent &ev) {
         lock_guard<mutex> lock(scripts_mtx);
         try {
+            // Don't react to the directory itself.
+            if (ev.path == xdg.path(XDG_CONFIG_HOME, "scripts"))
+                return true;
+
             if (ev.mask & IN_DELETE) {
                 syslog(LOG_INFO, "Deleting script: %s", ev.path.c_str());
                 unloadScript(ev.name);
@@ -292,9 +303,6 @@ void MacroDaemon::run() {
                 syslog(LOG_INFO, "Loading new script: %s", ev.path.c_str());
                 loadScript(ev.path);
             } else if (ev.mask & IN_ATTRIB) {
-                // Don't react to the directory itself.
-                if (ev.path == xdg.path(XDG_CONFIG_HOME, "scripts"))
-                    return true;
                 if (ev.stbuf.st_mode & S_IXUSR) {
                     loadScript(ev.path);
                 } else {
@@ -302,7 +310,7 @@ void MacroDaemon::run() {
                 }
             }
         } catch (exception &e) {
-            notify("Hawck Script Error", e.what());
+            notify("Script Error", e.what());
             syslog(LOG_ERR, "Error while loading %s: %s", ev.path.c_str(), e.what());
         }
         return true;

@@ -81,6 +81,9 @@ private:
     std::atomic<bool> eval_repeat;
     std::atomic<bool> disabled;
 
+    std::mutex last_notification_mtx;
+    std::tuple<std::string, std::string> last_notification;
+
     /** Display freedesktop DBus notification. */
     void notify(std::string title,
                 std::string msg);
