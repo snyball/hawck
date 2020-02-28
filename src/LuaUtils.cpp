@@ -132,11 +132,11 @@ namespace Lua {
     void Script::from(const std::string& path) {
         if (luaL_loadfile(L, path.c_str()) != LUA_OK) {
             string err(lua_tostring(L, -1));
-            throw Lua::LuaError("Lua error: " + err);
+            throw Lua::LuaError(err);
         }
         if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
             string err(lua_tostring(L, -1));
-            throw Lua::LuaError("Lua error: " + err);
+            throw Lua::LuaError(err);
         }
     }
 
@@ -156,9 +156,23 @@ namespace Lua {
         return L;
     }
 
-    void Script::exec(const std::string &str) {
-        if (luaL_dostring(L, str.c_str()) != LUA_OK) {
-            throw LuaError("Error in exec of: " + str);
+    void Script::exec(const std::string &src, const std::string &str) {
+        auto reformat = [&](const std::string &err) -> auto {
+            regex rx("^\\[string \".+\"\\]:([0-9]+): (.*)$");
+            smatch cm;
+            regex_search(err, cm, rx);
+            if (cm.size() < 3)
+                return err;
+            return src + ":" + cm[1].str() + ": " + cm[2].str();
+        };
+
+        if (luaL_loadstring(L, str.c_str()) != LUA_OK) {
+            string err(lua_tostring(L, -1));
+            throw Lua::LuaError(reformat(err));
+        }
+        if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
+            string err(lua_tostring(L, -1));
+            throw Lua::LuaError(reformat(err));
         }
     }
 

@@ -216,18 +216,13 @@ function kbd:pressMod(...)
       for i = 1, #keys - 1 do
         self:down(keys[i])
       end
-      udev:flush()
-
       self:press(keys[#keys])
-
-      udev:flush()
-
       for i = 1, #keys - 1 do
         self:up(keys[i])
       end
-
-      udev:flush()
   end)
+
+  udev:flush()
 end
 
 --- Echo back the key that was pressed.

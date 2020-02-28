@@ -1224,7 +1224,7 @@ namespace Lua {
          *
          * @param str Lua code.
          */
-        void exec(const std::string& str);
+        void exec(const std::string &src, const std::string& str);
 
         /** Reset the Lua state, will destroy all data currently
          *  held within it */

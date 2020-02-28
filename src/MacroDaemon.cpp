@@ -111,8 +111,9 @@ void MacroDaemon::initScriptDir(const std::string &dir_path) {
         try {
             loadScript(entry.path());
         } catch (exception &e) {
-            notify("Unable to load script: %s", entry.path().c_str());
-            syslog(LOG_ERR, "Unable to load script '%s': %s", entry.path().c_str(), e.what());
+            notify("Hawck Script Error", e.what());
+            syslog(LOG_ERR, "Unable to load script '%s': %s", pathBasename(entry.path()).c_str(),
+                   e.what());
         }
     }
     fsw.addFrom(dir_path);
@@ -136,7 +137,7 @@ void MacroDaemon::loadScript(const std::string &path) {
     sc->call("require", "init");
     sc->open(&remote_udev, "udev");
     if (stringEndsWith(path, ".hwk")) {
-        sc->exec((Popen("hwk2lua", path)).readOnce());
+        sc->exec(pathBasename(path), (Popen("hwk2lua", path)).readOnce());
     } else if (stringEndsWith(path, ".lua")) {
         sc->from(path);
     }
@@ -301,6 +302,7 @@ void MacroDaemon::run() {
                 }
             }
         } catch (exception &e) {
+            notify("Hawck Script Error", e.what());
             syslog(LOG_ERR, "Error while loading %s: %s", ev.path.c_str(), e.what());
         }
         return true;
