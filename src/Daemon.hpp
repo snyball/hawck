@@ -1,3 +1,5 @@
+#pragma once
+
 /** @file Daemon.hpp
  *
  * @brief Daemonization utilities.
