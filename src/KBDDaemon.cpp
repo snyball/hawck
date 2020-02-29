@@ -159,6 +159,7 @@ void KBDDaemon::run() {
     setup();
     startPassthroughWatcher();
     kbman.setup();
+    kbman.startHotplugWatcher();
 
     for (;;) {
         action.done = 0;
