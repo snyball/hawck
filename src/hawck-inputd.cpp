@@ -161,7 +161,7 @@ int main(int argc, char *argv[]) {
         //        documentation I can find on this to develop a better method.
 
         for (auto d : fs::directory_iterator("/dev/input/by-id"))
-            if (KBDDaemon::byIDIsKeyboard(d.path()))
+            if (KBDManager::byIDIsKeyboard(d.path()))
                 kbd_devices.push_back(realpath_safe(d.path()));
 
         for (auto d : fs::directory_iterator("/dev/input/by-path")) {
@@ -186,9 +186,9 @@ int main(int argc, char *argv[]) {
 
     try {
         KBDDaemon daemon;
-        daemon.setHotplug(!no_hotplug);
+        daemon.kbman.setHotplug(!no_hotplug);
         for (const auto& dev : kbd_devices)
-            daemon.addDevice(dev);
+            daemon.kbman.addDevice(dev);
         daemon.setEventDelay(udev_event_delay);
         daemon.setSocketTimeout(socket_timeout);
         syslog(LOG_INFO, "Running Hawck InputD ...");

@@ -37,6 +37,7 @@
 #include "KBDConnection.hpp"
 #include "UNIXSocket.hpp" 
 
+#include "KBDManager.hpp"
 #include "UDevice.hpp"
 #include "LuaUtils.hpp"
 #include "Keyboard.hpp"
@@ -64,7 +65,8 @@ class KBDDaemon {
     };
 
     using Milliseconds = std::chrono::milliseconds;
-private:
+
+  private:
     Milliseconds timeout = Milliseconds(2048);
     std::atomic<KeyVisibility> key_visibility[KEY_MAX];
     std::string home_path = "/var/lib/hawck-input";
@@ -76,25 +78,20 @@ private:
     const std::string scripts_dir = "/var/lib/hawck-input/scripts";
     UNIXSocket<KBDAction> kbd_com;
     UDevice udev;
-    /** All keyboards. */
-    std::vector<Keyboard *> kbds;
-    std::mutex kbds_mtx;
-    /** Keyboards available for listening. */
-    std::vector<Keyboard *> available_kbds;
-    std::mutex available_kbds_mtx;
-    /** Keyboards that were removed. */
-    std::vector<Keyboard *> pulled_kbds;
-    std::mutex pulled_kbds_mtx;
     /** Watcher for /var/lib/hawck/keys */
     FSWatcher keys_fsw;
-    /** Watcher for /dev/input/ hotplug */
-    FSWatcher input_fsw;
     /** Controls whether or not /unseen/ keyboards may be added when they are
      * plugged in. Keyboards that were added on startup with --kbd-device
      * arguments will always be reconnected on hotplug. */
     bool allow_hotplug = true;
 
-public:
+  private:
+    void setup();
+    void startPassthroughWatcher();
+
+  public:
+    KBDManager kbman;
+
     explicit KBDDaemon(const char *device);
     KBDDaemon();
     ~KBDDaemon();
@@ -106,12 +103,6 @@ public:
     void loadScript(const std::string &rel_path);
 
     void initPassthrough();
-
-    /** Listen on a new device.
-     *
-     * @param device Full path to the device in /dev/input/
-     */
-    void addDevice(const std::string& device);
 
     /**
      * Load passthrough keys from a file at `path`.
@@ -138,36 +129,10 @@ public:
      */
     void run();
 
-    /**
-     * Check which keyboards have become unavailable/available again.
-     */
-    void updateAvailableKBDs();
-
-    /** Set delay between outputted events in µs
-     *
-     * @param delay Delay in µs.
-     */
-    void setEventDelay(int delay);
-
-    inline void setHotplug(bool val) {
-        allow_hotplug = val;
-    }
-
-    /**
-     * @param path A file path or file name from /dev/input/by-id
-     * @return True iff the ID represents a keyboard.
-     */
-    static inline bool byIDIsKeyboard(const std::string& path) {
-        const static std::regex input_if_rx("^.*-if[0-9]+-event-kbd$");
-        const static std::regex event_kbd("^.*-event-kbd$");
-        // Keyboard devices in /dev/input/by-id have filenames that end in
-        // "-event-kbd", but they may also have extras that are available from
-        // files ending in "-ifxx-event-kbd"
-        return std::regex_match(path, event_kbd) && !std::regex_match(path, input_if_rx);
-    }
-
     /** Set timeout for read() on sockets. */
     inline void setSocketTimeout(int time) {
         timeout = Milliseconds(time);
     }
+
+    void setEventDelay(int delay);
 };

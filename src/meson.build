@@ -48,6 +48,7 @@ inputd_src = [
   'CSV.cpp',
   'Permissions.cpp',
   'LuaUtils.cpp',
+  'KBDManager.cpp',
 ]
 executable('hawck-inputd',
            inputd_src,
