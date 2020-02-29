@@ -34,22 +34,8 @@
 #pragma once
 
 #include <vector>
-#include <memory>
 #include <string>
 #include <chrono>
-
-extern "C" {
-    #include <unistd.h>
-    #include <fcntl.h>
-    #include <linux/uinput.h>
-    #include <linux/input.h>
-    #include <errno.h>
-    #include <stdlib.h>
-    
-    #include <lua.h>
-    #include <lauxlib.h>
-    #include <lualib.h>
-}
 
 #include "UNIXSocket.hpp"
 #include "KBDAction.hpp"
@@ -119,6 +105,8 @@ private:
     /** Reload all scripts from their sources, this may be necessary
      *  if an important configuration variable like the keymap is set. */
     void reloadAll();
+
+    void startFSWatchers();
 
 public:
     MacroDaemon();

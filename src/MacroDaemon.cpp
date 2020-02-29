@@ -31,10 +31,7 @@
 #include <filesystem>
 
 extern "C" {
-    #include <sys/wait.h>
     #include <libnotify/notify.h>
-    #include <unistd.h>
-    #include <sys/stat.h>
     #include <syslog.h>
 }
 
@@ -254,34 +251,7 @@ void MacroDaemon::reloadAll() {
     #endif
 }
 
-void MacroDaemon::run() {
-    syslog(LOG_INFO, "Setting up MacroDaemon ...");
-
-    macrod_main_loop_running = true;
-    // FIXME: Need to handle socket timeouts before I can use this SIGTERM handler.
-    //signal(SIGTERM, handleSigTerm);
-
-    signal(SIGPIPE, handleSigPipe);
-
-    KBDAction action;
-    struct input_event &ev = action.ev;
-
-    // Setup/start LuaConfig
-    xdg.mkfifo("lua-comm.fifo");
-    xdg.mkfifo("json-comm.fifo");
-
-    LuaConfig conf(xdg.path(XDG_RUNTIME_DIR, "lua-comm.fifo"),
-                   xdg.path(XDG_RUNTIME_DIR, "json-comm.fifo"),
-                   xdg.path(XDG_DATA_HOME, "cfg.lua"));
-    conf.addOption("notify_on_err", &notify_on_err);
-    conf.addOption("stop_on_err", &stop_on_err);
-    conf.addOption("eval_keydown", &eval_keydown);
-    conf.addOption("eval_keyup", &eval_keyup);
-    conf.addOption("eval_repeat", &eval_repeat);
-    conf.addOption("disabled", &disabled);
-    conf.addOption<string>("keymap", [this](string) {reloadAll();});
-    conf.start();
-
+void MacroDaemon::startFSWatchers() {
     fsw.setWatchDirs(true);
     fsw.setAutoAdd(true);
     // TODO: Display desktop notifications for these syslogs.
@@ -318,7 +288,37 @@ void MacroDaemon::run() {
         }
         return true;
     });
+}
 
+void MacroDaemon::run() {
+    syslog(LOG_INFO, "Setting up MacroDaemon ...");
+
+    // FIXME: Need to handle socket timeouts before I can use this SIGTERM handler.
+    //signal(SIGTERM, handleSigTerm);
+
+    signal(SIGPIPE, handleSigPipe);
+
+
+    // Setup/start LuaConfig
+    xdg.mkfifo("lua-comm.fifo");
+    xdg.mkfifo("json-comm.fifo");
+
+    LuaConfig conf(xdg.path(XDG_RUNTIME_DIR, "lua-comm.fifo"),
+                   xdg.path(XDG_RUNTIME_DIR, "json-comm.fifo"),
+                   xdg.path(XDG_DATA_HOME, "cfg.lua"));
+    conf.addOption("notify_on_err", &notify_on_err);
+    conf.addOption("stop_on_err", &stop_on_err);
+    conf.addOption("eval_keydown", &eval_keydown);
+    conf.addOption("eval_keyup", &eval_keyup);
+    conf.addOption("eval_repeat", &eval_repeat);
+    conf.addOption("disabled", &disabled);
+    conf.addOption<string>("keymap", [this](string) {reloadAll();});
+    conf.start();
+
+    startFSWatchers();
+
+    KBDAction action;
+    struct input_event &ev = action.ev;
     KBDB kbdb;
 
     getConnection();
