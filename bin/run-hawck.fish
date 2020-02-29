@@ -20,6 +20,21 @@ pushd build
 ninja || exit 1
 mkdir -p macrod-test
 
+function print_line
+    set -l dash "┫" "━" "┣"
+    set -l dashes (math (tput cols) - (echo -n "$dash[1]$dash[2]$argv[1]" | string length))
+    echo -ne "\r"
+    set_color --bold white
+    echo -n (string repeat -n (math "floor($dashes / 2)" ) $dash[2])
+    echo -n $dash[1]
+    set_color $argv[2]
+    echo -n $argv[1]
+    set_color --bold white
+    echo -n $dash[3]
+    echo (string repeat -n (math "floor($dashes / 2) + ($dashes % 2)") $dash[2])
+    set_color normal
+end
+
 begin
     set -l MACROD_EXE src/hawck-macrod
     set -l INPUTD_EXE src/hawck-inputd
@@ -45,16 +60,36 @@ begin
     sudo systemctl stop hawck-inputd.service
     killall hawck-macrod
 
-    echo "Killing in $ttl second(s)"
-
-    echo "--------------------------[hawck]--------------------------"
+    print_line "START" yellow
     command sudo runuser -u hawck-input -- $INPUTD_EXE $inputd_args
-    $MACROD_EXE --no-fork &
-    sleep $ttl
-    kill -9 (jobs -p)
+    switch $argv[1]
+        case "killcycle"
+            for i in (seq 6)
+                $MACROD_EXE --no-fork &
+                set -l ttl (math (random) % 5 + 1)
+                echo -e "\nmacrod "(set_color green --bold --dim)"ALIVE"(set_color normal)" for $ttl seconds"
+                sleep $ttl
+                kill -9 (jobs -p)
+                set -l ttl (math (random) % 5 + 1)
+                echo -e "\nmacrod "(set_color red --bold --dim)"DEAD"(set_color normal)" for $ttl seconds"
+                sleep $ttl
+            end
+
+        case "valgrind"
+            valgrind $MACROD_EXE --no-fork &
+            sleep 10
+            kill (jobs -p)
+            wait
+
+        case "*"
+            echo "Killing in $ttl second(s)"
+            $MACROD_EXE --no-fork &
+            sleep $ttl
+            kill -9 (jobs -p)
+    end
     sudo killall hawck-inputd
     echo
-    echo "---------------------------[DONE]--------------------------"
+    print_line "END" red
 end
 
 popd
