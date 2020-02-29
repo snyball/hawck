@@ -12,7 +12,7 @@ extern "C" {
     #include <sys/types.h>
     #include <grp.h>
     #include <sys/stat.h>
-    #include <syslog.h>
+    // #include <syslog.h>
     #include <pwd.h>
     #include <unistd.h>
 }

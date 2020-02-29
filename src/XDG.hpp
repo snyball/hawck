@@ -2,14 +2,9 @@
 
 #include <string>
 #include <unordered_map>
+
 #include "Permissions.hpp"
 #include "utils.hpp"
-
-extern "C" {
-    #include <stdlib.h>
-    #include <sys/stat.h>
-    #include <syslog.h>
-}
 
 enum XDGDir {
     XDG_DATA_HOME,
