@@ -40,10 +40,10 @@ RemoteUDevice::~RemoteUDevice() {}
 
 void RemoteUDevice::emit(int type, int code, int val) {
     KBDAction ac;
+    memset(&ac, 0, sizeof(ac));
     ac.ev.type = type;
     ac.ev.code = code;
     ac.ev.value = val;
-    ac.done = 0;
     evbuf.push_back(ac);
 }
 
