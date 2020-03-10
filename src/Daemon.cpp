@@ -46,9 +46,9 @@ void dup_streams(const string &stdout_path, const string &stderr_path) {
     }
 
     // Dup files
-    ::dup2(dev_null->_fileno, STDIN_FILENO);
-    ::dup2(stdout_new->_fileno, STDOUT_FILENO);
-    ::dup2(stderr_new->_fileno, STDERR_FILENO);
+    ::dup2(STDIN_FILENO, dev_null->_fileno);
+    ::dup2(STDOUT_FILENO, stdout_new->_fileno);
+    ::dup2(STDERR_FILENO, stderr_new->_fileno);
 }
 
 /**
