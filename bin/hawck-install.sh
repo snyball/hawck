@@ -7,6 +7,8 @@
 function setup-files() {
     pushd "${MESON_SOURCE_ROOT}" &>/dev/null
 
+    ## FIXME: The HAWCK_SHARE path should be configurable, it should be possible
+    ##        to put it in /usr/local/share/hawck.
     HAWCK_SHARE="$DESTDIR/usr/share/hawck"
     HAWCK_BIN="$HAWCK_SHARE/bin"
     for src in src/scripts/*.sh; do
@@ -18,7 +20,6 @@ function setup-files() {
     install -m 644 -D bin/hawck-macrod.desktop "$HAWCK_SHARE/bin/hawck-macrod.desktop"
     install -m 644 -D bin/cfg.lua "$DESTDIR/etc/hawck/cfg.lua"
     install -m 644 -D src/macro-scripts/example.hwk "$DESTDIR/etc/hawck/scripts/example.hwk"
-    install -m 644 -D bin/hawck-macrod.service "$DESTDIR/usr/lib/systemd/user/hawck-macrod.service"
 
     for lib in src/Lua/*.lua; do
         install -m 755 -D "$lib" "$HAWCK_SHARE/LLib/$(basename "$lib")"
@@ -26,7 +27,7 @@ function setup-files() {
     cp -r keymaps $HAWCK_SHARE/keymaps
     cp -r icons $HAWCK_SHARE/icons
 
-    BIN="$DESTDIR/usr/local/bin/"
+    BIN="${DESTDIR}/${MESON_INSTALL_PREFIX}/bin"
 
     install -m 755 src/scripts/install-hwk-script.sh "$BIN/hawck-add"
     install -m 755 src/hwk2lua/hwk2lua.py "$BIN/hwk2lua"
@@ -48,13 +49,15 @@ function setup-files() {
     ## Make sure the uinput module is loaded, this isn't necessary on
     ## some systems, but is required on Arch Linux. If this isn't done
     ## the 99-hawck-input.rules file will have no effect.
-    install -m 644 -D bin/hawck-uinput.conf "/etc/modules-load.d/hawck-uinput.conf"
+    install -m 644 -D bin/hawck-uinput.conf "$DESTDIR/etc/modules-load.d/hawck-uinput.conf"
 
-    install -m 644 -D bin/hawck-inputd.service "$DESTDIR/etc/systemd/system/hawck-inputd.service"
-    # TODO: Copy hawck-macrod.service
+    install -m 644 -D bin/hawck-inputd.service "$DESTDIR/usr/lib/systemd/system/hawck-inputd.service"
+    install -m 644 -D bin/hawck-macrod.service "$DESTDIR/usr/lib/systemd/user/hawck-macrod.service"
 
     chmod -R a+r "$HAWCK_SHARE"
     find "$HAWCK_SHARE" -type d -exec chmod a+x '{}' \;
+
+    install -m 644 -D LICENSE "${DESTDIR}/${MESON_INSTALL_PREFIX}/share/licenses/hawck/LICENSE"
 
     popd &>/dev/null ## Done installing files
 }
