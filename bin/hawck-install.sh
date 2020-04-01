@@ -51,9 +51,6 @@ function setup-files() {
     ## the 99-hawck-input.rules file will have no effect.
     install -m 644 -D bin/hawck-uinput.conf "$DESTDIR/etc/modules-load.d/hawck-uinput.conf"
 
-    install -m 644 -D bin/hawck-inputd.service "$DESTDIR/usr/lib/systemd/system/hawck-inputd.service"
-    install -m 644 -D bin/hawck-macrod.service "$DESTDIR/usr/lib/systemd/user/hawck-macrod.service"
-
     chmod -R a+r "$HAWCK_SHARE"
     find "$HAWCK_SHARE" -type d -exec chmod a+x '{}' \;
 
