@@ -8,7 +8,7 @@ Group=hawck-input
 WorkingDirectory=/var/lib/hawck-input
 Type=forking
 PIDFile=/var/lib/hawck-input/pid
-ExecStart=/usr/local/bin/hawck-inputd
+ExecStart=@PREFIX@/bin/hawck-inputd
 ExecStop=/bin/bash -c 'kill $(cat /var/lib/hawck-input/pid)'
 
 [Install]
