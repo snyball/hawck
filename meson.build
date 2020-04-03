@@ -27,5 +27,6 @@ subdir('src')
 subdir('tests')
 subdir('hawck-ui')
 subdir('docs')
+subdir('bin')
 
 meson.add_install_script('bin/hawck-install.sh')
