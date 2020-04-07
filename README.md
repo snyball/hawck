@@ -125,10 +125,14 @@ When you've started the computer back up again, run the following commands:
 ```bash
 $ sudo systemctl start hawck-inputd
 $ hawck-macrod
-# Open up the example script in your preferred editor
-$ vim ~/.local/share/hawck/scripts/example.hwk
-# Enable the script
-$ hawck-add ~/.local/share/hawck/scripts/example.hwk
+# Create a new script
+$ vim ~/.config/hawck/scripts/example.hwk
+# Whitelist keys from the script
+$ hawck-add ~/.config/hawck/scripts/example.hwk
+# Enable the script (note: macrod specifically requires mode 0755)
+$ chmod +x ~/.config/hawck/scripts/example.hwk
+# Disable the script
+$ chmod -x ~/.config/hawck/scripts/example.hwk
 ```
 
 ### BSD
