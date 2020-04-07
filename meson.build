@@ -1,10 +1,9 @@
-project('Hawck', 'cpp',
+project('Hawck', 'c', 'cpp',
         version : '0.7',
         license : 'BSD-2',
         meson_version : '>=0.45.0',
         default_options : ['c_std=c18',
-                           'cpp_std=c++17',
-                          ])
+                           'cpp_std=c++17'])
 
 os = host_machine.system()
 if os != 'linux'
@@ -15,11 +14,9 @@ endif
 add_global_arguments('-Wno-reorder', language : 'cpp')
 
 ## Force includes of lua5.3, fails to be included on some systems.
-add_global_arguments('-I/usr/include/lua5.3',
-                     language : 'cpp')
+add_global_arguments('-I/usr/include/lua5.3', language : 'cpp')
 
-add_global_arguments('-DMESON_COMPILE=1',
-                     language : 'cpp')
+add_global_arguments('-DMESON_COMPILE=1', language : 'cpp')
 
 inc = include_directories('src')
 

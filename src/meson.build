@@ -57,6 +57,15 @@ executable('hawck-inputd',
            install : true,
           )
 
+hawck_chroot_src = [
+  'hawck-chroot.c'
+]
+executable('hawck-chroot',
+           hawck_chroot_src,
+           dependencies : [],
+           include_directories : conf_inc,
+           install : false)
+
 # luatest_src = [
 #   'UDevice.cpp',
 #   'Keyboard.cpp',
