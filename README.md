@@ -20,16 +20,16 @@ alternative to AutoHotkey, but this time with a sane scripting language.
 Common concrete use cases:
 - Rebind caps lock to ctrl or escape:
 ```lua
-key "caps" => replace "escape"
+key "Caps" => replace "Escape"
 -- , or
-key "caps" => replace "control"
+key "Caps" => replace "Control"
 ```
 - Conditionally replace caps lock (or any other replacement)
 ```lua
 -- Pressing F7 will activate the replacement, and pressing F7
 -- again will disable it.
-mode("Caps => Ctrl mode", down + key "f7") => {
-    key "caps" => replace "control"
+mode("Caps => Ctrl mode", down + key "F7") => {
+    key "Caps" => replace "Control"
 }
 ```
 - Replace a key, but only on a specific keyboard (not in `v0.6`, use master branch
