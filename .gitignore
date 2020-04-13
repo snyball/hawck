@@ -18,6 +18,7 @@ html/*
 docs/html/*
 docs/latex/*
 compile_commands.json
+.compile_commands.json
 .projectile
 *.strace
 *.out
