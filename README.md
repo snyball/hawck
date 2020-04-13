@@ -111,7 +111,7 @@ $ meson ..
 $ ninja
 $ sudo ninja install
 $ cd ..
-$ sudo bash -c ". bin/hawck-git.install; post_install"
+$ sudo bash -c ". bin/hawck-git/hawck-git.install; post_install"
 $ bin/hawck-user-setup.sh
 ```
     
