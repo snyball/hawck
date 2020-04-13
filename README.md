@@ -103,16 +103,9 @@ $ pkexec xargs apt -y install < bin/dependencies/debian-deps.txt
 Then:
 
 ```bash
-$ git clone https://github.com/snyball/Hawck.git
+$ git clone --recurse-submodules -j8 https://github.com/snyball/Hawck.git
 $ cd Hawck
-$ mkdir build
-$ cd build
-$ meson ..
-$ ninja
-$ sudo ninja install
-$ cd ..
-$ sudo bash -c ". bin/hawck-git/hawck-git.install; post_install"
-$ bin/hawck-user-setup.sh
+$ ./install.sh
 ```
     
 The user setup script will prompt you for your password, it has to add your user
