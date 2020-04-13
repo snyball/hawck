@@ -79,7 +79,7 @@ bit of a hack, and the scripts take inspiration from the pattern-matching style
 of the AWK programming language (plus, hawks are pretty cool I guess.)
 </small>
 
-## How do I install it?
+## Installation
 
 For `v0.6`, click Branch\>Tags\>Master\>`v0.6.1` and follow the instructions in
 the `README` files for that version. The rest of this section will apply to the
@@ -93,18 +93,11 @@ Remember to run `/usr/share/hawck/bin/hawck-user-setup` after install (you
 should run this script with your personal user account, not as root.)
 
 ### Debian/Ubuntu
-Install dependencies:
-
-```bash
-# Debian/Ubuntu
-$ pkexec xargs apt -y install < bin/dependencies/debian-deps.txt
-```
-
-Then:
 
 ```bash
 $ git clone --recurse-submodules -j8 https://github.com/snyball/Hawck.git
 $ cd Hawck
+$ pkexec xargs apt -y install < bin/dependencies/debian-deps.txt
 $ ./install.sh
 ```
     
@@ -114,6 +107,14 @@ your user has been added to the group (on some distributions, e.g Ubuntu, a
 reboot is required.)
 
 When you've started the computer back up again, run the following commands:
+
+### Other distributions
+
+Find the appropriate dependencies for your distribution, and run the
+`install.sh` script. Note that this script has only been tested for
+Ubuntu 19.10.
+
+## Testing it out
 
 ```bash
 $ sudo systemctl start hawck-inputd
@@ -127,28 +128,6 @@ $ chmod +x ~/.config/hawck/scripts/example.hwk
 # Disable the script
 $ chmod -x ~/.config/hawck/scripts/example.hwk
 ```
-
-### BSD
-
-Porting to FreeBSD is possible, but requires the installation of shims, or
-porting of the following classes/functions.
-
-- `Keyboard`
-  - Access to raw keyboard input.
-  - shim: https://www.freshports.org/devel/evdev-proto/
-  - Requires: `ioctl(fd, EVIOCGRAB, ...)` for exclusive keyboard lock.
-- `UDevice`
-  - Virtual keyboard devices for outputting keys.
-  - shim: https://www.freshports.org/devel/evdev-proto/
-- `KBDInfo`/`KBDB`
-  - Gathers info about a keyboard from `sysfs`
-  - Can this be retrieved using `sysctl` on FreeBSD?
-- `pidexe(pid_t)`
-  - Used to find the executable behind a process id
-  - Single line of code change.
-- `FSWatcher.cpp`
-  - File system notifications
-  - shim: https://github.com/libinotify-kqueue/libinotify-kqueue
 
 ## Security
 
@@ -398,6 +377,31 @@ not be used:
 
 Asynchronous lock solves this problem by simply waiting until
 every key has been released before the keyboard is locked.
+
+## Ports
+
+### BSD
+
+Porting to FreeBSD is possible, but requires the installation of shims, or
+porting of the following classes/functions.
+
+- `Keyboard`
+  - Access to raw keyboard input.
+  - shim: https://www.freshports.org/devel/evdev-proto/
+  - Requires: `ioctl(fd, EVIOCGRAB, ...)` for exclusive keyboard lock.
+- `UDevice`
+  - Virtual keyboard devices for outputting keys.
+  - shim: https://www.freshports.org/devel/evdev-proto/
+- `KBDInfo`/`KBDB`
+  - Gathers info about a keyboard from `sysfs`
+  - Can this be retrieved using `sysctl` on FreeBSD?
+- `pidexe(pid_t)`
+  - Used to find the executable behind a process id
+  - Single line of code change.
+- `FSWatcher.cpp`
+  - File system notifications
+  - shim: https://github.com/libinotify-kqueue/libinotify-kqueue
+
 
 ## Known Bugs:
 
