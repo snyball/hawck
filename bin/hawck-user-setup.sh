@@ -28,6 +28,7 @@ KEYMAPS_LNK="$LOCAL_SHARE/hawck/scripts/keymaps"
 INIT_LNK="$LOCAL_SHARE/hawck/scripts/init.lua"
 [ -e "$INIT_LNK" ] || ln -s /usr/share/hawck/LLib/init.lua "$INIT_LNK"
 
+
 if ! groups | tr " " "\n" | grep "^hawck-input-share\$"; then
     notify-send --icon=hawck \
                 --app-name="Hawck" \
