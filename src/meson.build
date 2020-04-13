@@ -57,26 +57,28 @@ executable('hawck-inputd',
            install : true,
           )
 
-hawck_chroot_src = [
-  'hawck-chroot.c'
-]
-executable('hawck-chroot',
-           hawck_chroot_src,
-           dependencies : [],
-           include_directories : conf_inc,
-           install : false)
+if get_option('development_build')
+    hawck_chroot_src = [
+      'hawck-chroot.c'
+    ]
+    executable('hawck-chroot',
+               hawck_chroot_src,
+               dependencies : [],
+               include_directories : conf_inc,
+               install : false)
 
-# luatest_src = [
-#   'UDevice.cpp',
-#   'Keyboard.cpp',
-#   'FSWatcher.cpp',
-#   'CSV.cpp',
-#   'Permissions.cpp',
-#   'LuaUtils.cpp',
-#   'LuaTest.cpp',
-# ]
-# executable('luatest',
-#            luatest_src,
-#            dependencies : [pthreaddep, luadep],
-#            include_directories : conf_inc,
-#            install : false)
+    luatest_src = [
+      'UDevice.cpp',
+      'Keyboard.cpp',
+      'FSWatcher.cpp',
+      'CSV.cpp',
+      'Permissions.cpp',
+      'LuaUtils.cpp',
+      'LuaTest.cpp',
+    ]
+    executable('luatest',
+               luatest_src,
+               dependencies : [pthreaddep, luadep],
+               include_directories : conf_inc,
+               install : false)
+endif

@@ -7,3 +7,8 @@ option('use_meson_install',
        type : 'boolean',
        value : false,
        description : 'Whether or not to run install scripts from the build.')
+
+option('development_build',
+       type : 'boolean',
+       value : false,
+       description : 'Whether or not to build Hawck for development.')
