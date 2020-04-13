@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) {
         "  -h, --help          Display this help information.\n"
         "  --version           Display version and exit.\n"
         "  -k, --kbd-device    Add a keyboard to listen to.\n"
-        "  --udev-event-delay  Delay between events sent on the udevice in us.\n"
+        "  --udev-event-delay  Delay between events sent on the udevice in µs.\n"
         "  --socket-timeout    Time in milliseconds until timeout on sockets.\n"
         "  --no-hotplug        Only listen to devices that were explicitly added with --kbd-device\n"
     ;
@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
     vector<string> kbd_devices;
     unordered_map<string, function<void(const string& opt)>> long_handlers = {
         {"version", [&](const string&) {
-                        cout << "Hawck InputD v" INPUTD_VERSION << endl;
+                        cout << "hawck-inputd v" INPUTD_VERSION << endl;
                         exit(0);
                     }},
         NUM_OPTION(udev_event_delay)

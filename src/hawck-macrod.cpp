@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
 
     unordered_map<string, function<void(const string& opt)>> long_handlers = {
         {"version", [&](const string&) {
-                        cout << "Hawck MacroD v" MACROD_VERSION << endl;
+                        cout << "hawck-macrod v" MACROD_VERSION << endl;
                         exit(0);
                     }},
     };
@@ -105,7 +105,7 @@ int main(int argc, char *argv[]) {
         daemon.run();
     } catch (exception &e) {
         cout << e.what() << endl;
-        syslog(LOG_CRIT, "MacroD: %s", e.what());
+        syslog(LOG_CRIT, "macrod: %s", e.what());
         clearPidFile(pid_file);
         throw;
     }
