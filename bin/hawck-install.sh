@@ -29,7 +29,7 @@ function setup-files() {
 
     BIN="${DESTDIR}/${MESON_INSTALL_PREFIX}/bin"
 
-    install -m 755 src/scripts/install-hwk-script.sh "$BIN/hawck-add"
+    install -m 755 src/scripts/hawck-add.sh "$BIN/hawck-add"
     install -m 755 src/hwk2lua/hwk2lua.py "$BIN/hwk2lua"
 
     ## Copy icons
