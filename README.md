@@ -110,9 +110,11 @@ When you've started the computer back up again, run the following commands:
 
 ### Other distributions
 
-Find the appropriate dependencies for your distribution, and run the
-`install.sh` script. Note that this script has only been tested for
-Ubuntu 19.10.
+Install all the dependencies listed on the
+[AUR page](https://aur.archlinux.org/packages/hawck-git/).
+Once you've found the appropriate packages for your distribution, run the
+`install.sh` script. Note that the install script has only been tested on Ubuntu
+19.10.
 
 ## Testing it out
 
