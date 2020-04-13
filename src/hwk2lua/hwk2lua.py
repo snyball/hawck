@@ -89,7 +89,7 @@ def hwk2lua(hwk_code: str) -> str:
                        if scopes[-1] else "{")
         elif seg == "}" and not (in_comment or lcomment):
             if not scopes:
-                raise Exception("Unbalanced curly braces (too many: '}')")
+                raise ParseException("Unbalanced curly braces (too many: '}')")
             out.append("end)" if scopes.pop() else "}")
         elif seg == "=>" and not (in_comment or lcomment):
             # Pop from output until an empty string (represents newline) is
@@ -115,7 +115,7 @@ def hwk2lua(hwk_code: str) -> str:
             last = seg
 
     if scopes:
-        raise Exception("Unbalanced curly braces (too many: '{')")
+        raise ParseException("Unbalanced curly braces (too many: '{')")
     return "".join(out)
 
 
