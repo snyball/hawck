@@ -14,9 +14,9 @@ if [ $(whoami) = root ]; then
 fi
 
 install () {
-    source ../bin/hawck-git/hawck-git.install
-    ninja install
-    post_install
+    source ../bin/hawck-git/hawck-git.install || exit 1
+    ninja install || exit 1
+    post_install || exit 1
 }
 
 mkdir -p build || exit 1
