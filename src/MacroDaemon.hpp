@@ -106,7 +106,7 @@ private:
      *  if an important configuration variable like the keymap is set. */
     void reloadAll();
 
-    void startFSWatchers();
+    void startScriptWatcher();
 
 public:
     MacroDaemon();

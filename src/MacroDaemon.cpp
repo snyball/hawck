@@ -181,7 +181,6 @@ void MacroDaemon::notify(string title, string msg, string icon) {
     notify_notification_set_timeout(n, 12000);
     notify_notification_set_urgency(n, NOTIFY_URGENCY_CRITICAL);
     notify_notification_set_app_name(n, "Hawck");
-    syslog(LOG_INFO, "%s", msg.c_str());
 
     if (!notify_notification_show(n, nullptr)) {
         syslog(LOG_INFO, "Notifications cannot be shown.");
@@ -251,7 +250,7 @@ void MacroDaemon::reloadAll() {
     #endif
 }
 
-void MacroDaemon::startFSWatchers() {
+void MacroDaemon::startScriptWatcher() {
     fsw.setWatchDirs(true);
     fsw.setAutoAdd(true);
     // TODO: Display desktop notifications for these syslogs.
@@ -315,7 +314,7 @@ void MacroDaemon::run() {
     conf.addOption<string>("keymap", [this](string) {reloadAll();});
     conf.start();
 
-    startFSWatchers();
+    startScriptWatcher();
 
     KBDAction action;
     struct input_event &ev = action.ev;
