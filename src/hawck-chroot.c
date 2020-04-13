@@ -1,3 +1,4 @@
+#define _POSIX_SOURCE 1
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
@@ -5,6 +6,7 @@
 #include <pwd.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <sys/types.h>
 
 pid_t MACROD_PID;
 pid_t INPUTD_PID;
@@ -95,4 +97,6 @@ cleanup:
         kill(macrod_pid, SIGKILL);
     if (inputd_pid != -1)
         kill(inputd_pid, SIGKILL);
+
+    return 0;
 }
