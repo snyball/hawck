@@ -1,6 +1,7 @@
 meson
 doxygen
 gcc
+git
 g++
 pkg-config
 lua5.3
