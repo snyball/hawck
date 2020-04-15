@@ -43,6 +43,7 @@
 #include "Keyboard.hpp"
 #include "SystemError.hpp"
 #include "FSWatcher.hpp"
+#include "KeyCombo.hpp"
 
 extern "C" {
     #include <fcntl.h>
@@ -84,6 +85,7 @@ class KBDDaemon {
      * plugged in. Keyboards that were added on startup with --kbd-device
      * arguments will always be reconnected on hotplug. */
     bool allow_hotplug = true;
+    KeyComboToggle ks_combo = KeyComboToggle({KEY_ESC, KEY_SPACE});
 
   private:
     void setup();
@@ -103,6 +105,8 @@ class KBDDaemon {
     void loadScript(const std::string &rel_path);
 
     void initPassthrough();
+
+    void handleKillswitch(const KBDAction& action) noexcept;
 
     /**
      * Load passthrough keys from a file at `path`.

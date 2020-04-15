@@ -166,6 +166,12 @@ void KBDDaemon::run() {
         if (!kbman.getEvent(&action))
             continue;
 
+        if (action.ev.type != EV_KEY) {
+            udev.emit(&action.ev);
+            udev.flush();
+            continue;
+        }
+
         // Check if the key is listed in the passthrough set.
         KeyVisibility key_vis;
         if (action.ev.code >= KEY_MAX) {
@@ -173,9 +179,10 @@ void KBDDaemon::run() {
             key_vis = KEY_HIDE;
         } else {
             key_vis = key_visibility[action.ev.code];
+            ks_combo.check(action);
         }
 
-        if (key_vis == KEY_SHOW) {
+        if (!ks_combo.active && key_vis == KEY_SHOW) {
             input_event orig_ev = action.ev;
 
             // Pass key to Lua executor
