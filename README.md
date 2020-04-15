@@ -118,6 +118,16 @@ Once you've found the appropriate packages for your distribution, run the
 
 ## Testing it out
 
+Now you can test out a simple script, your `example.hwk` could look like this:
+
+```lua
+-- Pressing C-a should insert the character "b"
+down + ctrl + key "a" => insert "b"
+```
+
+> Tip: If you make a mistake, hold Escape and press the Spacebar (ESC-SPC)
+> to deactivate all scripts. Repeat ESC-SPC to reactivate script processing.
+
 ```bash
 $ sudo systemctl start hawck-inputd
 $ hawck-macrod
