@@ -46,7 +46,7 @@ from typing import List
 import sys
 
 WS_RX = recomp(r"^[\t ]*")
-OP_RX = recomp(r"(^|(--)?\[=*\[|(--)?\]=*\]|--|\".*?\"|\'.*?\'|=>|{|})",
+OP_RX = recomp(r"(^|(--)?\[=*\[|(--)?\]=*\]|--|\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*'|=>|{|})",
                MULTILINE)
 CMNT_BEGIN_RX = recomp(r"(--)?\[(=*)\[")
 CMNT_END_RX = recomp(r"(--)?\](=*)\]")

@@ -19,6 +19,7 @@ mode("Programming mode", down + key "f7") + -up => {
     -- Turn ø/æ into {/}
     key "ø" => insert "{"
     key "æ" => insert "}"
+    key "v" => write "key \"a\" => replace \"b\""
 }
 
 s = [===[
