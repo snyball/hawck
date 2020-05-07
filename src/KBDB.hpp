@@ -1,6 +1,7 @@
 #pragma once
 
 #include <unordered_map>
+#include <string>
 
 extern "C" {
     #include <linux/uinput.h>
