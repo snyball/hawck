@@ -247,8 +247,6 @@ function kbmap.getall()
   local kbmap_paths = {
     "/usr/share/kbd/keymaps",
     "/usr/share/keymaps",
-    "/lib/kbd/keymaps/legacy/",
-    "/lib/kbd/keymaps/xkb/",
   }
   -- Find the path to the keymaps directory.
   local kbmap_path = nil
