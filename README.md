@@ -291,7 +291,7 @@ it is plugged in (before you restart hawck-inputd again.)
 The current model is a compromise between ease of use, and security.
 
 The issue with the current Hawck security model is that the keys
-that are whitelisted by adde dscripts can be read by any user level
+that are whitelisted by added scripts can be read by any user level
 program.
 
 Here are some alternative models that have been considered:
