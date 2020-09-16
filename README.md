@@ -290,10 +290,9 @@ it is plugged in (before you restart hawck-inputd again.)
 
 The current model is a compromise between ease of use, and security.
 
-The issue with the current Hawck security model is that binding all keys
-on your keyboard (or even 20-30% of them, depending on which keys they
-are and how common they are in your language) effectively renders the
-security model useless.
+The issue with the current Hawck security model is that the keys
+that are whitelisted by adde dscripts can be read by any user level
+program.
 
 Here are some alternative models that have been considered:
 
