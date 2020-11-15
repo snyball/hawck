@@ -1,6 +1,7 @@
-luadep = dependency('lua', version : '>=5.3', required : false)
+lua_version = ['>=5.3', '<5.4']
+luadep = dependency('lua', version : lua_version, required : false)
 if not luadep.found()
-  luadep = dependency('lua5.3', version : '>=5.3')
+  luadep = dependency('lua5.3', version : lua_version)
 endif
 
 pthreaddep = dependency('threads')
