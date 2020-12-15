@@ -151,7 +151,7 @@ TEST_CASE("Directory file addition", "[FSWatcher]") {
 }
 
 TEST_CASE("Watch whole directory", "[FSWatcher]") {
-    int num_tests = 30;
+    size_t num_tests = 30;
     vector<string> paths = mkTestFiles(num_tests, true);
     FSWatcher watcher;
     vector<FSEvent> *added = watcher.addFrom("/tmp/hwk-tests");

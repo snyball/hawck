@@ -160,15 +160,23 @@ int main(int argc, char *argv[]) {
         //        brittle, and I should probably do a deep-dive into whatever
         //        documentation I can find on this to develop a better method.
 
-        for (auto d : fs::directory_iterator("/dev/input/by-id"))
-            if (KBDManager::byIDIsKeyboard(d.path()))
-                kbd_devices.push_back(realpath_safe(d.path()));
+        try {
+            for (auto d : fs::directory_iterator("/dev/input/by-id"))
+                if (KBDManager::byIDIsKeyboard(d.path()))
+                    kbd_devices.push_back(realpath_safe(d.path()));
+        } catch (const system_error& err) {
+            syslog(LOG_ERR, "Unable to query by-id: %s", err.what());
+        }
 
-        for (auto d : fs::directory_iterator("/dev/input/by-path")) {
-            string rpath = realpath_safe(d.path());
-            bool already_added = find(kbd_devices.begin(), kbd_devices.end(), rpath) != kbd_devices.end();
-            if (!already_added && stringStartsWith(pathBasename(d.path()), "platform-i8042") && stringEndsWith(d.path(), "-event-kbd"))
-                kbd_devices.push_back(rpath);
+        try {
+            for (auto d : fs::directory_iterator("/dev/input/by-path")) {
+                string rpath = realpath_safe(d.path());
+                bool already_added = find(kbd_devices.begin(), kbd_devices.end(), rpath) != kbd_devices.end();
+                if (!already_added && stringStartsWith(pathBasename(d.path()), "platform-i8042") && stringEndsWith(d.path(), "-event-kbd"))
+                    kbd_devices.push_back(rpath);
+            }
+        } catch (const system_error& err) {
+            syslog(LOG_ERR, "Unable to query by-path: %s", err.what());
         }
     }
 
