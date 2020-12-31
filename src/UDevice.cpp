@@ -67,6 +67,9 @@ UDevice::UDevice()
     if (ioctl(fd, UI_DEV_CREATE) < 0)
         throw SystemError("Unable to create udevice", errno);
 
+    // FIXME: HACK: For some reason the `fd` from open() cannot be used in
+    // `upAll()` or anything else that requires retrieving the key states. But
+    // opening up a second file-handle to the device works.
     int errors = 0;
     while ((dfd = getDevice(usetup.name)) < 0) {
         if (errors++ > 100)
