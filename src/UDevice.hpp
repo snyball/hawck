@@ -522,6 +522,7 @@ class UDevice : public IUDevice,
 private:
     static const size_t evbuf_start_len = 128;
     int fd;
+    int dfd;
     int ev_delay = 3800;
     uinput_setup usetup;
     std::vector<struct input_event> events;

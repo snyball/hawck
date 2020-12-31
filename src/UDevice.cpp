@@ -66,11 +66,19 @@ UDevice::UDevice()
         throw SystemError("Unable to create udevice", errno);
     if (ioctl(fd, UI_DEV_CREATE) < 0)
         throw SystemError("Unable to create udevice", errno);
+
+    int errors = 0;
+    while ((dfd = getDevice(usetup.name)) < 0) {
+        if (errors++ > 100)
+            throw SystemError("Unable to get file descriptor of udevice.");
+        usleep(1000);
+    }
 }    
 
 UDevice::~UDevice() {
     ioctl(fd, UI_DEV_DESTROY);
     close(fd);
+    close(dfd);
 }
 
 void UDevice::emit(const input_event *send_event) {
@@ -106,7 +114,7 @@ void UDevice::setEventDelay(int delay) {
 void UDevice::upAll() {
     unsigned char key_states[KEY_MAX/8 + 1];
     memset(key_states, 0, sizeof(key_states));
-    if (ioctl(fd, EVIOCGKEY(sizeof(key_states)), key_states) == -1)
+    if (ioctl(dfd, EVIOCGKEY(sizeof(key_states)), key_states) == -1)
         throw SystemError("Unable to get key states: ", errno);
     int key = 0;
     for (size_t i = 0; i < sizeof(key_states); i++)
