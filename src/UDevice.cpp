@@ -47,14 +47,14 @@ UDevice::UDevice()
     // UDevice initialization taken from this guide:
     //   https://www.kernel.org/doc/html/v4.12/input/uinput.html
 
-    fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
-
-    if (fd < 0)
+    if ((fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK)) < 0)
         throw SystemError("Unable to open /dev/uinput: ", errno);
 
-    ioctl(fd, UI_SET_EVBIT, EV_KEY);
-    for (int key = KEY_ESC; key < KEY_MAX; key++)
-        ioctl(fd, UI_SET_KEYBIT, key);
+    if (ioctl(fd, UI_SET_EVBIT, EV_KEY) < 0)
+        throw SystemError("Unable to set event bit", errno);
+    for (int key : ALL_KEYS)
+        if (ioctl(fd, UI_SET_KEYBIT, key) < 0)
+            throw SystemError("Unable to set key bit", errno);
 
     memset(&usetup, 0, sizeof(usetup));
     usetup.id.bustype = BUS_USB;
@@ -62,15 +62,10 @@ UDevice::UDevice()
     usetup.id.product = 0x1a2e;
     strncpy(usetup.name, hawck_udev_name, UINPUT_MAX_NAME_SIZE);
 
-    ioctl(fd, UI_DEV_SETUP, &usetup);
-    ioctl(fd, UI_DEV_CREATE);
-
-    int errors = 0;
-    while ((dfd = getDevice(usetup.name)) < 0) {
-        if (errors++ > 10)
-            throw SystemError("Unable to get file descriptor of udevice.");
-        usleep(10000);
-    }
+    if (ioctl(fd, UI_DEV_SETUP, &usetup) < 0)
+        throw SystemError("Unable to create udevice", errno);
+    if (ioctl(fd, UI_DEV_CREATE) < 0)
+        throw SystemError("Unable to create udevice", errno);
 }    
 
 UDevice::~UDevice() {
@@ -85,7 +80,6 @@ void UDevice::emit(const input_event *send_event) {
 void UDevice::emit(int type, int code, int val) {
     struct input_event ev;
     memset(&ev, '\0', sizeof(ev));
-    gettimeofday(&ev.time, NULL);
     ev.type = type;
     ev.code = code;
     ev.value = val;
@@ -112,7 +106,7 @@ void UDevice::setEventDelay(int delay) {
 void UDevice::upAll() {
     unsigned char key_states[KEY_MAX/8 + 1];
     memset(key_states, 0, sizeof(key_states));
-    if (ioctl(dfd, EVIOCGKEY(sizeof(key_states)), key_states) == -1)
+    if (ioctl(fd, EVIOCGKEY(sizeof(key_states)), key_states) == -1)
         throw SystemError("Unable to get key states: ", errno);
     int key = 0;
     for (size_t i = 0; i < sizeof(key_states); i++)
