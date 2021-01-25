@@ -3,6 +3,7 @@
 #include <iostream>
 
 extern "C" {
+    #include <sys/utsname.h>
     #include <unistd.h>
     #include <fcntl.h>
     #include <time.h>
@@ -14,6 +15,8 @@ extern "C" {
 #include "UDevice.hpp"
 #include "utils.hpp"
 #include <filesystem>
+#include <regex>
+#include <Version.hpp>
 
 const char hawck_udev_name[] = "Hawck Virtual Keyboard";
 static_assert(sizeof(hawck_udev_name) < UINPUT_MAX_NAME_SIZE,
@@ -52,8 +55,35 @@ UDevice::UDevice()
 
     if (ioctl(fd, UI_SET_EVBIT, EV_KEY) < 0)
         throw SystemError("Unable to set event bit", errno);
-    for (int key : ALL_KEYS)
-        if (ioctl(fd, UI_SET_KEYBIT, key) < 0)
+
+    // Hawck might have been compiled with keys that are not supported on the
+    // kernel on which it runs.
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 5, 0)
+    // auto cur_ver = getLinuxVersionCode();
+    auto cur_ver = KERNEL_VERSION(5, 5, 0);
+#endif
+    int newer_keys = 0;
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
+    if (cur_ver < KERNEL_VERSION(5, 10, 0))
+        newer_keys += 4;
+#endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+    if (cur_ver < KERNEL_VERSION(5, 6, 0))
+        newer_keys += 1;
+#endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 5, 0)
+    if (cur_ver < KERNEL_VERSION(5, 5, 0))
+        newer_keys += 37;
+#endif
+
+    syslog(LOG_INFO, "Older kernel version, popping %d key(s).",
+           newer_keys);
+
+    for (int i = 0; i < ((int) ALL_KEYS.size()) - newer_keys; i++)
+        if (ioctl(fd, UI_SET_KEYBIT, ALL_KEYS[i]) < 0)
             throw SystemError("Unable to set key bit", errno);
 
     memset(&usetup, 0, sizeof(usetup));
