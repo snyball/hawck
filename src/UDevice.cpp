@@ -59,8 +59,7 @@ UDevice::UDevice()
     // Hawck might have been compiled with keys that are not supported on the
     // kernel on which it runs.
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 5, 0)
-    // auto cur_ver = getLinuxVersionCode();
-    auto cur_ver = KERNEL_VERSION(5, 5, 0);
+    auto cur_ver = getLinuxVersionCode();
 #endif
     int newer_keys = 0;
 
