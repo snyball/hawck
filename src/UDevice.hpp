@@ -470,6 +470,9 @@ static const std::vector<int> ALL_KEYS = {
     KEY_ATTENDANT_TOGGLE,
     KEY_LIGHTS_TOGGLE,
 
+    // XXX: Do not change the order of the version checks, they should be in
+    // increasing order.
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 5, 0)
     KEY_PRIVACY_SCREEN_TOGGLE,
 
