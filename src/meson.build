@@ -42,6 +42,7 @@ executable('hawck-macrod',
 inputd_src = [
   'hawck-inputd.cpp',
   'UDevice.cpp',
+  'Version.cpp',
   'Daemon.cpp',
   'KBDDaemon.cpp',
   'Keyboard.cpp',

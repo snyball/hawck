@@ -26,11 +26,13 @@ if catch2dep.found()
     'tests-main.cpp',
     'XDG-tests.cpp',
     'Popen-tests.cpp',
+    'Version-tests.cpp',
     '../src/Popen.cpp',
     '../src/FSWatcher.cpp',
     '../src/XDG.cpp',
     '../src/CSV.cpp',
     '../src/Permissions.cpp',
+    '../src/Version.cpp',
   ]
   
   executable('hawck-tests',
