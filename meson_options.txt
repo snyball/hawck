@@ -12,3 +12,23 @@ option('development_build',
        type : 'boolean',
        value : false,
        description : 'Whether or not to build Hawck for development.')
+
+option('hawck_share_dir',
+       type : 'string',
+       value : 'share',
+       description : 'Where to install Hawck data files.')
+
+option('hawck_cfg_dir',
+       type : 'string',
+       value : '/etc',
+       description : 'Where to install Hawck configuration files.')
+
+option('udev_rules_dir',
+       type : 'string',
+       value : '/etc/udev/rules.d',
+       description : 'Where to install Hawck udev rules file.')
+
+option('modules_load_dir',
+       type : 'string',
+       value : '/etc/modules-load.d',
+       description : 'Where to install Hawck modules file.')
