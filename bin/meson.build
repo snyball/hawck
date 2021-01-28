@@ -31,10 +31,10 @@ configure_file(
   configuration: conf
 )
 
-hawck_install_configured = configure_file(
+configure_file(
   input: 'hawck-install.sh.in',
   output: 'hawck-install.sh',
   configuration: conf
 )
 
-hawck_install_script = find_program(hawck_install_configured)
+hawck_install_script = join_paths(meson.current_build_dir(), 'hawck-install.sh')

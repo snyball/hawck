@@ -1,5 +1,5 @@
 project('Hawck', 'c', 'cpp',
-        version : '0.7',
+        version : '0.7.1',
         license : 'BSD-2',
         meson_version : '>=0.49.0',
         default_options : ['c_std=c18',
