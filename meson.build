@@ -1,7 +1,7 @@
 project('Hawck', 'c', 'cpp',
         version : '0.7.1',
         license : 'BSD-2',
-        meson_version : '>=0.49.0',
+        meson_version : '>=0.53.0',
         default_options : ['c_std=c18',
                            'cpp_std=c++17'])
 
@@ -30,19 +30,13 @@ subdir('bin')
 
 meson.add_install_script(hawck_install_script)
 
-# summary() instead of the message at the bottom would be neat, it's
-# available only in 0.53.0
-message(
-'\n------------------------------------------------------------------------\n'+
-'  '+meson.project_name()+' ' +meson.project_version()+':  Automatic configuration OK.'+'\n'+
-'\n  General configuration:'+'\n'+
-'\n    redirect_std: ................ '+get_option('redirect_std').to_string('yes', 'no')+
-'\n    use_meson_install: ........... '+get_option('use_meson_install').to_string('yes', 'no')+
-'\n    development_build: ........... '+get_option('development_build').to_string('yes', 'no')+'\n'+
-'\n  Installation paths:'+'\n'+
-'\n    prefix: ...................... '+get_option('prefix')+
-'\n    hawck_share_dir: ............. '+hawck_full_share_dir+
-'\n    hawck_cfg_dir: ............... '+get_option('hawck_cfg_dir')+
-'\n    modules_load_dir: ............ '+get_option('modules_load_dir')+
-'\n    udev_rules_dir: .............. '+get_option('udev_rules_dir')+'\n'
-)
+summary({'redirect_std' : get_option('redirect_std').to_string('yes', 'no'),
+         'use_meson_install' : get_option('use_meson_install').to_string('yes', 'no'),
+         'development_build' : get_option('development_build').to_string('yes', 'no'),
+        }, section: 'Configuration')
+summary({'prefix' : get_option('prefix'),
+         'hawck_share_dir' : hawck_full_share_dir,
+         'hawck_cfg_dir' : get_option('hawck_cfg_dir'),
+         'modules_load_dir' : get_option('modules_load_dir'),
+         'udev_rules_dir' : get_option('udev_rules_dir'),
+        }, section: 'Installation paths')
