@@ -32,9 +32,10 @@
 HAWCKD_INPUT_USER=hawck-input
 SCRIPTS_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/hawck/scripts/"
 
-if [ $# != 1 ]; then
+if [ $# != 1 ] || [ "$1" = "--help" ]; then
     echo "Usage: $(basename "$0") <script>"
-    exit 1
+    [ "$1" = "--help" ] || exit 1
+    exit 0
 fi
 
 script_path="$1"
@@ -42,7 +43,12 @@ name="$(basename "$script_path" | sed -r 's/\.[^.]+$//')"
 keys_filename="$name.csv"
 real_keys="/var/lib/hawck-input/keys/$keys_filename"
 
-chmod 0755 "$script_path"
+if ! [ -f "$script_path" ]; then
+    echo "No such file: $script_path"
+    exit 1
+fi
+
+chmod 0755 -- "$script_path"
 
 ## Transpile hwk script to Lua
 hwk_out="$(hwk2lua "$script_path")"
