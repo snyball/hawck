@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 if [ "$(whoami)" = "root" ]; then
     echo "Will not run as root."
@@ -29,22 +29,18 @@ INIT_LNK="$LOCAL_SHARE/hawck/scripts/init.lua"
 [ -e "$INIT_LNK" ] || ln -s @HAWCK_SHARE_DIR@/hawck/LLib/init.lua "$INIT_LNK"
 
 
-if ! groups | tr " " "\n" | grep "^hawck-input-share\$"; then
-    notify-send --icon=hawck \
-                --app-name="Hawck" \
-                "You are not a member of the hawck-input-share group."
-
-    if ! pkexec usermod -aG hawck-input-share "$(whoami)"; then
-        notify-send --icon=hawck \
-            --app-name="Hawck" \
-            "Unable to authenticate, is a polkit authentication agent running?"
-        echo "Do you have a PolicyKit Authentication agent running?"
-        echo "Try running:"
-        echo "  nohup /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 &"
-        echo "  disown"
+INPUT_SHARE_GRP=hawck-input-share
+if ! groups | tr " " "\n" | grep "^$INPUT_SHARE_GRP\$" > /dev/null; then
+    SBIN_USERMOD=/usr/sbin/usermod
+    USERMOD=usermod
+    if ! command -v "$USERMOD"; then
+        if [ -f "$SBIN_USERMOD" ]; then
+            USERMOD="$SBIN_USERMOD"
+        else
+            echo "Unable to locate usermod."
+            echo "You need to add your user to the $INPUT_SHARE_GRP group."
+            exit 1
+        fi
     fi
-
-    notify-send --icon=hawck \
-                --app-name="Hawck" \
-                "You have been added to the hawck-input-share group, logging out and back in again is required"
+    sudo "$USERMOD" -aG "$INPUT_SHARE_GRP" "$(whoami)"
 fi
