@@ -5,7 +5,7 @@ Documentation=man:hawck-macrod(1)
 [Service]
 Type=simple
 ExecStart=@PREFIX@/bin/hawck-macrod --no-fork
-ExecStop=/bin/kill $(cat "$XDG_RUNTIME_DIR/hawck/macrod.pid")
+#ExecStop=/bin/kill $(cat "$XDG_RUNTIME_DIR/hawck/macrod.pid")
 Restart=on-failure
 
 [Install]

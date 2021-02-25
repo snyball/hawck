@@ -4,12 +4,12 @@ Description=Hawck input daemon
 
 [Service]
 User=hawck-input
-Group=hawck-input
+#Group=hawck-input
 WorkingDirectory=/var/lib/hawck-input
 Type=forking
-PIDFile=/var/lib/hawck-input/pid
+#PIDFile=/var/lib/hawck-input/pid
 ExecStart=@PREFIX@/bin/hawck-inputd
-ExecStop=/bin/bash -c 'kill $(cat /var/lib/hawck-input/pid)'
+#ExecStop=/bin/bash -c 'kill $(cat /var/lib/hawck-input/pid)'
 
 [Install]
 WantedBy=multi-user.target
