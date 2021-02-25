@@ -129,6 +129,9 @@ down + ctrl + key "a" => insert "b"
 > to deactivate all scripts. Repeat ESC-SPC to reactivate script processing.
 
 ```bash
+# Work around issue with ACL (a better solution is WIP)
+$ sudo setfacl -m 'g:uinput:rw' /dev/uinput
+# Start services
 $ sudo systemctl start hawck-inputd
 $ hawck-macrod
 # Create a new script
