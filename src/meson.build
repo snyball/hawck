@@ -1,8 +1,15 @@
 lua_version = ['>=5.3', '<5.4']
+## Waiter, I would like a Coke
 luadep = dependency('lua', version : lua_version, required : false)
 if not luadep.found()
-  luadep = dependency('lua5.3', version : lua_version)
+  ## Ok, then I would like a Pepsi
+  luadep = dependency('lua5.3', version : lua_version, required : false)
 endif
+if not luadep.found()
+  ## Ok, then I would like a Pepsi Max
+  luadep = dependency('lua-5.3', version : lua_version, required : true)
+endif
+## Thank you
 
 pthreaddep = dependency('threads')
 notifydep = dependency('libnotify')
