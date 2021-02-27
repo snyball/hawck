@@ -2,7 +2,7 @@ project('Hawck', 'c', 'cpp',
         version : '0.7.1',
         license : 'BSD-2',
         meson_version : '>=0.53.0',
-        default_options : ['c_std=c18',
+        default_options : ['c_std=c11',
                            'cpp_std=c++17'])
 
 os = host_machine.system()
