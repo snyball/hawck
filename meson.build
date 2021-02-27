@@ -33,6 +33,7 @@ meson.add_install_script(hawck_install_script)
 summary({'redirect_std' : get_option('redirect_std').to_string('yes', 'no'),
          'use_meson_install' : get_option('use_meson_install').to_string('yes', 'no'),
          'development_build' : get_option('development_build').to_string('yes', 'no'),
+         'with_systemd' : get_option('with_systemd').to_string('yes', 'no'),
         }, section: 'Configuration')
 summary({'prefix' : get_option('prefix'),
          'hawck_share_dir' : hawck_full_share_dir,

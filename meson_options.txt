@@ -32,3 +32,8 @@ option('modules_load_dir',
        type : 'string',
        value : '/etc/modules-load.d',
        description : 'Where to install Hawck modules file.')
+
+option('with_systemd',
+       type : 'boolean',
+       value : true,
+       description : 'Install with systemd units.')

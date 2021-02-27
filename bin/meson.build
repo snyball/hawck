@@ -11,19 +11,21 @@ conf.set('HAWCK_SHARE_DIR', hawck_full_share_dir)
 conf.set('MODULES_LOAD_DIR', get_option('modules_load_dir'))
 conf.set('UDEV_RULES_DIR', get_option('udev_rules_dir'))
 
-configure_file(
-  input: 'hawck-inputd.service.in',
-  output: 'hawck-inputd.service',
-  install_dir: systemd_prefix / 'system',
-  configuration: conf
-)
+if get_option('with_systemd')
+  configure_file(
+    input: 'hawck-inputd.service.in',
+    output: 'hawck-inputd.service',
+    install_dir: systemd_prefix / 'system',
+    configuration: conf
+  )
 
-configure_file(
-  input: 'hawck-macrod.service.in',
-  output: 'hawck-macrod.service',
-  install_dir: systemd_prefix / 'user',
-  configuration: conf
-)
+  configure_file(
+    input: 'hawck-macrod.service.in',
+    output: 'hawck-macrod.service',
+    install_dir: systemd_prefix / 'user',
+    configuration: conf
+  )
+endif
 
 configure_file(
   input: 'hawck-user-setup.sh.in',
