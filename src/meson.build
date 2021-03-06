@@ -13,6 +13,7 @@ endif
 
 pthreaddep = dependency('threads')
 notifydep = dependency('libnotify')
+fmtdep = dependency('fmt')
 
 conf_data = configuration_data()
 conf_data.set_quoted('VERSION', meson.project_version())
@@ -58,10 +59,14 @@ inputd_src = [
   'Permissions.cpp',
   'LuaUtils.cpp',
   'KBDManager.cpp',
+  'XDG.cpp',
+  'ScriptManager.cpp',
+  'Popen.cpp',
+  'Notifications.cpp',
 ]
 executable('hawck-inputd',
            inputd_src,
-           dependencies : [pthreaddep, luadep],
+           dependencies : [pthreaddep, luadep, notifydep, fmtdep],
            include_directories : conf_inc,
            install : true,
           )
