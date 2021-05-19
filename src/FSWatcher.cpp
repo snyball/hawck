@@ -28,6 +28,7 @@
 #include <sstream>
 #include <functional>
 #include <fstream>
+#include <memory>
 
 extern "C" {
     #include <sys/stat.h>
