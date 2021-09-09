@@ -22,7 +22,9 @@ install () {
 mkdir -p build || exit 1
 pushd build
 meson .. || exit 1
-ninja || exit 1
+meson configure -Dprefix=/usr || exit 1
+meson configure -Dcpp_args=-O2 || exit 1
+ninja -j$(nproc) || exit 1
 sudo bash -c "$(declare -pf install); install" || exit 1
 popd
 sudown bin/hawck-user-setup.sh
