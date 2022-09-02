@@ -24,7 +24,6 @@ hawck_full_share_dir = join_paths(get_option('prefix'), get_option('hawck_share_
 
 subdir('src')
 subdir('tests')
-subdir('hawck-ui')
 subdir('docs')
 subdir('bin')
 
