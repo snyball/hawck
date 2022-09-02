@@ -198,7 +198,7 @@ extern "C" {
 #define LUA_METHOD_EXTRACT(_T, _method, ...) \
         template <class... Atoms> \
         static inline auto LUA_METHOD_EXTRACT_NAME(_method)(Atoms... args) noexcept { \
-            return [](_T *self, Atoms... nargs) -> decltype(((_T *) nullptr)->_method(args...)) { \
+            return [](_T *self, Atoms... nargs) -> decltype(std::declval<_T>()._method(args...)) { \
                 return self->_method(nargs...); \
             }; \
         }

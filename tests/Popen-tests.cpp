@@ -27,7 +27,7 @@ TEST_CASE("long input", "[Popen]") {
 }
 
 TEST_CASE("long output", "[Popen]") {
-    int n = 10000000;
+    size_t n = 10000000;
     char c = 'A';
     stringstream src_ss;
     src_ss << "import sys; sys.stdout.write('" << c << "' * " << n << ")";
