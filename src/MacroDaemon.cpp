@@ -108,7 +108,7 @@ void MacroDaemon::initScriptDir(const std::string &dir_path) {
         try {
             loadScript(entry.path());
         } catch (exception &e) {
-            notify("Hawck Script Error", e.what());
+            notify("Hawck Script Error", e.what(), "hawck", NOTIFY_URGENCY_CRITICAL);
             syslog(LOG_ERR, "Unable to load script '%s': %s", pathBasename(entry.path()).c_str(),
                    e.what());
         }
@@ -166,10 +166,10 @@ struct script_error_info {
 };
 
 void MacroDaemon::notify(string title, string msg) {
-    notify(title, msg, "hawck");
+    notify(title, msg, "hawck", NOTIFY_URGENCY_NORMAL);
 }
 
-void MacroDaemon::notify(string title, string msg, string icon) {
+void MacroDaemon::notify(string title, string msg, string icon, NotifyUrgency urgency) {
     // AFAIK you don't have to free the memory manually, but I could be wrong.
     lock_guard<mutex> lock(last_notification_mtx);
     tuple<string, string> notif(title, msg);
@@ -179,7 +179,7 @@ void MacroDaemon::notify(string title, string msg, string icon) {
 
     NotifyNotification *n = notify_notification_new(title.c_str(), msg.c_str(), icon.c_str());
     notify_notification_set_timeout(n, 12000);
-    notify_notification_set_urgency(n, NOTIFY_URGENCY_CRITICAL);
+    notify_notification_set_urgency(n, urgency);
     notify_notification_set_app_name(n, "Hawck");
 
     if (!notify_notification_show(n, nullptr)) {
@@ -221,7 +221,7 @@ bool MacroDaemon::runScript(Lua::Script *sc, const struct input_event &ev, strin
             sc->setEnabled(false);
         std::string report = e.fmtReport();
         if (notify_on_err)
-            notify("Lua error", report);
+            notify("Lua error", report, "hawck", NOTIFY_URGENCY_CRITICAL);
         syslog(LOG_ERR, "LUA:%s", report.c_str());
         repeat = true;
     }
@@ -282,7 +282,7 @@ void MacroDaemon::startScriptWatcher() {
                 }
             }
         } catch (exception &e) {
-            notify("Script Error", e.what());
+            notify("Script Error", e.what(), "hawck", NOTIFY_URGENCY_CRITICAL);
             syslog(LOG_ERR, "Error while loading %s: %s", ev.path.c_str(), e.what());
         }
         return true;
@@ -350,7 +350,7 @@ void MacroDaemon::run() {
         } catch (const SocketError& e) {
             // Reset connection
             syslog(LOG_ERR, "Socket error: %s", e.what());
-            notify("Socket error", "Connection to InputD timed out, reconnecting ...");
+            notify("Socket error", "Connection to InputD timed out, reconnecting ...", "hawck", NOTIFY_URGENCY_NORMAL);
             getConnection();
         }
     }
