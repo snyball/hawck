@@ -1,18 +1,18 @@
 --[====================================================================================[
    Load Linux keymap files.
-   
+
    Copyright (C) 2018 Jonas Møller (no) <jonasmo441@gmail.com>
    All rights reserved.
-   
+
    Redistribution and use in source and binary forms, with or without
    modification, are permitted provided that the following conditions are met:
-   
+
    1. Redistributions of source code must retain the above copyright notice, this
       list of conditions and the following disclaimer.
    2. Redistributions in binary form must reproduce the above copyright notice,
       this list of conditions and the following disclaimer in the documentation
       and/or other materials provided with the distribution.
-   
+
    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
    ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -137,6 +137,8 @@ function readLinuxKBMap(path)
 
     -- Does not start with "keycode", use alternative method for lines
     -- where modifier key codes are explicitly written down.
+    -- syntax of such lines is <modifier>+ keycode <code> = <symbol>
+    -- and we discard the line if <modifier> is not "plain"
     if not code then
       local modifiers = {}
       for key in line:gmatch("([a-z]+)") do
@@ -156,9 +158,7 @@ function readLinuxKBMap(path)
     if code and name and name ~= "nul" then
       -- Some keys are formatted as '+A' where A is a literal character,
       -- we just remove this plus.
-      local is_letter = false
       if name:sub(1, 1) == "+" then
-        is_letter = true
         name = name:sub(2)
       end
       code = tonumber(code)
@@ -172,7 +172,7 @@ function readLinuxKBMap(path)
       end
       -- Hack for broken .map files that don't include a shift+letter upper case variant.
       -- Will obviously not do the correct thing for all alphabets/scripts.
-      if is_letter and #combo_pre_entry == 2 then
+      if #name == 1 and #combo_pre_entry == 2 and name:upper() ~= name then
         table.insert(combo_pre_entry, name:sub(1,1):upper() .. name:sub(2))
       end
       table.insert(combo_pre, combo_pre_entry)
