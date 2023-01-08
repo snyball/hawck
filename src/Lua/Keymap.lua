@@ -264,7 +264,7 @@ function kbmap.getall()
   end
 
   local p = io.popen(("find %s -name '*map.gz'"):format(u.shescape(kbmap_path)))
-  local keymap_rx = ".*/([a-z0-9]+)/([a-z0-9]+)/([a-z0-9-]+)%.k?map%.gz"
+  local keymap_rx = ".*/([a-z0-9]+)/([a-z0-9]+)/([a-z0-9-.]+)%.k?map%.gz"
   local keymaps = {}
   for line in p:lines() do
     local machine, layout, lang = line:match(keymap_rx)
