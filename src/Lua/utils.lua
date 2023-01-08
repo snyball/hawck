@@ -479,12 +479,13 @@ end
 -- @param t Source Table
 -- @param sep Separator to use eg " "
 -- @return dst
-function table.concatkeys(t, sep)
-  local ret = ""
-  for k,v in pairs(t) do
-    ret = ret .." " .. k
+function table.concatkeys(tab, sep)
+  local ctab, n = {}, 1
+  for k, _ in pairs(tab) do
+      ctab[n] = k
+      n = n + 1
   end
-  return ret
+  return table.concat(ctab, sep)
 end
 
 --- Get directory name of path
