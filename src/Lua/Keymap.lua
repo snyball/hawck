@@ -102,7 +102,7 @@ end
 --             /usr/share/kbd/keymaps/i386/qwerty/no-latin1.map.gz
 function readLinuxKBMap(path)
   local include_line_rx = "^[\t ]*include \"(.*)\""
-  local keymap_line_rx =  "^[\t ]*keycode *([0-9]+) *= *([0-9a-zA-Z+]+) *(.*)$"
+  local keymap_line_rx =  "^[\t ]*keycode *([0-9]+) *= *([0-9a-zA-Z+_]+) *(.*)$"
 
   local orig_path = path
   local has_gz = path:endswith(".gz")
@@ -148,7 +148,7 @@ function readLinuxKBMap(path)
         end
         table.insert(modifiers, key)
       end
-      local alt_code, alt_name = line:match(".*keycode *([0-9]+) *= *([a-zA-Z0-9+]+)")
+      local alt_code, alt_name = line:match(".*keycode *([0-9]+) *= *([a-zA-Z0-9+_]+)")
       -- We only care about the plain ones for now.
       if modifiers[1] == "plain" then
         code, name, rest = alt_code, alt_name, ""
