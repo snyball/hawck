@@ -282,7 +282,7 @@ function kbmap.new(lang)
   assert(lang)
   local maps = kbmap.getall()
   if not maps[lang] then
-    error("No such keymap: " .. lang)
+    error("No such keymap: " .. lang .. ". Available: " .. table.concatkeys(maps, " "))
   end
   local keymap, combo_map, mod_codes = readLinuxKBMap(maps[lang])
   local map = {
@@ -309,7 +309,7 @@ function kbmap:getKeysym(key)
   if ALIASES and ALIASES[key] then
     key = ALIASES[key]
   end
-  return self.keymap[key] or error(("No such key: %s"):format(key))
+  return self.keymap[key] or error(("No such key: %s. Available keys: %s"):format(key, table.concatkeys(self.keymap, " ")))
 end
 
 --- Check if a key is a modifier, i.e one of Control/Control_R/Shift/Shift_R/Alt/AltGr
