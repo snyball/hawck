@@ -102,7 +102,7 @@ end
 --             /usr/share/kbd/keymaps/i386/qwerty/no-latin1.map.gz
 function readLinuxKBMap(path)
   local include_line_rx = "^[\t ]*include \"(.*)\""
-  local keymap_line_rx =  "^[\t ]*keycode *([0-9]+) *= *([0-9a-zA-Z+]+) *(.*)$"
+  local keymap_line_rx =  "^[\t ]*keycode *([0-9]+) *= *([0-9a-zA-Z+_]+) *(.*)$"
 
   local orig_path = path
   local has_gz = path:endswith(".gz")
@@ -148,7 +148,7 @@ function readLinuxKBMap(path)
         end
         table.insert(modifiers, key)
       end
-      local alt_code, alt_name = line:match(".*keycode *([0-9]+) *= *([a-zA-Z0-9+]+)")
+      local alt_code, alt_name = line:match(".*keycode *([0-9]+) *= *([a-zA-Z0-9+_]+)")
       -- We only care about the plain ones for now.
       if modifiers[1] == "plain" then
         code, name, rest = alt_code, alt_name, ""
@@ -264,7 +264,7 @@ function kbmap.getall()
   end
 
   local p = io.popen(("find %s -name '*map.gz'"):format(u.shescape(kbmap_path)))
-  local keymap_rx = ".*/([a-z0-9]+)/([a-z0-9]+)/([a-z0-9-]+)%.k?map%.gz"
+  local keymap_rx = ".*/([a-z0-9]+)/([a-z0-9]+)/([a-z0-9-.]+)%.k?map%.gz"
   local keymaps = {}
   for line in p:lines() do
     local machine, layout, lang = line:match(keymap_rx)
@@ -282,7 +282,7 @@ function kbmap.new(lang)
   assert(lang)
   local maps = kbmap.getall()
   if not maps[lang] then
-    error("No such keymap: " .. lang)
+    error("No such keymap: " .. lang .. ". Available: " .. table.concatkeys(maps, " "))
   end
   local keymap, combo_map, mod_codes = readLinuxKBMap(maps[lang])
   local map = {
@@ -309,7 +309,7 @@ function kbmap:getKeysym(key)
   if ALIASES and ALIASES[key] then
     key = ALIASES[key]
   end
-  return self.keymap[key] or error(("No such key: %s"):format(key))
+  return self.keymap[key] or error(("No such key: %s. Available keys: %s"):format(key, table.concatkeys(self.keymap, " ")))
 end
 
 --- Check if a key is a modifier, i.e one of Control/Control_R/Shift/Shift_R/Alt/AltGr

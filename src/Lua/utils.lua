@@ -1,18 +1,18 @@
 --[====================================================================================[
    Various utility functions for Lua
-   
+
    Copyright (C) 2018 Jonas Møller (no) <jonasmo441@gmail.com>
    All rights reserved.
-   
+
    Redistribution and use in source and binary forms, with or without
    modification, are permitted provided that the following conditions are met:
-   
+
    1. Redistributions of source code must retain the above copyright notice, this
       list of conditions and the following disclaimer.
    2. Redistributions in binary form must reproduce the above copyright notice,
       this list of conditions and the following disclaimer in the documentation
       and/or other materials provided with the distribution.
-   
+
    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
    ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -55,7 +55,7 @@ function u.join(...)
 end
 
 --- Curry a function.
--- 
+--
 -- Example:
 --   curry((function (a, b) return a + b end), 2) ->
 --     function (b) return 2 + b end -- (Essentially)
@@ -402,7 +402,7 @@ function u.expect(typen, var)
 end
 
 --- Expand environment variables in the given string.
--- 
+--
 -- Environment variables should appear in the form: $variable
 --
 -- @tparam string path
@@ -470,6 +470,22 @@ function table.update(dst, src)
     dst[k] = v
   end
   return dst
+end
+
+---
+--
+-- Like table.concat, but for keys of associative string->x arrays.
+--
+-- @param t Source Table
+-- @param sep Separator to use eg " "
+-- @return dst
+function table.concatkeys(tab, sep)
+  local ctab, n = {}, 1
+  for k, _ in pairs(tab) do
+      ctab[n] = k
+      n = n + 1
+  end
+  return table.concat(ctab, sep)
 end
 
 --- Get directory name of path
