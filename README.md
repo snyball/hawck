@@ -18,13 +18,17 @@ The ultimate goal of the project is to serve as a user-friendly Linux
 alternative to AutoHotkey, but this time with a sane scripting language.
 
 Common concrete use cases:
+
 - Rebind caps lock to ctrl or escape:
+
 ```lua
 key "Caps" => replace "Escape"
 -- , or
 key "Caps" => replace "Control"
 ```
+
 - Conditionally replace caps lock (or any other replacement)
+
 ```lua
 -- Pressing F7 will activate the replacement, and pressing F7
 -- again will disable it.
@@ -32,13 +36,17 @@ mode("Caps => Ctrl mode", down + key "F7") => {
     key "Caps" => replace "Control"
 }
 ```
+
 - Replace a key, but only on a specific keyboard (not in `v0.6`, use master branch
   for this)
+
 ```lua
 -- Run `src/tools/lskbd.rb -k` and look for "ID" in the output to find keyboard IDs.
 fromkbd "1:1:AT_Translated_Set_2_keyboard" + key "F7" => say "Hello"
 ```
+
 - Paste into a tty, or another program which does not support pasting
+
 ```lua
 function getClipboard()
     -- get-clipboard should be replaced with whatever works with your setup.
@@ -53,7 +61,9 @@ shift + alt + key "v" => function ()
   write(clip_contents)() -- Note the extra parens, write() returns a closure
 end
 ```
+
 - Make non-us keyboards more convenient for programming:
+
 ```lua
 -- Replace with your respective european characters
 shift + key "ø" => insert "["
@@ -62,12 +72,16 @@ key "ø" => insert "{"
 shift + key "æ" => insert "]"
 key "æ" => insert "}"
 ```
+
 - Store a common phrase and activate it with a key-binding
+
 ```lua
 local seals_pasta = "What the **** did you just say about me you little *****? I'll have you know I graduated top of my class from…"
 shift + alt + key "p" => write(seals_pasta)
 ```
+
 - Run .desktop application actions, and generally launch programs
+
 ```lua
 shift + alt + key "f" => app("firefox"):new_window("http://man7.org/linux/man-pages/man1/yes.1.html")
 shift + alt + key "w" => app("firefox"):new_private_window("https://www.youtube.com/watch?v=V4MF2s6MLxY")
@@ -100,7 +114,7 @@ $ cd Hawck
 $ pkexec xargs apt -y install < bin/dependencies/debian-deps.txt
 $ ./install.sh
 ```
-    
+
 The user setup script will prompt you for your password, it has to add your user
 to the `hawck-input-share` group. You'll have to log out and back in again after
 your user has been added to the group (on some distributions, e.g Ubuntu, a
@@ -117,6 +131,16 @@ Once you've found the appropriate packages for your distribution, run the
 19.10.
 
 ## Testing it out
+
+As Hawck is not able to determine your Wayland/X11 keymap dynamically, you must
+first set your keymap in `~/.local/share/hawck/cfg.lua`. This also applies to
+us-keymap users, as the default is stubbornly set to the more uncommon "no"
+(norwegian) because the author of Hawck is from there.
+[FAQ: Keyboard Layout](#faq-layout) below.
+
+```lua
+  keymap = "no", -- set to "us", "de", "no-latin1", etc. depending on your keyboard layout
+```
 
 Now you can test out a simple script, your `example.hwk` could look like this:
 
@@ -142,6 +166,15 @@ $ hawck-add ~/.config/hawck/scripts/example.hwk
 $ chmod +x ~/.config/hawck/scripts/example.hwk
 # Disable the script
 $ chmod -x ~/.config/hawck/scripts/example.hwk
+```
+
+> Warning: When editing example.hwk, the macro daemon will auto-reload, but
+> because of the [security model](#security), new keys will be ignored until
+> you rerun `hawck-add`. You can check what keycodes are intercepted by the
+> input daemon for our example script with:
+
+```sh
+$ cat /var/lib/hawck-input/keys/example.csv
 ```
 
 ## Security
@@ -171,9 +204,9 @@ each other:
     - Inconsequential implementation details: Having two virtual
       keyboards operated by both daemons opens up an entirely new
       can of worms especially for modifier keys.
-      
+
 <img src="./images/arch.svg"/>
-  
+
 The keyboard daemon contains a whitelist of keys that the macro daemon
 is allowed to see, this whitelist is derived from the Lua scripts used.
 This means that the process run under the desktop user never sees all
@@ -248,6 +281,16 @@ This is why Lua, with a single extra operator that was
 easy to implement is what I went with in Hawck.
 </small>
 
+The lua files are deleted on the fly, but you can open a lua shell with your
+script loaded for investigation:
+
+```sh
+$ cd ~/.local/share/hawck/scripts/
+$ hwk2lua example.hwk >! tmp.lua
+$ lua -l init -l tmp -i
+$ rm tmp.lua
+```
+
 ## GUI
 
 Hawck used to have a more actively maintained GUI, but as of now it is in a
@@ -261,13 +304,78 @@ language. But currently that use case just doesn't exist for Hawck.
 
 ## FAQ
 
-#### Is my keyboard layout supported?
+### Persisting the configuration
+
+The **input daemon** should autostart, which you can enable/disable with
+
+```sh
+$ sudo systemctl enable hawck-inputd
+```
+
+The **macro daemon** will not autostart (and your journal will contain
+`hawck-inputd: SystemError: Connection refused`). When you've got everything set
+up correctly, and you understand how it works and how to recover issues, you may
+want autostart it. Depending on your distribution the provided _desktop_ file
+might work:
+
+```sh
+cp bin/hawck-macrod.desktop "${XDG_CONFIG_HOME:-~/.config}"/autostart
+```
+
+#### <a name="faq-layout"></a> Is my keyboard layout supported?
 
 If you're using a Norwegian or US keyboard, yes.
 If not, maybe.
 
 If not you might have to do some tweaking, feel free to report
 an issue on GitHub for your keymap.
+
+The layout support works like this:
+
+- Because the input daemon runs as root, what it intercepts are the raw kernel
+  keycodes (defined in [/usr/include/linux/input-event-codes.h][1]
+- The numeric keycodes that are listed in
+  _/usr/share/hawck/keymaps/default_linux.lua_ can be used in your scripts eg
+  `key(57)` for the space key (except numbers 1 to 9 which are aliased to the
+  numeric top row keys). Find the keycode for any key by switching to a
+  [Virtual console](https://wiki.archlinux.org/title/Linux_console) and running
+  `showkey`.
+- Using numeric codes is impractical, and using the name the kernel has for the
+  key is confusing as they are not aligned with the key label especially on
+  non-us layouts. This is why Hawck tries to provide localized key names.
+- There are 2 main mechanisms to transform the keycodes the kernel detects into
+  higher-level events like an actual character on screen:
+  1. [Kbd](https://kbd-project.org/), used by the virtual console
+  2. [Xkb](https://www.x.org/wiki/XKB/), used by both X11 and Wayland
+     (through libinput).
+- Both provide a way to define localized keymaps, and Hawck decided to hook into
+  the first, simpler console keymaps to provide support. Note, that their may be
+  discrepancies between the Kbd and Xkb definitions of a given keyboard layout.
+- So Hawck needs to parse a console keymap definition of your layout. It is not
+  necessarily built-into your system, for example on Debian/Ubuntu based distro
+  it is in the `console-data` package.
+- Based on the `keymap = "foo"` line _~/.local/share/hawck/cfg.lua_, Hawck will
+  search for a file named `foo.(k)map.gz` in a number of common directories like
+  _/usr/share/keymaps/_ (see [kbmap.getall()][2]).
+- **The symbol names present in those keymap files are the ones that can be
+  used**, with the addition of some [built-in aliases](keymaps/aliases.lua)
+  between unicode characters and key names, so that `insert "/"` is able to
+  insert a slash.
+
+For example, the top-left key (under Esc) on a US keyboard has code 41 according
+to `showkey` and _us.kmap.gz_ has this line:
+
+```
+  keycode  41 = grave            asciitilde
+```
+
+So `key("grave")` can be used to refer to this key.
+
+In a lua shell `cd ~/.local/share/hawck/scripts/ ; lua -l init -i`, you can see
+how the keymap has been parsed with `u.puts(kbd.map)`
+
+[1]: https://github.com/torvalds/linux/blob/master/include/uapi/linux/input-event-codes.h
+[2]: https://github.com/snyball/Hawck/blob/master/src/Lua/Keymap.lua#L247
 
 #### Hotplugging keyboards
 
@@ -324,6 +432,7 @@ Here are some alternative models that have been considered:
     when it comes to keyboard automation as something like
     AutoHotkey.
 - "Abandon all hope, ye who enter unsafe mode"
+
   - For a lot of users, especially the ones still on X11, these
     issues are not a concern. They might want a model that just
     let's them do whatever they want whenever they want without
@@ -343,12 +452,13 @@ Here are some alternative models that have been considered:
 
 Ideally the hawck-ui editor should be able to start off
 assuming sandboxed mode, then inform the user about the
-need to switch to whitelist mode if it sees use of any feature 
+need to switch to whitelist mode if it sees use of any feature
 unsupported in the sandbox, like `io.popen` or `app`.
 
 #### Synchronous and asynchronous keyboard locking explained
 
 If you read the logs you might see something like this:
+
 ```
 hawck-inputd[7672]: Running Hawck InputD ...
 hawck-inputd[7672]: Attempting to get lock on device: Logitech Logitech G710 Keyboard @ usb-0000:00:14.0-4/input0
@@ -359,6 +469,7 @@ hawck-inputd[7672]: Locking keyboard: AT Translated Set 2 keyboard ...
 hawck-inputd[7672]: Immediate lock on: AT Translated Set 2 keyboard @ isa0060/serio0/input0
 hawck-inputd[7672]: Acquired lock on keyboard: Logitech Logitech G710 Keyboard
 ```
+
 `hawck-inputd` employs two different methods for locking keyboards.
 
 One is the simple immediate lock, where an `ioctl` call is used to
@@ -416,7 +527,6 @@ porting of the following classes/functions.
 - `FSWatcher.cpp`
   - File system notifications
   - shim: https://github.com/libinotify-kqueue/libinotify-kqueue
-
 
 ## Known Bugs:
 
