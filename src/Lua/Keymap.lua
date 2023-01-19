@@ -88,9 +88,11 @@ local function getInclude(path, include_name)
     -- If successful, return it
     if succ then
       return submap, subcombi, submods
+    else
+      print("Failed to parse " .. include_path)
     end
   end
-  error("No such include: " .. include_name)
+  error(("No such include: %s in %s"):format(include_name, table.concat(paths, " ")))
 end
 
 --- Read a Linux keymap .map.gz or .inc file, this will also pull
