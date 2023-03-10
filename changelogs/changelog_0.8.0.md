@@ -13,3 +13,5 @@
 
 - Bugfixes:
   - Fix parsing of key names containing '\_' like KP_Enter etc. Fixes #10, #72
+  - Fix for Ubuntu 22.04 `mktemp` hardening
+  - Fix for Asahi Linux where `/dev/input/by-id` is not created
