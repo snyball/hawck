@@ -1,6 +1,8 @@
 #include "KBDManager.hpp"
+#include "SystemError.hpp"
 #include "utils.hpp"
 #include "Permissions.hpp"
+#include <sys/syslog.h>
 
 using namespace std;
 using namespace Permissions;
@@ -108,7 +110,18 @@ static bool waitForDevice(const string& path) {
 }
 
 void KBDManager::startHotplugWatcher() {
-    input_fsw.add("/dev/input/by-id");
+    if (!allow_hotplug) return;
+
+    try {
+        // In some (uncommon? as of 2023) Linux configurations, this directory
+        // is never created.
+        input_fsw.add("/dev/input/by-id");
+    } catch (SystemError &e) {
+        syslog(LOG_WARNING, "Unable to add /dev/input/by-id to inotify watch-list, running as if --no-hotplug was given");
+        setHotplug(false);
+        return;
+    }
+
     input_fsw.setWatchDirs(true);
     input_fsw.setAutoAdd(false);
     input_fsw.asyncWatch([this](FSEvent &ev) {
