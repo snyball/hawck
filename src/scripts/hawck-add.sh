@@ -66,6 +66,19 @@ cd "$SCRIPTS_DIR"
 ## Check the script for correctness
 lua5.3 -l init "$script_path" >&2 || exit 1
 
+function rand-file-path() {
+    head -c128 /dev/urandom | sha1sum | awk '{print "/var/lib/hawck-input/tmp/"$1}'
+}
+
+function mktemp() {
+    file="$(rand-file-path)"
+    while [[ -f "$file" ]]; do
+        file="$(rand-file-path)"
+    done
+    touch "$file"
+    echo "$file"
+}
+
 ## Create CSV file with proper header and permissions
 tmp_keys="$(mktemp)"
 chmod 644 "$tmp_keys"
