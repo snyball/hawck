@@ -35,7 +35,7 @@ std::string fmtPermissions(unsigned num) noexcept;
 
 struct Group {
     struct group grpbuf;
-    char buf[200];
+    char buf[2048];
 };
 
 struct Collection {
