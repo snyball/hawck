@@ -23,7 +23,9 @@ inc = include_directories('src')
 hawck_full_share_dir = join_paths(get_option('prefix'), get_option('hawck_share_dir'))
 
 subdir('src')
-subdir('tests')
+if get_option('build_tests')
+  subdir('tests')
+endif
 subdir('docs')
 subdir('bin')
 
