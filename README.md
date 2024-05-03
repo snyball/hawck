@@ -14,9 +14,6 @@ actions or modify keys depending on your needs.
 Your Lua scripts will work on Wayland, X11, and every WM/DE you throw at
 them, as well as console ttys.
 
-The ultimate goal of the project is to serve as a user-friendly Linux
-alternative to AutoHotkey, but this time with a sane scripting language.
-
 Common concrete use cases:
 
 - Rebind caps lock to ctrl or escape:
@@ -291,17 +288,6 @@ $ lua -l init -l tmp -i
 $ rm tmp.lua
 ```
 
-## GUI
-
-Hawck used to have a more actively maintained GUI, but as of now it is in a
-frozen state, I currently don't recommend using it.
-
-Use `hawck-add` and your preferred editor from the terminal instead.
-
-In the future I may start working on the GUI again, to implement key-remapping
-for non-advanced users who don't wish to use either the terminal or a scripting
-language. But currently that use case just doesn't exist for Hawck.
-
 ## FAQ
 
 ### Persisting the configuration
@@ -449,11 +435,6 @@ Here are some alternative models that have been considered:
     - Used for anything that can't be done from the sandbox.
   - Unsafe mode (optional current method)
     - Used by X11 users, and users who just don't care.
-
-Ideally the hawck-ui editor should be able to start off
-assuming sandboxed mode, then inform the user about the
-need to switch to whitelist mode if it sees use of any feature
-unsupported in the sandbox, like `io.popen` or `app`.
 
 #### Synchronous and asynchronous keyboard locking explained
 
